@@ -7,7 +7,8 @@ import ReaderContainer from '@/components/reader/ReaderContainer';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Settings, ArrowLeft, BookOpen, Columns, Maximize, ChevronDown } from 'lucide-react';
+import { Settings, ArrowLeft, BookOpen, Columns, Maximize, ChevronDown, BookmarkPlus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -140,6 +141,35 @@ export default function ReaderPage() {
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 border-t pt-4">
+                                    <h3 className="text-sm font-medium">Yer İmleri</h3>
+                                    <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => {
+                                            if (book) {
+                                                useBookStore.getState().addBookmark(book.id, String(book.progress?.location || '0'), `Sayfa ${book.progress?.page}`);
+                                                toast.success('Yer imi eklendi');
+                                            }
+                                        }}>
+                                            <BookmarkPlus className="h-4 w-4 mr-2" /> Ekle
+                                        </Button>
+                                    </div>
+                                    <div className="space-y-1 mt-2 max-h-[150px] overflow-auto">
+                                        {(useBookStore.getState().bookmarks[book?.id || ''] || []).map((bm: any) => (
+                                            <div key={bm.id} className="flex items-center justify-between text-xs p-2 bg-slate-100 dark:bg-slate-900 rounded">
+                                                <span>{bm.note || 'Yer İmi'}</span>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => {
+                                                    if (book) useBookStore.getState().removeBookmark(book.id, bm.id);
+                                                }}>
+                                                    &times;
+                                                </Button>
+                                            </div>
+                                        ))}
+                                        {(useBookStore.getState().bookmarks[book?.id || ''] || []).length === 0 && (
+                                            <p className="text-xs text-muted-foreground">Henüz yer imi yok.</p>
+                                        )}
                                     </div>
                                 </div>
 

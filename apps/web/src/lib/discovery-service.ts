@@ -45,13 +45,34 @@ const MOCK_RESULTS: SearchResult[] = [
     }
 ];
 
+// Real search using OpenLibrary API
 export const searchBooks = async (query: string): Promise<SearchResult[]> => {
-    await new Promise(r => setTimeout(r, 1000)); // Simulate network
     if (!query) return [];
 
-    // Simple Mock Filter
-    return MOCK_RESULTS.filter(r =>
-        r.title.toLowerCase().includes(query.toLowerCase()) ||
-        r.author.toLowerCase().includes(query.toLowerCase())
-    );
+    try {
+        // Fetch from OpenLibrary Search API
+        const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`);
+        const data = await response.json();
+
+        if (!data.docs) return [];
+
+        return data.docs.map((doc: any) => ({
+            id: doc.key,
+            title: doc.title,
+            author: doc.author_name ? doc.author_name[0] : 'Bilinmiyor',
+            cover_url: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : undefined,
+            source: 'OpenLibrary (Public Domain)',
+            format: 'epub', // Defaulting to epub for MVP flow
+            size: 'Unknown',
+            downloadUrl: `https://openlibrary.org${doc.key}`, // Link to book page
+            language: doc.language ? doc.language[0] : undefined
+        }));
+    } catch (e) {
+        console.error("Discovery Error:", e);
+        // Fallback to mock if API fails
+        return MOCK_RESULTS.filter(r =>
+            r.title.toLowerCase().includes(query.toLowerCase()) ||
+            r.author.toLowerCase().includes(query.toLowerCase())
+        );
+    }
 };

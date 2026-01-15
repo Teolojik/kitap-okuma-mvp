@@ -39,6 +39,10 @@ interface ReaderState {
     // For split screen, we might need a secondary book ID
     secondaryBookId: string | null;
     setSecondaryBookId: (id: string | null) => void;
+
+    bookmarks: Record<string, Array<{ id: string; location: string; note?: string; createdAt: string }>>;
+    addBookmark: (bookId: string, location: string, note?: string) => void;
+    removeBookmark: (bookId: string, bookmarkId: string) => void;
 }
 
 interface BookState {
@@ -89,4 +93,24 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
     })),
     secondaryBookId: null,
     setSecondaryBookId: (id) => set({ secondaryBookId: id }),
+
+    bookmarks: {},
+    addBookmark: (bookId, location, note) => set(state => {
+        const bookBookmarks = state.bookmarks[bookId] || [];
+        return {
+            bookmarks: {
+                ...state.bookmarks,
+                [bookId]: [...bookBookmarks, { id: crypto.randomUUID(), location, note, createdAt: new Date().toISOString() }]
+            }
+        };
+    }),
+    removeBookmark: (bookId, bookmarkId) => set(state => {
+        const bookBookmarks = state.bookmarks[bookId] || [];
+        return {
+            bookmarks: {
+                ...state.bookmarks,
+                [bookId]: bookBookmarks.filter(b => b.id !== bookmarkId)
+            }
+        };
+    }),
 }));
