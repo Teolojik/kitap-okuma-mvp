@@ -73,7 +73,7 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 height: '100%',
                 flow: settings.readingMode === 'single' ? 'scrolled-doc' : 'paginated',
                 manager: settings.readingMode === 'single' ? 'continuous' : 'default',
-                allowScriptedContent: true, // Allow scripts for interactive books
+                allowScriptedContent: false, // Disable scripts to avoid sandbox warnings and improve security
             };
 
             // Initialize Rendition
@@ -81,7 +81,7 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 method: 'default', // Explicitly set method
                 width: '100%',
                 height: '100%',
-                allowScriptedContent: true,
+                allowScriptedContent: false,
                 ...defaultOptions
             });
             renditionRef.current = rendition;
