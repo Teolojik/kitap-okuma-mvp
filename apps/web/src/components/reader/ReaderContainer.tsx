@@ -5,6 +5,8 @@ import { Book } from '@/lib/mock-api';
 import SinglePageReader from './modes/SinglePageReader';
 import DoubleStatic from './modes/DoubleStatic';
 import DoubleAnimated from './modes/DoubleAnimated';
+import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 import SplitScreenReader from './modes/SplitScreenReader';
 
 interface ReaderContainerProps {

@@ -7,12 +7,9 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Configure worker for Vite
-// Configure worker for Vite using standard URL constructor which is more robust
-// than ?url import if there are resolution issues
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url,
-).toString();
+// Configure worker for Vite using CDN fallback since local package install failed
+// This ensures PDF rendering works even without pdfjs-dist in node_modules
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PdfReaderProps {
     url: string | ArrayBuffer;
