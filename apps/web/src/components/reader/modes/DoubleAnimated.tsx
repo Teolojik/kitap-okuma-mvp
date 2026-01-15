@@ -11,12 +11,14 @@ interface DoubleAnimatedProps {
     onLocationChange: (loc: string, pct: number) => void;
 }
 
+import { getFileType } from '@/lib/file-utils';
+
 export default function DoubleAnimated({ book, data, onLocationChange }: DoubleAnimatedProps) {
-    const isPdf = book.title.endsWith('.pdf');
+    const fileType = getFileType(data, book.title);
     const epubRef = useRef<EpubReaderRef>(null);
     const [direction, setDirection] = useState(0); // -1 prev, 1 next
 
-    if (isPdf) {
+    if (fileType === 'pdf') {
         return <PdfReader url={data} />;
     }
 

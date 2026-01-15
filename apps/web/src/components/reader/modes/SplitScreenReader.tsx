@@ -17,17 +17,22 @@ interface SplitScreenProps {
 
 const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
 
+import { getFileType } from '@/lib/file-utils';
+
 export default function SplitScreenReader({
     primaryBook, primaryData, onPrimaryLocationChange,
     secondaryBook, secondaryData
 }: SplitScreenProps) {
     const { setSettings } = useBookStore();
 
+    const primaryType = getFileType(primaryData, primaryBook.title);
+    const secondaryType = secondaryBook && secondaryData ? getFileType(secondaryData, secondaryBook.title) : null;
+
     return (
         <div className="grid grid-cols-2 h-full w-full divide-x-4 divide-slate-200 dark:divide-slate-800">
             {/* Left Side (Primary) */}
             <div className="relative h-full w-full overflow-hidden">
-                {primaryBook.title.endsWith('.pdf') ? (
+                {primaryType === 'pdf' ? (
                     <PdfReader url={primaryData} simpleMode />
                 ) : (
                     <div className="h-full w-full relative">
@@ -55,7 +60,7 @@ export default function SplitScreenReader({
             {/* Right Side (Secondary) */}
             <div className="relative h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-900">
                 {secondaryBook && secondaryData ? (
-                    secondaryBook.title.endsWith('.pdf') ? (
+                    secondaryType === 'pdf' ? (
                         <PdfReader url={secondaryData} simpleMode />
                     ) : (
                         <EpubReader

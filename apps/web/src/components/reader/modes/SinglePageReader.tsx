@@ -13,11 +13,13 @@ interface SinglePageReaderProps {
 // Static options to prevent re-init loop
 const EPUB_OPTIONS = { flow: 'scrolled-doc', manager: 'continuous' };
 
+import { getFileType } from '@/lib/file-utils';
+
 export default function SinglePageReader({ book, data, onLocationChange }: SinglePageReaderProps) {
-    const isPdf = book.title.endsWith('.pdf');
+    const fileType = getFileType(data, book.title);
     const epubRef = useRef<EpubReaderRef>(null);
 
-    if (isPdf) {
+    if (fileType === 'pdf') {
         return <PdfReader url={data} />;
     }
 

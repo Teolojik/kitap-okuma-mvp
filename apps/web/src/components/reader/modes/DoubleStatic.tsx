@@ -12,11 +12,13 @@ interface DoubleStaticProps {
 
 const EPUB_OPTIONS = { flow: 'paginated', manager: 'default', width: '100%', height: '100%' };
 
+import { getFileType } from '@/lib/file-utils';
+
 export default function DoubleStatic({ book, data, onLocationChange }: DoubleStaticProps) {
-    const isPdf = book.title.endsWith('.pdf');
+    const fileType = getFileType(data, book.title);
     const epubRef = useRef<EpubReaderRef>(null);
 
-    if (isPdf) {
+    if (fileType === 'pdf') {
         // React-PDF doesn't natively support double spread easily in Document without custom layout, 
         // for MVP we fall back to single view or could enforce a wide scale.
         // But let's try to keep it simple.
