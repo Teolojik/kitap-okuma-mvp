@@ -72,3 +72,5 @@ export default function DoubleAnimated({ book, data, onLocationChange }: DoubleA
         </div>
     );
 }
+
+const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
