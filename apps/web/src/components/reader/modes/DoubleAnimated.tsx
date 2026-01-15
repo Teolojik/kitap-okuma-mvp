@@ -41,6 +41,8 @@ export default function DoubleAnimated({ book, data, onLocationChange }: DoubleA
     // Since we can't easily screenshot the "next" page before it renders in epub.js, true flip is hard.
     // We will stick to standard paginated for stability but wrapping it to suggest "Advanced Mode".
 
+    const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
+
     return (
         <div className="h-full w-full relative bg-[#f6f1d1]/20">
             {/* We use a specialized styling for the animated feeling, maybe a spine in the middle */}
@@ -51,7 +53,7 @@ export default function DoubleAnimated({ book, data, onLocationChange }: DoubleA
                 url={data}
                 initialLocation={book.progress?.location as string}
                 onLocationChange={onLocationChange}
-                options={{ flow: 'paginated', manager: 'default' }}
+                options={EPUB_OPTIONS}
             />
 
             <div className="absolute inset-y-0 left-0 w-24 z-20 cursor-pointer hover:bg-gradient-to-r from-black/10 to-transparent transition-all"

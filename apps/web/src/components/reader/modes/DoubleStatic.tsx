@@ -10,6 +10,8 @@ interface DoubleStaticProps {
     onLocationChange: (loc: string, pct: number) => void;
 }
 
+const EPUB_OPTIONS = { flow: 'paginated', manager: 'default', width: '100%', height: '100%' };
+
 export default function DoubleStatic({ book, data, onLocationChange }: DoubleStaticProps) {
     const isPdf = book.title.endsWith('.pdf');
     const epubRef = useRef<EpubReaderRef>(null);
@@ -28,7 +30,7 @@ export default function DoubleStatic({ book, data, onLocationChange }: DoubleSta
                 url={data}
                 initialLocation={book.progress?.location as string}
                 onLocationChange={onLocationChange}
-                options={{ flow: 'paginated', manager: 'default', width: '100%', height: '100%' }}
+                options={EPUB_OPTIONS}
             />
             {/* Simple Navigation Overlay */}
             <div className="absolute inset-y-0 left-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => epubRef.current?.prev()} title="Önceki" />

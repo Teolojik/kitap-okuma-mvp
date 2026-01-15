@@ -10,6 +10,9 @@ interface SinglePageReaderProps {
     onLocationChange: (loc: string, pct: number) => void;
 }
 
+// Static options to prevent re-init loop
+const EPUB_OPTIONS = { flow: 'scrolled-doc', manager: 'continuous' };
+
 export default function SinglePageReader({ book, data, onLocationChange }: SinglePageReaderProps) {
     const isPdf = book.title.endsWith('.pdf');
     const epubRef = useRef<EpubReaderRef>(null);
@@ -25,7 +28,7 @@ export default function SinglePageReader({ book, data, onLocationChange }: Singl
                 url={data}
                 initialLocation={book.progress?.location as string}
                 onLocationChange={onLocationChange}
-                options={{ flow: 'scrolled-doc', manager: 'continuous' }}
+                options={EPUB_OPTIONS}
             />
             {/* Overlay Navigation for better UX in single mode if needed, but 'scrolled' usually implies just scrolling */}
         </div>

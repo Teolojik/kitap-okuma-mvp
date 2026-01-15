@@ -15,6 +15,8 @@ interface SplitScreenProps {
     secondaryData: string | ArrayBuffer | null;
 }
 
+const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
+
 export default function SplitScreenReader({
     primaryBook, primaryData, onPrimaryLocationChange,
     secondaryBook, secondaryData
@@ -33,7 +35,7 @@ export default function SplitScreenReader({
                             url={primaryData}
                             initialLocation={primaryBook.progress?.location as string}
                             onLocationChange={onPrimaryLocationChange}
-                            options={{ flow: 'paginated', manager: 'default' }}
+                            options={EPUB_OPTIONS}
                         />
                         {/* Custom Navigation Overlay for Split Mode (Smaller click zones) */}
                         <div className="absolute inset-y-0 left-0 w-12 z-20 cursor-pointer hover:bg-black/5" onClick={(e) => {
@@ -58,7 +60,7 @@ export default function SplitScreenReader({
                     ) : (
                         <EpubReader
                             url={secondaryData}
-                            options={{ flow: 'paginated', manager: 'default' }}
+                            options={EPUB_OPTIONS}
                         />
                     )
                 ) : (
