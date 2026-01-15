@@ -7,13 +7,16 @@ import { Book } from '@/lib/mock-api';
 
 interface DoubleAnimatedProps {
     book: Book;
+    book: Book;
     data: string | ArrayBuffer;
     onLocationChange: (loc: string, pct: number) => void;
+    onTextSelected?: (cfi: string, text: string) => void;
+    annotations?: any[];
 }
 
 import { getFileType } from '@/lib/file-utils';
 
-export default function DoubleAnimated({ book, data, onLocationChange }: DoubleAnimatedProps) {
+export default function DoubleAnimated({ book, data, onLocationChange, onTextSelected, annotations }: DoubleAnimatedProps) {
     const fileType = getFileType(data, book.title);
     const epubRef = useRef<EpubReaderRef>(null);
     const [direction, setDirection] = useState(0); // -1 prev, 1 next
@@ -48,6 +51,8 @@ export default function DoubleAnimated({ book, data, onLocationChange }: DoubleA
                 url={data}
                 initialLocation={book.progress?.location as string}
                 onLocationChange={onLocationChange}
+                onTextSelected={onTextSelected}
+                annotations={annotations}
                 options={EPUB_OPTIONS}
             />
 

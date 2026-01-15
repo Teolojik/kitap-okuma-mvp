@@ -43,6 +43,19 @@ interface ReaderState {
     bookmarks: Record<string, Array<{ id: string; location: string; note?: string; createdAt: string }>>;
     addBookmark: (bookId: string, location: string, note?: string) => void;
     removeBookmark: (bookId: string, bookmarkId: string) => void;
+
+    // Highlights & Notes
+    annotations: Record<string, Array<{
+        id: string;
+        cfiRange: string;
+        text: string;
+        color: string;
+        note?: string; // If present, it's a note + highlight
+        createdAt: string;
+        type: 'highlight' | 'note';
+    }>>;
+    addAnnotation: (bookId: string, annotation: any) => void; // Using any for brevity in definition, strict in impl
+    removeAnnotation: (bookId: string, id: string) => void;
 }
 
 interface BookState {
@@ -110,6 +123,28 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
             bookmarks: {
                 ...state.bookmarks,
                 [bookId]: bookBookmarks.filter(b => b.id !== bookmarkId)
+            }
+        };
+    }),
+
+    annotations: {},
+    addAnnotation: (bookId, annotation) => set(state => {
+        const bookAnnotations = state.annotations[bookId] || [];
+        // Ensure ID
+        const newAnnotation = { ...annotation, id: annotation.id || crypto.randomUUID(), createdAt: new Date().toISOString() };
+        return {
+            annotations: {
+                ...state.annotations,
+                [bookId]: [...bookAnnotations, newAnnotation]
+            }
+        };
+    }),
+    removeAnnotation: (bookId, id) => set(state => {
+        const bookAnnotations = state.annotations[bookId] || [];
+        return {
+            annotations: {
+                ...state.annotations,
+                [bookId]: bookAnnotations.filter(a => a.id !== id)
             }
         };
     }),

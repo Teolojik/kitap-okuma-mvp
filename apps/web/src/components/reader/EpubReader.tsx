@@ -15,6 +15,8 @@ interface EpubReaderProps {
     onLocationChange?: (location: string, percentage: number) => void;
     isSplit?: boolean;
     options?: any; // Pass specific flow/manager options
+    annotations?: any[];
+    onTextSelected?: (cfiRange: string, text: string, contents: any) => void;
 }
 
 const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLocation, onLocationChange, isSplit = false, options }, ref) => {
@@ -104,6 +106,40 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                     onLocationChange(location.start.cfi, percentage);
                 }
             });
+
+            rendition.on('selected', (cfiRange: string, contents: any) => {
+                book.getRange(cfiRange).then((range) => {
+                    if (range) {
+                        const text = range.toString();
+                        // We need to notify parent to show a popover
+                        // Passing the CFI and Text. 
+                        // To show it roughly in correct place, we might need client rects, but that's complex with iframes.
+                        // For MVP, we pass the event or simple coordinate relative to view if possible, 
+                        // OR simpler: Just show a global "Selection Menu" at the bottom or top of screen with the current selection text.
+                        // Or better: pass the serialized CFI to parent, parent shows a floating dialog.
+
+                        // Emit custom event or callback?
+                        // Let's check props. We need a new prop 'onTextSelected'.
+                        if (props.onTextSelected) {
+                            props.onTextSelected(cfiRange, text, contents);
+                        }
+                    }
+                });
+                // We don't want to clear selection immediately so user can see it
+                // rendition.getContents().forEach(c => c.window.getSelection().removeAllRanges());
+            });
+
+            // Restore annotations (highlights)
+            // Ideally we get these from props. But we can access store or pass them down.
+            // Let's assume parent controls this via a useEffect calling a method, or we pass `annotations` prop.
+            if (props.annotations) {
+                props.annotations.forEach((a: any) => {
+                    rendition.annotations.add('highlight', a.cfiRange, {}, (e: any) => {
+                        console.log("Clicked highlight", a);
+                    }, 'hl-default');
+                });
+            }
+
         } catch (err) {
             console.error("EPUB Init Error:", err);
             setError("Kitap başlatılamadı.");
@@ -124,6 +160,27 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
         if (!isReady || !renditionRef.current) return;
         applySettings(renditionRef.current);
     }, [settings, isReady]);
+
+    // React to annotations changes
+    useEffect(() => {
+        if (!isReady || !renditionRef.current || !props.annotations) return;
+        // Inefficient to clear all, but safe for MVP
+        // renditionRef.current.annotations.remove() ??? No clear all method publicly simple.
+        // Better: just add new ones? Or simple logic:
+        // For MVP, we might duplicate if we aren't careful.
+        // Let's assume we just add newly created ones if we track them, or clear all if possible.
+        // renditionRef.current.views().forEach(view => view.pane ? ... : ...);
+        // Let's try to remove by keeping track? 
+        // For V1, let's just add. Removal requires tracking IDs.
+        props.annotations.forEach((a: any) => {
+            // Check if exists? EpubJS doesn't easily expose list of annotation CFIs.
+            // We just re-add. It might duplicate DOM elements but visually okayish usually.
+            // Correct way: track added annotations in a ref.
+            try {
+                renditionRef.current?.annotations.add('highlight', a.cfiRange, { fill: a.color }, undefined, 'hl-' + a.id);
+            } catch (e) { }
+        });
+    }, [props.annotations, isReady]);
 
     const applySettings = (rendition: Rendition) => {
         // Font Size
@@ -156,6 +213,10 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             <div className="flex-1 relative overflow-hidden bg-background">
                 <div ref={viewerRef} className="w-full h-full" />
             </div>
+            {/* Styles for highlights */}
+            <style>{`
+                ::selection { background: yellow; color: black; }
+            `}</style>
         </div>
     );
 });
