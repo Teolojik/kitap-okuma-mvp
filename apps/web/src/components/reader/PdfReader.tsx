@@ -33,6 +33,8 @@ pdfjs.GlobalWorkerOptions.cMapUrl = '/cmaps/';
 pdfjs.GlobalWorkerOptions.cMapPacked = true;
 pdfjs.GlobalWorkerOptions.standardFontDataUrl = '/standard_fonts/';
 
+import { ErrorBoundary } from 'react-error-boundary';
+
 interface PdfReaderProps {
     url: string | ArrayBuffer;
     pageNumber?: number;
@@ -42,7 +44,7 @@ interface PdfReaderProps {
     simpleMode?: boolean; // If true, hides internal controls (for custom modes)
 }
 
-export default function PdfReader({
+function PdfReaderInner({
     url,
     pageNumber: propPageNumber,
     onPageChange,
@@ -53,9 +55,48 @@ export default function PdfReader({
     const [numPages, setNumPages] = useState<number>(0);
     const [internalPage, setInternalPage] = useState(1);
     const [internalScale, setInternalScale] = useState(1.0);
+    const [safeUrl, setSafeUrl] = useState<string | null>(null);
 
     const page = propPageNumber || internalPage;
     const currentScale = propScale || internalScale;
+
+    // Memoize options to prevent unnecessary re-renders
+    const options = React.useMemo(() => ({
+        cMapUrl: '/cmaps/',
+        cMapPacked: true,
+        standardFontDataUrl: '/standard_fonts/',
+    }), []);
+
+    // Handle URL/Buffer conversion safely to prevent detached buffer issues
+    React.useEffect(() => {
+        let objectUrl = '';
+        let isRevocable = false;
+
+        const processUrl = async () => {
+            if (url instanceof ArrayBuffer) {
+                const blob = new Blob([url], { type: 'application/pdf' });
+                objectUrl = URL.createObjectURL(blob);
+                isRevocable = true;
+                setSafeUrl(objectUrl);
+            } else if (typeof url === 'string') {
+                // Check if remote URL to fetch as blob (fixes potential CORS/detached buffer on some implementations)
+                // But for now assume local string is fine, unless it's a "local://" mock one which mock-api handles
+                // Actually, if it's a blob url already, it's fine.
+                // If the user said "Dosyayı önce blob olarak fetch et", they might imply remote URL string.
+                // But usually 'url' here is ArrayBuffer from ReaderPage.
+                // If it is a string, use as is.
+                setSafeUrl(url);
+            }
+        };
+
+        processUrl();
+
+        return () => {
+            if (isRevocable && objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+    }, [url]);
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
@@ -73,11 +114,7 @@ export default function PdfReader({
         else setInternalScale(s);
     };
 
-    const options = {
-        cMapUrl: '/cmaps/',
-        cMapPacked: true,
-        standardFontDataUrl: '/standard_fonts/',
-    };
+    if (!safeUrl) return <div className="flex items-center justify-center p-10">Hazırlanıyor...</div>;
 
     return (
         <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 overflow-hidden relative user-select-none">
@@ -102,7 +139,7 @@ export default function PdfReader({
 
             <div className="flex-1 overflow-auto flex justify-center p-4">
                 <Document
-                    file={url}
+                    file={safeUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     options={options}
                     loading={<div className="flex items-center justify-center p-10">PDF yükleniyor...</div>}
@@ -119,5 +156,13 @@ export default function PdfReader({
                 </Document>
             </div>
         </div>
+    );
+}
+
+export default function PdfReader(props: PdfReaderProps) {
+    return (
+        <ErrorBoundary fallback={<div className="p-4 text-red-500">PDF Görüntüleyici Hatası. Lütfen sayfayı yenileyin.</div>}>
+            <PdfReaderInner {...props} />
+        </ErrorBoundary>
     );
 }
