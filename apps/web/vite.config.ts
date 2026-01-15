@@ -4,9 +4,30 @@ import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
+import { viteStaticCopy } from 'vite-plugin-static-copy';
+
+// Resolve pdfjs-dist path manually or rely on node_modules
+// Using simple string replacement/lookup since 'path' is polyfilled usually only for node environment configs
+
 export default defineConfig({
   plugins: [
     react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'node_modules/pdfjs-dist/cmaps',
+          dest: 'cmaps',
+        },
+        {
+          src: 'node_modules/pdfjs-dist/standard_fonts',
+          dest: 'standard_fonts',
+        },
+        {
+          src: 'node_modules/pdfjs-dist/wasm',
+          dest: 'wasm',
+        },
+      ],
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
