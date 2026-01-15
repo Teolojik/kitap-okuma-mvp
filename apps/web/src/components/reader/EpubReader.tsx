@@ -42,11 +42,29 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             bookRef.current.destroy();
         }
 
+        let bookUrl = '';
+        let isRevokable = false;
+
+        // Ensure we pass a proper URL to epub.js
+        if (url instanceof ArrayBuffer) {
+            const blob = new Blob([url], { type: 'application/epub+zip' });
+            bookUrl = URL.createObjectURL(blob);
+            isRevokable = true;
+        } else {
+            bookUrl = url;
+            // Handle base64 simulation if present
+            if (bookUrl.startsWith('data:')) {
+                // Keep as is
+            }
+        }
+
         try {
             // Initialize Book
-            const book = ePub(url, {
-                openAs: 'epub', // Force epub mode for safety
+            // Using 'default' method and allowing scripted content as requested for better compatibility
+            const book = ePub(bookUrl, {
+                openAs: 'epub',
             });
+
             bookRef.current = book;
 
             // Determine default options based on settings if not provided
@@ -55,12 +73,15 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 height: '100%',
                 flow: settings.readingMode === 'single' ? 'scrolled-doc' : 'paginated',
                 manager: settings.readingMode === 'single' ? 'continuous' : 'default',
+                allowScriptedContent: true, // Allow scripts for interactive books
             };
 
             // Initialize Rendition
             const rendition = book.renderTo(viewerRef.current, {
+                method: 'default', // Explicitly set method
                 width: '100%',
                 height: '100%',
+                allowScriptedContent: true,
                 ...defaultOptions
             });
             renditionRef.current = rendition;
@@ -91,6 +112,9 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
         return () => {
             if (bookRef.current) {
                 bookRef.current.destroy();
+            }
+            if (isRevokable) {
+                URL.revokeObjectURL(bookUrl);
             }
         };
     }, [url, options]); // Re-init on url or options change
