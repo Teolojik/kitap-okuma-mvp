@@ -89,6 +89,32 @@ export default function ReaderPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Mode Selector */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" title="Okuma Modu">
+                                {settings.readingMode === 'single' && <Maximize className="h-5 w-5" />}
+                                {settings.readingMode === 'double-animated' && <BookOpen className="h-5 w-5" />}
+                                {settings.readingMode === 'double-static' && <BookOpen className="h-5 w-5 opacity-70" />}
+                                {settings.readingMode === 'split' && <Columns className="h-5 w-5" />}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[200px]">
+                            <DropdownMenuItem onClick={() => setSettings({ readingMode: 'single' })}>
+                                <Maximize className="mr-2 h-4 w-4" /> Tek Sayfa
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSettings({ readingMode: 'double-animated' })}>
+                                <BookOpen className="mr-2 h-4 w-4" /> Çift (Animasyonlu)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSettings({ readingMode: 'double-static' })}>
+                                <BookOpen className="mr-2 h-4 w-4" /> Çift (Statik)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSettings({ readingMode: 'split' })}>
+                                <Columns className="mr-2 h-4 w-4" /> Çift Kitap (Split)
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Sheet>
                         <SheetTrigger asChild>
                             <Button variant="ghost" size="icon">

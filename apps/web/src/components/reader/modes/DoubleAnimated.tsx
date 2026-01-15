@@ -22,32 +22,25 @@ export default function DoubleAnimated({ book, data, onLocationChange }: DoubleA
         return <PdfReader url={data} />;
     }
 
+    // Simulate visual page turn effect
+    // We can't easily animate the actual content inside the iframe without unmounting/heavy implementation.
+    // Instead, we animate a "shadow" overlay to give the feeling of a page turning.
+    const [flipkey, setFlipKey] = useState(0);
+
     const handleNext = () => {
         setDirection(1);
+        setFlipKey(k => k + 1);
         epubRef.current?.next();
     };
 
     const handlePrev = () => {
         setDirection(-1);
+        setFlipKey(k => k + 1);
         epubRef.current?.prev();
     };
 
-    // Note: True 3D flip with epub.js is extremely complex because epub.js manages the DOM internally.
-    // We can simulate a "slide" or "fade" effect container, but manipulating specific pages *inside* the iframe/rendition 
-    // controlled by epub.js is very hard without deeper hacking.
-    // For MVP, we will wrap the container in a motion div that subtly scales/moves to simulate interaction,
-    // or we just trust epub.js internal pagination but maybe add a visual cue.
-
-    // Better Approach for MVP: Use the 'paginated' generic mode but maybe add a page turn audio or overlay animation?
-    // User specifically asked for "Framer Motion flip".
-    // Since we can't easily screenshot the "next" page before it renders in epub.js, true flip is hard.
-    // We will stick to standard paginated for stability but wrapping it to suggest "Advanced Mode".
-
-    const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
-
     return (
-        <div className="h-full w-full relative bg-[#f6f1d1]/20">
-            {/* We use a specialized styling for the animated feeling, maybe a spine in the middle */}
+        <div className="h-full w-full relative bg-[#f6f1d1]/20 overflow-hidden">
             <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-10 shadow-lg" />
 
             <EpubReader
@@ -58,10 +51,24 @@ export default function DoubleAnimated({ book, data, onLocationChange }: DoubleA
                 options={EPUB_OPTIONS}
             />
 
+            {/* Flip Animation Overlay */}
+            <AnimatePresence>
+                {flipkey > 0 && (
+                    <motion.div
+                        key={flipkey}
+                        initial={{ x: direction === 1 ? '100%' : '-100%', opacity: 0 }}
+                        animate={{ x: '0%', opacity: [0, 0.5, 0] }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6, ease: "easeInOut" }}
+                        className="absolute inset-0 pointer-events-none z-30 bg-gradient-to-r from-transparent via-black/10 to-transparent"
+                    />
+                )}
+            </AnimatePresence>
+
             <div className="absolute inset-y-0 left-0 w-24 z-20 cursor-pointer hover:bg-gradient-to-r from-black/10 to-transparent transition-all"
-                onClick={handlePrev} />
+                onClick={handlePrev} title="Önceki Sayfa" />
             <div className="absolute inset-y-0 right-0 w-24 z-20 cursor-pointer hover:bg-gradient-to-l from-black/10 to-transparent transition-all"
-                onClick={handleNext} />
+                onClick={handleNext} title="Sonraki Sayfa" />
         </div>
     );
 }
