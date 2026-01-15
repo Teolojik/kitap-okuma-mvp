@@ -7,7 +7,8 @@ import EpubReader from '@/components/reader/EpubReader';
 import PdfReader from '@/components/reader/PdfReader';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Settings, ArrowLeft, BookOpen, Columns, Maximize, Minimize } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Settings, ArrowLeft, BookOpen, Columns, Maximize, ChevronDown } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -129,16 +130,32 @@ export default function ReaderPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <h3 className="text-sm font-medium">Okuma Modu</h3>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        <Button size="sm" variant={settings.readingMode === 'single' ? 'default' : 'outline'} onClick={() => setSettings({ readingMode: 'single' })} className="justify-start">
-                                            <Maximize className="mr-2 h-4 w-4" /> Tek Sayfa
-                                        </Button>
-                                        <Button size="sm" variant={settings.readingMode === 'double' ? 'default' : 'outline'} onClick={() => setSettings({ readingMode: 'double' })} className="justify-start">
-                                            <BookOpen className="mr-2 h-4 w-4" /> Çift Yaprak
-                                        </Button>
-                                        <Button size="sm" variant={settings.readingMode === 'split' ? 'default' : 'outline'} onClick={() => setSettings({ readingMode: 'split' })} className="justify-start">
-                                            <Columns className="mr-2 h-4 w-4" /> Çift Kitap (Split)
-                                        </Button>
+                                    <div className="flex flex-col gap-2">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-between">
+                                                    {settings.readingMode === 'single' && <> <div className="flex items-center"><Maximize className="mr-2 h-4 w-4" /> Tek Sayfa</div> </>}
+                                                    {settings.readingMode === 'double-animated' && <> <div className="flex items-center"><BookOpen className="mr-2 h-4 w-4" /> Çift (Animasyonlu)</div> </>}
+                                                    {settings.readingMode === 'double-static' && <> <div className="flex items-center"><BookOpen className="mr-2 h-4 w-4" /> Çift (Statik)</div> </>}
+                                                    {settings.readingMode === 'split' && <> <div className="flex items-center"><Columns className="mr-2 h-4 w-4" /> Çift Kitap (Split)</div> </>}
+                                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="w-[200px]">
+                                                <DropdownMenuItem onClick={() => setSettings({ readingMode: 'single' })}>
+                                                    <Maximize className="mr-2 h-4 w-4" /> Tek Sayfa
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => setSettings({ readingMode: 'double-animated' })}>
+                                                    <BookOpen className="mr-2 h-4 w-4" /> Çift (Animasyonlu)
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => setSettings({ readingMode: 'double-static' })}>
+                                                    <BookOpen className="mr-2 h-4 w-4" /> Çift (Statik)
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => setSettings({ readingMode: 'split' })}>
+                                                    <Columns className="mr-2 h-4 w-4" /> Çift Kitap (Split)
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
                                 </div>
 

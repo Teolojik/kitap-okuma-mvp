@@ -28,8 +28,10 @@ export default function EpubReader({ url, initialLocation, onLocationChange, isS
         const rendition = book.renderTo(viewerRef.current, {
             width: '100%',
             height: '100%',
-            flow: settings.readingMode === 'double' ? 'paginated' : 'scrolled-doc',
-            manager: settings.readingMode === 'double' ? 'default' : 'continuous',
+            flow: settings.readingMode === 'single' ? 'scrolled-doc' : 'paginated',
+            manager: settings.readingMode === 'single' ? 'continuous' : 'default',
+            // Note: Epub.js default manager handles paginated. Animation differences are usually CSS or manager dependent.
+            // For 'double-static', we might want to ensure no transition time, but default is fine for MVP.
         });
         renditionRef.current = rendition;
 

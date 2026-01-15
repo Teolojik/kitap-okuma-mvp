@@ -33,7 +33,7 @@ interface ReaderState {
         fontSize: number;
         fontFamily: string;
         theme: 'light' | 'dark' | 'sepia';
-        readingMode: 'single' | 'double' | 'split';
+        readingMode: 'single' | 'double-animated' | 'double-static' | 'split';
     };
     setSettings: (settings: Partial<ReaderState['settings']>) => void;
     // For split screen, we might need a secondary book ID
