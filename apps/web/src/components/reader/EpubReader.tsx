@@ -1,51 +1,74 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import ePub, { Book, Rendition } from 'epubjs';
 import { useBookStore } from '@/stores/useStore';
+
+export interface EpubReaderRef {
+    prev: () => void;
+    next: () => void;
+    goTo: (loc: string) => void;
+}
 
 interface EpubReaderProps {
     url: string | ArrayBuffer;
     initialLocation?: string;
     onLocationChange?: (location: string, percentage: number) => void;
-    isSplit?: boolean; // If true, rendering in split screen (smaller UI)
+    isSplit?: boolean;
+    options?: any; // Pass specific flow/manager options
 }
 
-export default function EpubReader({ url, initialLocation, onLocationChange, isSplit = false }: EpubReaderProps) {
+const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLocation, onLocationChange, isSplit = false, options }, ref) => {
     const viewerRef = useRef<HTMLDivElement>(null);
     const bookRef = useRef<Book | null>(null);
     const renditionRef = useRef<Rendition | null>(null);
     const { settings } = useBookStore();
     const [isReady, setIsReady] = useState(false);
 
+    useImperativeHandle(ref, () => ({
+        prev: () => renditionRef.current?.prev(),
+        next: () => renditionRef.current?.next(),
+        goTo: (loc: string) => renditionRef.current?.display(loc)
+    }));
+
     useEffect(() => {
         if (!viewerRef.current || !url) return;
 
+        // Cleanup previous book if exists
+        if (bookRef.current) {
+            bookRef.current.destroy();
+        }
+
         // Initialize Book
-        const book = ePub(url);
+        const book = ePub(url, {
+            openAs: 'epub', // Force epub mode for safety
+        });
         bookRef.current = book;
+
+        // Determine default options based on settings if not provided
+        const defaultOptions = options || {
+            width: '100%',
+            height: '100%',
+            flow: settings.readingMode === 'single' ? 'scrolled-doc' : 'paginated',
+            manager: settings.readingMode === 'single' ? 'continuous' : 'default',
+        };
 
         // Initialize Rendition
         const rendition = book.renderTo(viewerRef.current, {
             width: '100%',
             height: '100%',
-            flow: settings.readingMode === 'single' ? 'scrolled-doc' : 'paginated',
-            manager: settings.readingMode === 'single' ? 'continuous' : 'default',
-            // Note: Epub.js default manager handles paginated. Animation differences are usually CSS or manager dependent.
-            // For 'double-static', we might want to ensure no transition time, but default is fine for MVP.
+            ...defaultOptions
         });
         renditionRef.current = rendition;
 
         // Display initial page
         rendition.display(initialLocation || undefined).then(() => {
             setIsReady(true);
-            applySettings();
+            applySettings(rendition);
         });
 
         // Event listeners
         rendition.on('relocated', (location: any) => {
             if (onLocationChange) {
-                // Calculate percentage (approximate)
-                // Note: epubjs location generation can be resource intensive
                 const percentage = location.start.percentage;
                 onLocationChange(location.start.cfi, percentage);
             }
@@ -56,24 +79,21 @@ export default function EpubReader({ url, initialLocation, onLocationChange, isS
                 bookRef.current.destroy();
             }
         };
-    }, [url]);
+    }, [url, options]); // Re-init on url or options change
 
-    // React to settings changes
+    // React to settings changes that don't need re-init
     useEffect(() => {
         if (!isReady || !renditionRef.current) return;
-        applySettings();
+        applySettings(renditionRef.current);
     }, [settings, isReady]);
 
-    const applySettings = () => {
-        const rendition = renditionRef.current;
-        if (!rendition) return;
-
+    const applySettings = (rendition: Rendition) => {
         // Font Size
         rendition.themes.fontSize(`${settings.fontSize}%`);
 
         // Theme
         if (settings.theme === 'dark') {
-            rendition.themes.register('dark', { body: { color: 'white', background: '#0f172a' } });
+            rendition.themes.register('dark', { body: { color: '#c9d1d9', background: '#0f172a' } }); // Better dark mode contrast
             rendition.themes.select('dark');
         } else if (settings.theme === 'sepia') {
             rendition.themes.register('sepia', { body: { color: '#5f4b32', background: '#f6f1d1' } });
@@ -82,21 +102,6 @@ export default function EpubReader({ url, initialLocation, onLocationChange, isS
             rendition.themes.register('light', { body: { color: 'black', background: 'white' } });
             rendition.themes.select('light');
         }
-
-        // Layout Mode updates usually require re-rendering or flow update, handled simpler here implies straightforward CSS updates
-        // Complex flow changes (paginated vs scrolled) often need restart in epubjs, simplistic approach for now.
-    };
-
-    const prevPage = () => {
-        if (renditionRef.current) {
-            renditionRef.current.prev();
-        }
-    };
-
-    const nextPage = () => {
-        if (renditionRef.current) {
-            renditionRef.current.next();
-        }
     };
 
     return (
@@ -104,10 +109,8 @@ export default function EpubReader({ url, initialLocation, onLocationChange, isS
             <div className="flex-1 relative overflow-hidden bg-background">
                 <div ref={viewerRef} className="w-full h-full" />
             </div>
-
-            {/* Navigation Layers (Click zones) */}
-            <div className="absolute inset-y-0 left-0 w-16 z-10 cursor-pointer hover:bg-black/5 transition-colors" onClick={prevPage} title="Önceki Sayfa" />
-            <div className="absolute inset-y-0 right-0 w-16 z-10 cursor-pointer hover:bg-black/5 transition-colors" onClick={nextPage} title="Sonraki Sayfa" />
         </div>
     );
-}
+});
+
+export default EpubReader;

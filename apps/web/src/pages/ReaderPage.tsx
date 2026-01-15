@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBookStore } from '@/stores/useStore';
 import { MockAPI, Book } from '@/lib/mock-api';
-import EpubReader from '@/components/reader/EpubReader';
-import PdfReader from '@/components/reader/PdfReader';
+import ReaderContainer from '@/components/reader/ReaderContainer';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -75,22 +74,7 @@ export default function ReaderPage() {
         </div>;
     }
 
-    const renderReader = (
-        b: Book,
-        data: string | ArrayBuffer,
-        isSecondary = false
-    ) => {
-        const isPdf = b.title.endsWith('.pdf') || (typeof (b.file_url) === 'string' && b.file_url.endsWith('.pdf')); // Simple check
 
-        if (isPdf) return <PdfReader url="mock-url" />; // Fix later
-
-        return <EpubReader
-            url={data}
-            initialLocation={b.progress?.location as string}
-            onLocationChange={!isSecondary ? handleLocationChange : undefined}
-            isSplit={settings.readingMode === 'split'}
-        />;
-    };
 
     return (
         <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-950">
@@ -186,27 +170,13 @@ export default function ReaderPage() {
 
             {/* Reader Content */}
             <div className="flex-1 overflow-hidden relative">
-                {settings.readingMode === 'split' ? (
-                    <div className="grid grid-cols-2 h-full divide-x">
-                        {/* Left Book */}
-                        <div className="h-full relative">
-                            {renderReader(book, bookData)}
-                        </div>
-                        {/* Right Book */}
-                        <div className="h-full relative bg-slate-100 dark:bg-slate-900">
-                            {secondaryBook && secondaryBookData ? (
-                                renderReader(secondaryBook, secondaryBookData, true)
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-                                    <p className="text-sm text-muted-foreground mb-4">İkinci kitabı seçmek için ayarlar menüsünü kullanın.</p>
-                                    <Button variant="outline" size="sm">Ayarları Aç</Button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ) : (
-                    renderReader(book, bookData)
-                )}
+                <ReaderContainer
+                    book={book}
+                    data={bookData}
+                    secondaryBook={secondaryBook}
+                    secondaryData={secondaryBookData}
+                    onLocationChange={handleLocationChange}
+                />
             </div>
         </div>
     );
