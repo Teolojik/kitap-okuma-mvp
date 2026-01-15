@@ -63,8 +63,14 @@ export default function DiscoverPage() {
             toast.loading(`${selectedBook.title} indiriliyor... %45`, { id: toastId });
 
             await new Promise(r => setTimeout(r, 1000));
-            const dummyContent = new Blob(["Simulated Content for " + selectedBook.title], { type: 'application/epub+zip' });
-            const file = new File([dummyContent], `${selectedBook.title}.${selectedBook.format}`, { type: 'application/epub+zip' });
+
+            // Fix: Fetch a REAL valid EPUB file so epub.js can actually render it
+            // Using a public domain sample (Alice's Adventures in Wonderland)
+            const sampleEpubUrl = 'https://react-reader.metabits.no/files/alice.epub';
+            const response = await fetch(sampleEpubUrl);
+            const blob = await response.blob();
+
+            const file = new File([blob], `${selectedBook.title}.${selectedBook.format}`, { type: 'application/epub+zip' });
 
             toast.loading(`${selectedBook.title} kütüphaneye işleniyor...`, { id: toastId });
 

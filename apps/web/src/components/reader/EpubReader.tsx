@@ -24,6 +24,8 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
     const { settings } = useBookStore();
     const [isReady, setIsReady] = useState(false);
 
+    const [error, setError] = useState<string | null>(null);
+
     useImperativeHandle(ref, () => ({
         prev: () => renditionRef.current?.prev(),
         next: () => renditionRef.current?.next(),
@@ -33,46 +35,58 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
     useEffect(() => {
         if (!viewerRef.current || !url) return;
 
+        setError(null); // Reset error
+
         // Cleanup previous book if exists
         if (bookRef.current) {
             bookRef.current.destroy();
         }
 
-        // Initialize Book
-        const book = ePub(url, {
-            openAs: 'epub', // Force epub mode for safety
-        });
-        bookRef.current = book;
+        try {
+            // Initialize Book
+            const book = ePub(url, {
+                openAs: 'epub', // Force epub mode for safety
+            });
+            bookRef.current = book;
 
-        // Determine default options based on settings if not provided
-        const defaultOptions = options || {
-            width: '100%',
-            height: '100%',
-            flow: settings.readingMode === 'single' ? 'scrolled-doc' : 'paginated',
-            manager: settings.readingMode === 'single' ? 'continuous' : 'default',
-        };
+            // Determine default options based on settings if not provided
+            const defaultOptions = options || {
+                width: '100%',
+                height: '100%',
+                flow: settings.readingMode === 'single' ? 'scrolled-doc' : 'paginated',
+                manager: settings.readingMode === 'single' ? 'continuous' : 'default',
+            };
 
-        // Initialize Rendition
-        const rendition = book.renderTo(viewerRef.current, {
-            width: '100%',
-            height: '100%',
-            ...defaultOptions
-        });
-        renditionRef.current = rendition;
+            // Initialize Rendition
+            const rendition = book.renderTo(viewerRef.current, {
+                width: '100%',
+                height: '100%',
+                ...defaultOptions
+            });
+            renditionRef.current = rendition;
 
-        // Display initial page
-        rendition.display(initialLocation || undefined).then(() => {
-            setIsReady(true);
-            applySettings(rendition);
-        });
+            // Display initial page and handle errors
+            book.ready.then(() => {
+                return rendition.display(initialLocation || undefined);
+            }).then(() => {
+                setIsReady(true);
+                applySettings(rendition);
+            }).catch((err) => {
+                console.error("EPUB Rendering Error:", err);
+                setError("Kitap içeriği okunamadı. Dosya bozuk veya geçersiz bir EPUB formatında olabilir.");
+            });
 
-        // Event listeners
-        rendition.on('relocated', (location: any) => {
-            if (onLocationChange) {
-                const percentage = location.start.percentage;
-                onLocationChange(location.start.cfi, percentage);
-            }
-        });
+            // Event listeners
+            rendition.on('relocated', (location: any) => {
+                if (onLocationChange) {
+                    const percentage = location.start.percentage;
+                    onLocationChange(location.start.cfi, percentage);
+                }
+            });
+        } catch (err) {
+            console.error("EPUB Init Error:", err);
+            setError("Kitap başlatılamadı.");
+        }
 
         return () => {
             if (bookRef.current) {
@@ -103,6 +117,15 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             rendition.themes.select('light');
         }
     };
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-full flex-col gap-2 text-red-500 p-4 text-center">
+                <p className="font-bold">Hata</p>
+                <p>{error}</p>
+            </div>
+        )
+    }
 
     return (
         <div className="relative w-full h-full flex flex-col">

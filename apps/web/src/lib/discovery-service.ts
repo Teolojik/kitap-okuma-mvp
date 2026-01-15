@@ -9,6 +9,7 @@ export interface SearchResult {
     format: 'epub' | 'pdf';
     size: string;
     downloadUrl: string; // Real or proxied URL
+    language?: string;
 }
 
 const MOCK_RESULTS: SearchResult[] = [
