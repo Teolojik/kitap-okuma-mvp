@@ -16,6 +16,7 @@ export interface Book {
     };
     last_read: string;
     mode_pref: 'single' | 'double' | 'split';
+    format: 'epub' | 'pdf';
     created_at: string;
 }
 
@@ -59,6 +60,17 @@ const getFile = async (id: string): Promise<Blob | null> => {
     });
 };
 
+const deleteFile = async (id: string): Promise<void> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+};
+
 // Mock API Class
 export const MockAPI = {
     auth: {
@@ -85,10 +97,32 @@ export const MockAPI = {
             return stored ? JSON.parse(stored) : [];
         },
 
+        delete: async (bookId: string) => {
+            await new Promise(r => setTimeout(r, 500));
+            // 1. Delete from IndexedDB
+            await deleteFile(bookId);
+
+            // 2. Delete from LocalStorage
+            const books = await MockAPI.books.list();
+            const newBooks = books.filter(b => b.id !== bookId);
+            localStorage.setItem('mock_books', JSON.stringify(newBooks));
+        },
+
         upload: async (file: File, metadata: Partial<Book>) => {
             await new Promise(r => setTimeout(r, 1500));
             const id = crypto.randomUUID();
             const user = MockAPI.auth.getUser();
+
+            const format = (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'epub';
+
+            // Rastgele güzel bir kapak rengi seçelim
+            const gradients = [
+                'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=600&fit=crop',
+                'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&h=600&fit=crop',
+                'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=400&h=600&fit=crop',
+                'https://images.unsplash.com/photo-1557682260-96773eb01377?w=400&h=600&fit=crop'
+            ];
+            const randomCover = gradients[Math.floor(Math.random() * gradients.length)];
 
             const newBook: Book = {
                 id,
@@ -96,27 +130,21 @@ export const MockAPI = {
                 title: metadata.title || file.name,
                 author: metadata.author || 'Bilinmiyor',
                 file_url: `local://${id}`,
-                cover_url: metadata.cover_url,
+                cover_url: metadata.cover_url || randomCover, // Varsayılan kapak
                 progress: { percentage: 0, page: 1 },
                 last_read: new Date().toISOString(),
                 mode_pref: 'single',
+                format,
                 created_at: new Date().toISOString(),
                 ...metadata
             };
 
-            // 1. Save File to IndexedDB
             await saveFile(id, file);
-
-            // 2. Save Metadata to LocalStorage
             const books = await MockAPI.books.list();
             books.push(newBook);
             localStorage.setItem('mock_books', JSON.stringify(books));
 
             return { data: newBook, error: null };
-        },
-
-        getFileBlob: async (bookId: string) => {
-            return await getFile(bookId);
         },
 
         updateProgress: async (bookId: string, progress: any) => {
@@ -129,4 +157,28 @@ export const MockAPI = {
             }
         }
     }
+};
+
+// HELPER EXPORTS - Bunlar çok önemli
+export const getBooks = () => MockAPI.books.list();
+export const deleteBook = (id: string) => MockAPI.books.delete(id);
+export const updateProgress = (bookId: string, progress: any) => MockAPI.books.updateProgress(bookId, progress);
+export const getBook = async (id: string): Promise<Book | null> => {
+    const books = await getBooks();
+    const book = books.find(b => b.id === id);
+    if (!book) return null;
+
+    if (!book.format) {
+        const isPdf = book.file_url.toLowerCase().endsWith('.pdf') ||
+            book.title.toLowerCase().endsWith('.pdf');
+        book.format = isPdf ? 'pdf' : 'epub';
+    }
+
+    if (book.file_url.startsWith('local://')) {
+        const blob = await getFile(book.id);
+        if (blob) {
+            book.file_url = URL.createObjectURL(blob);
+        }
+    }
+    return book;
 };

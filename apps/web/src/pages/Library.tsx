@@ -3,7 +3,7 @@ import { useBookStore, useAuthStore } from '@/stores/useStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Plus, BookOpen, Search, ArrowRight, Calendar, Users, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, BookOpen, Search, ArrowRight, Calendar, Users, Star, ChevronLeft, ChevronRight, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import { parseBookFilename, cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
 
 export default function LibraryPage() {
-    const { books, fetchBooks, uploadBook, loading } = useBookStore();
+    const { books, fetchBooks, uploadBook, deleteBook, loading } = useBookStore();
     const { user } = useAuthStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -105,14 +105,43 @@ export default function LibraryPage() {
                                 className="min-w-[180px] group cursor-pointer"
                             >
                                 <Link to={`/book/${book.id}`}>
-                                    <div className="aspect-[2/3] rounded-3xl overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] group-hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] transition-all duration-500 bg-secondary">
+                                    <div className="aspect-[2/3] rounded-3xl overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] group-hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] transition-all duration-500 bg-secondary relative">
+                                        <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button
+                                                variant="destructive"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full shadow-lg"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    if (window.confirm('Bu kitabı silmek istediğinize emin misiniz?')) {
+                                                        deleteBook(book.id);
+                                                        toast.success('Kitap silindi');
+                                                    }
+                                                }}
+                                            >
+                                                <Trash className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                         {book.cover_url ? (
-                                            <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center p-4 bg-gradient-to-br from-secondary to-muted">
-                                                <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-                                            </div>
-                                        )}
+                                            <img
+                                                src={book.cover_url}
+                                                alt={book.title}
+                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                                onError={(e) => {
+                                                    // Fallback to placeholder if image fails
+                                                    e.currentTarget.style.display = 'none';
+                                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                                }}
+                                            />
+                                        ) : null}
+
+                                        {/* Placeholder if no cover or error */}
+                                        <div className={`w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-primary/80 to-primary/40 text-primary-foreground ${book.cover_url ? 'hidden' : ''} absolute top-0 left-0`}>
+                                            <BookOpen className="h-12 w-12 text-white/50 mb-4" />
+                                            <h3 className="font-serif font-bold text-center leading-tight mb-2 text-white drop-shadow-md line-clamp-3">{book.title}</h3>
+                                            <p className="text-xs font-sans text-white/80 uppercase tracking-widest text-center">{book.author}</p>
+                                        </div>
                                     </div>
                                     <div className="mt-4 space-y-1">
                                         <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">{cleanTitle(book.title)}</h3>

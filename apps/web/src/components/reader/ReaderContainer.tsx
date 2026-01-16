@@ -17,8 +17,10 @@ interface ReaderContainerProps {
     secondaryData: string | ArrayBuffer | null;
     onLocationChange: (loc: string, pct: number) => void;
     onTotalPages?: (total: number) => void;
+    scale?: number;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
+    onOpenSettings?: () => void;
 }
 
 export interface ReaderContainerRef {
@@ -84,13 +86,13 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
     try {
         switch (settings.readingMode) {
             case 'single':
-                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
 
             case 'double-static':
-                return <DoubleStatic ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <DoubleStatic ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
 
             case 'double-animated':
-                return <DoubleAnimated ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <DoubleAnimated ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
 
             case 'split':
                 return <SplitScreenReader
@@ -100,14 +102,16 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
                     primaryPageNumber={pageNumber}
                     onPrimaryLocationChange={onLocationChange}
                     onTotalPages={props.onTotalPages}
+                    scale={props.scale}
                     secondaryBook={secondaryBook}
                     secondaryData={secondaryData}
                     onTextSelected={props.onTextSelected}
                     annotations={props.annotations}
+                    onOpenSettings={props.onOpenSettings}
                 />;
 
             default:
-                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
         }
     } catch (err) {
         console.error("Critical Reader Error:", err);

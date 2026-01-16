@@ -11,6 +11,7 @@ interface DoubleAnimatedProps {
     pageNumber?: number;
     onLocationChange: (loc: string, pct: number) => void;
     onTotalPages?: (total: number) => void;
+    scale?: number;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
 }
@@ -20,9 +21,8 @@ import { getFileType } from '@/lib/file-utils';
 const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
 
 const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
-    book, data, pageNumber, onLocationChange, onTotalPages, onTextSelected, annotations
+    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
 }, ref) => {
-    const fileType = getFileType(data, book.title);
     const innerReaderRef = useRef<any>(null);
     const [direction, setDirection] = useState(0); // -1 prev, 1 next
     const [flipkey, setFlipKey] = useState(0);
@@ -48,13 +48,14 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
         prev: handlePrev
     }));
 
-    if (fileType === 'pdf') {
+    if (book.format === 'pdf') {
         return <PdfReader
             ref={innerReaderRef}
             url={data}
             pageNumber={pageNumber}
             onPageChange={(p) => onLocationChange(String(p), 0)}
             onTotalPages={onTotalPages}
+            scale={scale}
             onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
             annotations={annotations}
         />;

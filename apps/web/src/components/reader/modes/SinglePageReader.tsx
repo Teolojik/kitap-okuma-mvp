@@ -10,6 +10,7 @@ interface SinglePageReaderProps {
     pageNumber?: number;
     onLocationChange: (loc: string, pct: number) => void;
     onTotalPages?: (total: number) => void;
+    scale?: number;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
 }
@@ -20,17 +21,16 @@ const EPUB_OPTIONS = { flow: 'scrolled-doc', manager: 'continuous' };
 import { getFileType } from '@/lib/file-utils';
 
 const SinglePageReader = React.forwardRef<any, SinglePageReaderProps>(({
-    book, data, pageNumber, onLocationChange, onTotalPages, onTextSelected, annotations
+    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
 }, ref) => {
-    const fileType = getFileType(data, book.title);
-
-    if (fileType === 'pdf') {
+    if (book.format === 'pdf') {
         return <PdfReader
             ref={ref}
             url={data}
             pageNumber={pageNumber}
             onPageChange={(p) => onLocationChange(String(p), 0)}
             onTotalPages={onTotalPages}
+            scale={scale}
             onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
             annotations={annotations}
         />;

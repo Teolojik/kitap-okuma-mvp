@@ -63,6 +63,7 @@ interface BookState {
     loading: boolean;
     fetchBooks: () => Promise<void>;
     uploadBook: (file: File, meta: any) => Promise<void>;
+    deleteBook: (id: string) => Promise<void>;
     updateProgress: (id: string, progress: any) => void;
 }
 
@@ -83,6 +84,15 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
         try {
             await MockAPI.books.upload(file, meta);
             await get().fetchBooks(); // Refresh list
+        } finally {
+            set({ loading: false });
+        }
+    },
+    deleteBook: async (id) => {
+        set({ loading: true });
+        try {
+            await MockAPI.books.delete(id);
+            await get().fetchBooks();
         } finally {
             set({ loading: false });
         }

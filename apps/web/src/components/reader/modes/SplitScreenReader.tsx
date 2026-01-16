@@ -14,23 +14,23 @@ interface SplitScreenProps {
     primaryPageNumber?: number;
     onPrimaryLocationChange: (loc: string, pct: number) => void;
     onTotalPages?: (total: number) => void;
+    scale?: number;
 
     secondaryBook: Book | null;
     secondaryData: string | ArrayBuffer | null;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
+    onOpenSettings?: () => void;
 }
 
 const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
 
-import { getFileType } from '@/lib/file-utils';
-
 const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
-    primaryBook, primaryData, primaryPageNumber, onPrimaryLocationChange, onTotalPages,
-    secondaryBook, secondaryData, onTextSelected, annotations
+    primaryBook, primaryData, primaryPageNumber, onPrimaryLocationChange, onTotalPages, scale,
+    secondaryBook, secondaryData, onTextSelected, annotations, onOpenSettings
 }, ref) => {
-    const primaryType = getFileType(primaryData, primaryBook.title);
-    const secondaryType = secondaryBook && secondaryData ? getFileType(secondaryData, secondaryBook.title) : null;
+    const primaryType = primaryBook.format;
+    const secondaryType = secondaryBook?.format || null;
 
     return (
         <div className="grid grid-cols-2 h-full w-full divide-x-4 divide-border/20">
@@ -43,6 +43,7 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                         pageNumber={primaryPageNumber}
                         onPageChange={(p) => onPrimaryLocationChange(String(p), 0)}
                         onTotalPages={onTotalPages}
+                        scale={scale}
                         simpleMode
                         onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
                         annotations={annotations}
@@ -88,7 +89,7 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                         <Button
                             variant="secondary"
                             className="rounded-full px-8 py-6 h-auto text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-primary/10 transition-all active:scale-95 bg-primary text-white hover:bg-primary/90"
-                            onClick={() => document.getElementById('settings-trigger')?.click()}
+                            onClick={onOpenSettings}
                         >
                             Kitap Seç
                         </Button>
