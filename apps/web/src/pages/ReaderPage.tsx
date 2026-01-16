@@ -336,7 +336,7 @@ const ReaderPage: React.FC = () => {
     );
 
     return (
-        <div {...swipeHandlers} className={`flex flex-col h-[100dvh] w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-stone-100 dark:bg-zinc-950 text-foreground relative group/ui overscroll-none`}>
+        <div {...swipeHandlers} className={`fixed inset-0 w-screen h-screen font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-stone-100 dark:bg-zinc-950 text-foreground relative group/ui overscroll-none z-[50]`}>
 
             {/* Drawing Layer with Persistence */}
             <DrawingCanvas
@@ -348,49 +348,39 @@ const ReaderPage: React.FC = () => {
             />
 
             {/* Premium Header */}
-            <div className="absolute top-0 left-0 right-0 h-20 z-[90] flex justify-center pt-4 pointer-events-none transition-opacity duration-300 opacity-0 group-hover/ui:opacity-100 focus-within:opacity-100">
-                <header className="h-14 px-6 rounded-full bg-background/80 backdrop-blur-xl border border-border/20 shadow-2xl flex items-center justify-between gap-6 pointer-events-auto transition-all duration-500 hover:scale-[1.02] border-primary/10 max-w-[90vw]">
-                    <div className="flex items-center gap-4 border-r border-border/10 pr-6">
-                        <Button variant="ghost" size="icon" onClick={() => navigate('/library')} className="rounded-full h-9 w-9 hover:bg-primary/10 transition-all">
+            <div className="absolute top-0 left-0 right-0 h-16 z-[90] flex justify-center pt-2 pointer-events-none transition-opacity duration-300 opacity-0 group-hover/ui:opacity-100 focus-within:opacity-100">
+                <header className="h-12 px-4 rounded-full bg-background/90 backdrop-blur-md border border-border/20 shadow-lg flex items-center justify-between gap-4 pointer-events-auto transition-all duration-300 hover:scale-[1.01] max-w-[95vw]">
+                    <div className="flex items-center gap-3 border-r border-border/10 pr-4">
+                        <Button variant="ghost" size="icon" onClick={() => navigate('/library')} className="rounded-full h-8 w-8 hover:bg-primary/10 transition-all">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex flex-col min-w-[100px]">
-                            <h1 className="font-sans font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[200px] text-foreground/90">{activePanel === 'primary' ? cleanTitle(book.title) : cleanTitle(secondaryBook?.title || '')}</h1>
-                            <p className="font-sans text-[10px] font-medium tracking-wide text-muted-foreground/70">{activePanel === 'primary' ? cleanAuthor(book.author) : cleanAuthor(secondaryBook?.author || '')}</p>
+                        <div className="flex flex-col min-w-[80px]">
+                            <h1 className="font-sans font-semibold text-xs tracking-tight leading-none mb-0.5 truncate max-w-[150px] text-foreground/90">{activePanel === 'primary' ? cleanTitle(book.title) : cleanTitle(secondaryBook?.title || '')}</h1>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {/* Zoom Controls */}
                         <div className="flex items-center bg-secondary/30 rounded-full p-0.5 border border-border/10">
-                            <Button variant="ghost" size="icon" onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="rounded-full h-8 w-8 hover:bg-primary hover:text-white transition-all"><ZoomOut className="h-3.5 w-3.5" /></Button>
-                            <span className="text-[10px] font-bold w-10 text-center font-mono">{Math.round(scale * 100)}%</span>
-                            <Button variant="ghost" size="icon" onClick={() => setScale(s => Math.min(3, s + 0.1))} className="rounded-full h-8 w-8 hover:bg-primary hover:text-white transition-all"><ZoomIn className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="rounded-full h-7 w-7 hover:bg-primary hover:text-white transition-all"><ZoomOut className="h-3 w-3" /></Button>
+                            <span className="text-[9px] font-bold w-8 text-center font-mono">{Math.round(scale * 100)}%</span>
+                            <Button variant="ghost" size="icon" onClick={() => setScale(s => Math.min(3, s + 0.1))} className="rounded-full h-7 w-7 hover:bg-primary hover:text-white transition-all"><ZoomIn className="h-3 w-3" /></Button>
                         </div>
-                        <Separator orientation="vertical" className="h-6 mx-1 opacity-20 hidden sm:block" />
+                        <Separator orientation="vertical" className="h-4 mx-1 opacity-20 hidden sm:block" />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="w-[240px] h-10 px-4 justify-between border-2 border-primary/20 bg-background/50 backdrop-blur-md rounded-xl text-xs font-bold uppercase tracking-widest hover:border-primary hover:bg-primary/5 transition-all shadow-sm">
-                                    <div className="flex items-center gap-2">
-                                        <Columns className="h-4 w-4 text-primary" />
-                                        <span>
-                                            {settings.readingMode === 'single' && 'Tek Sayfa Modu'}
-                                            {settings.readingMode === 'double-animated' && 'Çift (Animasyonlu)'}
-                                            {settings.readingMode === 'double-static' && 'Çift (Sabit)'}
-                                            {settings.readingMode === 'split' && 'Split Screen'}
-                                        </span>
-                                    </div>
-                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                <Button variant="ghost" size="sm" className="h-8 px-2 text-[10px] font-bold uppercase tracking-wider opacity-70 hover:opacity-100">
+                                    <Columns className="h-3 w-3 mr-2" /> Görünüm
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[240px] rounded-xl p-2 bg-card/95 backdrop-blur-2xl shadow-2xl border-border/20 z-[100]">
+                            <DropdownMenuContent align="end" className="w-[200px] z-[100]">
                                 {[
-                                    { id: 'single', label: 'Tek Sayfa Modu' },
-                                    { id: 'double-animated', label: 'Çift Yaprak (Animasyonlu)' },
-                                    { id: 'double-static', label: 'Çift Yaprak (Sabit)' },
-                                    { id: 'split', label: 'Çift Kitap (Split-Screen)' }
+                                    { id: 'single', label: 'Tek Sayfa' },
+                                    { id: 'double-animated', label: 'Çift (Animasyon)' },
+                                    { id: 'double-static', label: 'Çift (Sabit)' },
+                                    { id: 'split', label: 'Çift Kitap' }
                                 ].map(mode => (
                                     <DropdownMenuItem
                                         key={mode.id}
-                                        className={`rounded-lg p-3 cursor-pointer text-xs font-bold uppercase tracking-wide mb-1 last:mb-0 transition-colors ${settings.readingMode === mode.id ? 'bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground' : 'focus:bg-primary/10'}`}
                                         onClick={() => setSettings({ readingMode: mode.id as any })}
                                     >
                                         {mode.label}
@@ -398,15 +388,8 @@ const ReaderPage: React.FC = () => {
                                 ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    </div>
-                    <div className="flex items-center gap-2 border-l border-border/10 pl-6">
-                        <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="rounded-full h-9 w-9 hover:bg-primary/10 transition-all hidden sm:flex">
-                            {isFullscreen ? <Minimize className="h-4 w-4 text-primary" /> : <Maximize className="h-4 w-4" />}
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsSettingsOpen(true)}><Settings className="h-4 w-4" /></Button>
                         <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                            <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 bg-primary/10 hover:bg-primary hover:text-white transition-all shadow-inner"><Settings className="h-4 w-4" /></Button>
-                            </SheetTrigger>
                             <SheetContent className="w-[350px] sm:w-[450px] bg-background/95 backdrop-blur-3xl border-l-[12px] border-primary/20 rounded-l-[40px] shadow-[-20px_0_50px_rgba(0,0,0,0.2)]">
                                 <SheetHeader className="mb-10 pt-10 px-4">
                                     <div className="h-1 w-20 bg-primary/20 rounded-full mb-8 mx-auto" />
@@ -438,13 +421,13 @@ const ReaderPage: React.FC = () => {
             </div>
 
             {/* Floating Navigation Buttons (Side) */}
-            <div className="absolute top-1/2 -translate-y-1/2 left-4 z-[80] hidden md:block transition-opacity duration-300 opacity-0 group-hover/ui:opacity-100 hover:opacity-100">
-                <Button variant="outline" size="icon" onClick={prevPage} className="h-14 w-14 rounded-full bg-background/50 backdrop-blur-sm border-border/10 hover:bg-primary hover:text-white shadow-xl transition-all hover:scale-110">
+            <div className="absolute top-1/2 -translate-y-1/2 left-2 z-[80] hidden md:block transition-opacity duration-300 opacity-0 group-hover/ui:opacity-100 hover:opacity-100">
+                <Button variant="ghost" size="icon" onClick={prevPage} className="h-16 w-8 rounded-l-md hover:bg-primary/20 hover:text-primary transition-all">
                     <ChevronLeft className="h-8 w-8" />
                 </Button>
             </div>
-            <div className="absolute top-1/2 -translate-y-1/2 right-4 z-[80] hidden md:block transition-opacity duration-300 opacity-0 group-hover/ui:opacity-100 hover:opacity-100">
-                <Button variant="outline" size="icon" onClick={nextPage} className="h-14 w-14 rounded-full bg-background/50 backdrop-blur-sm border-border/10 hover:bg-primary hover:text-white shadow-xl transition-all hover:scale-110">
+            <div className="absolute top-1/2 -translate-y-1/2 right-2 z-[80] hidden md:block transition-opacity duration-300 opacity-0 group-hover/ui:opacity-100 hover:opacity-100">
+                <Button variant="ghost" size="icon" onClick={nextPage} className="h-16 w-8 rounded-r-md hover:bg-primary/20 hover:text-primary transition-all">
                     <ChevronRight className="h-8 w-8" />
                 </Button>
             </div>
@@ -471,7 +454,8 @@ const ReaderPage: React.FC = () => {
             </div>
 
             {/* Main Reader Container */}
-            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full min-h-0 bg-background/50">
+            <main className="absolute inset-0 w-full h-full p-0 m-0 overflow-hidden flex items-center justify-center bg-transparent">
+                {/* Remove max-width, make it strictly 100% */}
                 <div className={`w-full h-full transition-all duration-500 ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
                     <ReaderContainer
                         ref={readerRef}
@@ -497,11 +481,11 @@ const ReaderPage: React.FC = () => {
             </main>
 
             {/* Minimalist Bottom Footer */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 h-10 px-6 rounded-full bg-background/80 backdrop-blur-xl border border-border/10 shadow-lg flex items-center justify-between gap-6 z-[90] transition-all duration-300 opacity-0 group-hover/ui:opacity-100">
-                <span className="text-[10px] font-black text-primary opacity-60">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 h-8 px-4 rounded-full bg-background/80 backdrop-blur-md border border-border/10 shadow-lg flex items-center justify-between gap-4 z-[90] transition-all duration-300 opacity-0 group-hover/ui:opacity-100">
+                <span className="text-[9px] font-black text-primary opacity-60">
                     %{Math.round(activePanel === 'primary' ? (book.progress?.percentage || 0) : (secondaryBook?.progress?.percentage || 0))}
                 </span>
-                <div className="w-32 h-1.5 bg-secondary/30 rounded-full cursor-pointer hover:scale-y-150 transition-all"
+                <div className="w-24 h-1 bg-secondary/30 rounded-full cursor-pointer hover:scale-y-150 transition-all"
                     onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = e.clientX - rect.left;
@@ -513,7 +497,7 @@ const ReaderPage: React.FC = () => {
                     <div className="h-full bg-primary rounded-full transition-all duration-300"
                         style={{ width: `${activePanel === 'primary' ? (book.progress?.percentage || 0) : (secondaryBook?.progress?.percentage || 0)}%` }} />
                 </div>
-                <span className="text-[10px] font-black tabular-nums text-primary">{activePanel === 'primary' ? (book.progress?.page || 1) : (secondaryBook?.progress?.page || 1)}</span>
+                <span className="text-[9px] font-black tabular-nums text-primary">{activePanel === 'primary' ? (book.progress?.page || 1) : (secondaryBook?.progress?.page || 1)}</span>
             </div>
 
             {/* Book Selection Dialog */}
