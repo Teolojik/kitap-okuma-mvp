@@ -12,6 +12,7 @@ import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
+import { useSwipeable } from 'react-swipeable';
 
 const ReaderPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -111,33 +112,6 @@ const ReaderPage: React.FC = () => {
         }
     }, [settings.readingMode, secondaryBookId]);
 
-    const handleKeyDown = React.useCallback((e: KeyboardEvent) => {
-        if (!book) return;
-
-        // EPUB için
-        if (book.format === 'epub') {
-            if (e.key === 'ArrowRight') readerRef.current?.next();
-            if (e.key === 'ArrowLeft') readerRef.current?.prev();
-            return;
-        }
-
-        // PDF için
-        const currentPage = book.progress?.page || 1;
-        if (e.key === 'ArrowRight') {
-            const nextPage = Math.min(currentPage + 1, totalPages || 9999);
-            handleLocationChange(String(nextPage), 0);
-        }
-        if (e.key === 'ArrowLeft') {
-            const prevPage = Math.max(currentPage - 1, 1);
-            handleLocationChange(String(prevPage), 0);
-        }
-    }, [book, totalPages]);
-
-    useEffect(() => {
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleKeyDown]);
-
     const handleLocationChange = (loc: string, percentage: number) => {
         if (!book) return;
         const pageNum = parseInt(loc);
@@ -160,6 +134,53 @@ const ReaderPage: React.FC = () => {
         // 2. Local State Güncelle (UI render için şart!)
         setBook(prev => prev ? { ...prev, progress: newProgress } : null);
     };
+
+    // Navigation Helpers
+    const nextPage = React.useCallback(() => {
+        if (!book) return;
+        if (book.format === 'epub') {
+            readerRef.current?.next();
+        } else {
+            const currentPage = book.progress?.page || 1;
+            const nextP = Math.min(currentPage + 1, totalPages || 9999);
+            handleLocationChange(String(nextP), 0);
+        }
+    }, [book, totalPages]);
+
+    const prevPage = React.useCallback(() => {
+        if (!book) return;
+        if (book.format === 'epub') {
+            readerRef.current?.prev();
+        } else {
+            const currentPage = book.progress?.page || 1;
+            const prevP = Math.max(currentPage - 1, 1);
+            handleLocationChange(String(prevP), 0);
+        }
+    }, [book, totalPages]);
+
+    // Swipe handlers
+    const swipeHandlers = useSwipeable({
+        onSwipedLeft: nextPage,
+        onSwipedRight: prevPage,
+        preventScrollOnSwipe: true,
+        trackMouse: false
+    });
+
+    const handleKeyDown = React.useCallback((e: KeyboardEvent) => {
+        if (!book) return;
+        if (e.key === 'ArrowRight') nextPage();
+        if (e.key === 'ArrowLeft') prevPage();
+        // Also support Space for next page
+        if (e.key === ' ') {
+            e.preventDefault();
+            nextPage();
+        }
+    }, [nextPage, prevPage, book]);
+
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleKeyDown]);
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -192,17 +213,22 @@ const ReaderPage: React.FC = () => {
     );
 
     return (
-        <div className={`flex flex-col h-screen w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-background text-foreground relative`}>
+        <div {...swipeHandlers} className={`flex flex-col h-screen w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-background text-foreground relative`}>
 
             {/* Premium Header - ALWAYS VISIBLE */}
             <div className="absolute top-0 left-0 right-0 h-20 z-[100] flex justify-center pt-4 pointer-events-none">
-                <header className="h-14 px-6 rounded-full bg-background/90 backdrop-blur-2xl border border-border/20 shadow-2xl flex items-center justify-between gap-6 pointer-events-auto transition-all duration-500 hover:scale-[1.02] border-primary/10">
-                    <div className="flex items-center gap-4 border-r border-border/10 pr-6">
+                <header className="h-14 px-6 rounded-full bg-background/90 backdrop-blur-2xl border border-border/20 shadow-2xl flex items-center justify-between gap-4 pointer-events-auto transition-all duration-500 hover:scale-[1.02] border-primary/10 max-w-[95vw]">
+
+                    {/* Left: Back & Nav */}
+                    <div className="flex items-center gap-2 border-r border-border/10 pr-6">
                         <Button variant="ghost" size="icon" onClick={() => navigate('/library')} className="rounded-full h-9 w-9 hover:bg-primary/10 transition-all">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
-                        <div className="flex flex-col min-w-[100px]">
-                            <h1 className="font-sans font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[200px] text-foreground/90">{cleanTitle(book.title)}</h1>
+                        <Button variant="ghost" size="icon" onClick={prevPage} className="rounded-full h-9 w-9 hover:bg-primary/10 transition-all" title="Önceki Sayfa">
+                            <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        <div className="flex flex-col min-w-[80px] hidden sm:flex">
+                            <h1 className="font-sans font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[150px] text-foreground/90">{cleanTitle(book.title)}</h1>
                             <p className="font-sans text-[10px] font-medium tracking-wide text-muted-foreground/70">{cleanAuthor(book.author)}</p>
                         </div>
                     </div>
@@ -219,15 +245,13 @@ const ReaderPage: React.FC = () => {
                             </Button>
                         </div>
 
-                        <Separator orientation="vertical" className="h-6 mx-1 opacity-20" />
+                        <Separator orientation="vertical" className="h-6 mx-1 opacity-20 hidden sm:block" />
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="rounded-full px-4 h-9 border border-primary/20 bg-primary/5 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm">
+                                <Button variant="ghost" className="rounded-full px-4 h-9 border border-primary/20 bg-primary/5 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm hidden sm:flex">
                                     <Columns className="h-3.5 w-3.5 mr-2 opacity-70" />
-                                    {settings.readingMode === 'single' ? 'TEK SAYFA' :
-                                        settings.readingMode === 'double-animated' ? 'ÇİFT (MEKANİK)' :
-                                            settings.readingMode === 'double-static' ? 'ÇİFT (STATİK)' : 'YAN YANA'}
+                                    {settings.readingMode === 'single' ? 'TEK' : 'ÇİFT'}
                                     <ChevronDown className="h-3 w-3 ml-2 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -246,8 +270,12 @@ const ReaderPage: React.FC = () => {
                         </DropdownMenu>
                     </div>
 
+                    {/* Right: Next & Settings */}
                     <div className="flex items-center gap-2 border-l border-border/10 pl-6">
-                        <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="rounded-full h-9 w-9 hover:bg-primary/10 transition-all">
+                        <Button variant="ghost" size="icon" onClick={nextPage} className="rounded-full h-9 w-9 hover:bg-primary/10 transition-all" title="Sonraki Sayfa">
+                            <ChevronRight className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="rounded-full h-9 w-9 hover:bg-primary/10 transition-all hidden sm:flex">
                             {isFullscreen ? <Minimize className="h-4 w-4 text-primary" /> : <Maximize className="h-4 w-4" />}
                         </Button>
 
@@ -370,8 +398,17 @@ const ReaderPage: React.FC = () => {
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 h-12 px-6 rounded-full bg-background/80 backdrop-blur-xl border border-border/10 shadow-xl flex items-center justify-between gap-8 z-[100] group/footer hover:w-[450px] transition-all duration-500 overflow-hidden border-primary/5">
                 <div className="flex items-center gap-3">
                     <span className="text-[10px] font-black text-primary opacity-60">%{Math.round(book.progress?.percentage || 0)}</span>
-                    <div className="w-24 h-1.5 bg-secondary/30 rounded-full group-hover/footer:w-48 transition-all duration-500">
-                        <div className="h-full bg-primary rounded-full" style={{ width: `${book.progress?.percentage || 0}%` }} />
+                    <div className="w-24 h-4 flex items-center group-hover/footer:w-48 transition-all duration-500 cursor-pointer"
+                        onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = e.clientX - rect.left;
+                            const pct = (x / rect.width);
+                            const targetPage = Math.max(1, Math.round(pct * totalPages));
+                            handleLocationChange(String(targetPage), pct * 100);
+                        }}>
+                        <div className="h-1.5 w-full bg-secondary/30 rounded-full overflow-hidden relative">
+                            <div className="h-full bg-primary rounded-full absolute top-0 left-0" style={{ width: `${book.progress?.percentage || 0}%` }} />
+                        </div>
                     </div>
                 </div>
 
@@ -379,7 +416,7 @@ const ReaderPage: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">SAYFA</span>
-                    <span className="text-xs font-black tabular-nums text-primary">{book.progress?.page || 1}</span>
+                    <span className="text-xs font-black tabular-nums text-primary">{book.progress?.page || 1} / {totalPages || '?'}</span>
                 </div>
             </div>
 
