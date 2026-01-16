@@ -68,6 +68,25 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
             }
         }
     }));
+    const [wrapperWidth, setWrapperWidth] = useState<number>(0);
+    const wrapperRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (!wrapperRef.current) return;
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                if (entry.contentRect) {
+                    // %90 genişlik kullanarak kenarlardan hafif boşluk bırakıyoruz ama ekranı dolduruyoruz
+                    // Mobil için %100, Desktop için %90 veya %80 optimize edilebilir.
+                    // Şimdilik max-width olmadan ekranı doldurması için container width'i alıyoruz.
+                    setWrapperWidth(entry.contentRect.width);
+                }
+            }
+        });
+        resizeObserver.observe(wrapperRef.current);
+        return () => resizeObserver.disconnect();
+    }, []);
+
     const pageBgClass = settings.theme === 'dark'
         ? 'invert brightness-90 contrast-110'
         : settings.theme === 'sepia'
@@ -123,29 +142,34 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     if (!safeUrl) return <div className="flex items-center justify-center p-10 font-bold opacity-30 text-xs uppercase tracking-[0.2em]">Dosya Hazırlanıyor...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-transparent overflow-hidden relative selection:bg-primary/30">
-            <div className="flex-1 overflow-auto flex justify-center pt-4 pb-20 no-scrollbar scroll-smooth">
+        <div ref={wrapperRef} className="flex flex-col h-full bg-transparent overflow-hidden relative selection:bg-primary/30 w-full">
+            <div className="flex-1 overflow-auto flex justify-center pt-0 pb-0 no-scrollbar scroll-smooth w-full">
                 <Document
                     file={safeUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     options={options}
                     loading={<div className="flex items-center justify-center p-20 font-serif italic text-muted-foreground animate-pulse">Sayfa Yapısı Oluşturuluyor...</div>}
-                    className="flex gap-4 lg:gap-8 items-start"
+                    className="flex gap-0 items-start justify-center w-full"
                 >
-                    <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden`}>
+                    <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden shadow-2xl`}>
                         <Page
                             pageNumber={page}
-                            scale={currentScale}
+                            // Width prop is KEY. If defined, it ignores scale and fits width.
+                            // We use wrapperWidth minus some padding if needed.
+                            width={wrapperWidth ? Math.min(wrapperWidth, 1400) : undefined}
+                            // scale is only fallback if width is undefined
+                            scale={wrapperWidth ? undefined : currentScale}
                             renderTextLayer={true}
                             renderAnnotationLayer={false}
                             className="bg-transparent"
                         />
                     </div>
                     {isDoubleMode && page < numPages && (
-                        <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden`}>
+                        <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden shadow-2xl hidden lg:block`}>
                             <Page
                                 pageNumber={page + 1}
-                                scale={currentScale}
+                                width={wrapperWidth ? Math.min(wrapperWidth / 2, 700) : undefined}
+                                scale={wrapperWidth ? undefined : currentScale}
                                 renderTextLayer={true}
                                 renderAnnotationLayer={false}
                                 className="bg-transparent"

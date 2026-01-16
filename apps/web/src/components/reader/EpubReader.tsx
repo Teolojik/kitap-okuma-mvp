@@ -183,36 +183,41 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
     }, [annotations, isReady]);
 
     const applySettings = (rendition: Rendition) => {
-        // Font Size
-        rendition.themes.fontSize(`${settings.fontSize}%`);
+        // Font Size (Increased base size for better readability in immersive mode)
+        // Default is usually equal to browser default (16px). We boost it.
+        const effectiveSize = Math.max(settings.fontSize, 100);
+        rendition.themes.fontSize(`${effectiveSize}%`);
 
         // Theme
         // Registering themes with colors matching our index.css
+        // Enhanced line-height and margins for immersive feel
         if (settings.theme === 'dark') {
             rendition.themes.register('dark', {
-                body: { color: '#e2e8f0', background: 'transparent' },
-                p: { 'line-height': 1.6, 'font-family': 'Lora, serif' }
+                body: { color: '#e2e8f0', background: 'transparent', 'font-size': '1.2em' },
+                p: { 'line-height': 1.8, 'font-family': 'Lora, serif', 'margin-bottom': '1.5em' },
+                h1: { 'color': '#f8fafc' }, h2: { 'color': '#f1f5f9' }, h3: { 'color': '#e2e8f0' }
             });
             rendition.themes.select('dark');
         } else if (settings.theme === 'sepia') {
             rendition.themes.register('sepia', {
-                body: { color: '#433422', background: 'transparent' },
-                p: { 'line-height': 1.8, 'font-family': 'Lora, serif' }
+                body: { color: '#433422', background: 'transparent', 'font-size': '1.2em' },
+                p: { 'line-height': 1.8, 'font-family': 'Lora, serif', 'margin-bottom': '1.5em' }
             });
             rendition.themes.select('sepia');
         } else {
             rendition.themes.register('light', {
-                body: { color: '#262626', background: 'transparent' },
-                p: { 'line-height': 1.6, 'font-family': 'Lora, serif' }
+                body: { color: '#262626', background: 'transparent', 'font-size': '1.2em' },
+                p: { 'line-height': 1.8, 'font-family': 'Lora, serif', 'margin-bottom': '1.5em' }
             });
             rendition.themes.select('light');
         }
 
-        // For double page view in EPUB, if needed:
+        // For double page view in EPUB
         if (settings.readingMode.includes('double')) {
-            rendition.themes.default({ "body": { "column-count": 2, "column-gap": "60px", "padding": "20px 0" } });
+            rendition.themes.default({ "body": { "column-count": 2, "column-gap": "80px", "padding": "40px !important" } });
         } else {
-            rendition.themes.default({ "body": { "column-count": 1, "padding": "0" } });
+            // Single page - ensure it uses full width max
+            rendition.themes.default({ "body": { "column-count": 1, "padding": "0 20px !important", "max-width": "1200px", "margin": "0 auto" } });
         }
     };
 
@@ -227,7 +232,7 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
 
     return (
         <div className="relative w-full h-full flex flex-col">
-            <div className="flex-1 relative overflow-hidden bg-background">
+            <div className="flex-1 relative overflow-hidden bg-background/50">
                 <div ref={viewerRef} className="w-full h-full" />
             </div>
             {/* Styles for highlights */}
