@@ -94,7 +94,7 @@ export default function DiscoverPage() {
                     Yeni Dünyalar Keşfet
                 </motion.h1>
                 <p className="text-muted-foreground text-lg max-w-2xl mx-auto font-sans">
-                    Binlerce kitaba anında ulaşın ve saniyeler içinde kütüphanenize ekleyin.
+                    Aradığın kitaba ait en doğru bilgileri bul, kaynaklara göz at veya demo sürümü indir.
                 </p>
             </div>
 
@@ -127,12 +127,14 @@ export default function DiscoverPage() {
                         className="group relative bg-card/40 backdrop-blur-sm border border-border/30 rounded-[2.5rem] p-6 hover:bg-card/60 transition-all duration-500 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-primary/5"
                     >
                         <div className="flex gap-6 items-start">
-                            <div className="h-40 w-28 bg-secondary/50 shrink-0 rounded-2xl overflow-hidden shadow-lg group-hover:shadow-primary/10 transition-shadow">
+                            <div className="h-40 w-28 bg-secondary/50 shrink-0 rounded-2xl overflow-hidden shadow-lg group-hover:shadow-primary/10 transition-shadow bg-muted">
                                 {book.cover_url ? (
                                     <img src={book.cover_url} alt={book.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                 ) : (
                                     <div className="h-full w-full flex items-center justify-center text-muted-foreground/30">
-                                        <BookOpen className="h-10 w-10" />
+                                        <div className="text-center p-2">
+                                            <div className="text-[10px] uppercase font-bold mb-1 opacity-50">Kapak Yok</div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -141,20 +143,32 @@ export default function DiscoverPage() {
                                 <p className="text-sm font-medium text-muted-foreground/80 truncate">{book.author}</p>
 
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                    <span className="bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg">{book.format}</span>
-                                    {book.language && <span className="bg-secondary text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg">{book.language}</span>}
+                                    {book.publisher && <span className="bg-primary/5 text-primary/70 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg truncate max-w-[150px]">{book.publisher}</span>}
+                                    {book.isbn && <span className="bg-secondary text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg">ISBN: {book.isbn}</span>}
                                 </div>
 
-                                <div className="flex gap-2 mt-4 pt-4 border-t border-border/20">
-                                    <Button size="sm" className="rounded-xl flex-1 h-10 font-bold tracking-tight" onClick={() => startDownload(book)}>
-                                        <Download className="h-4 w-4 mr-2" />
-                                        İndir
+                                <div className="flex gap-2 mt-4 pt-4 border-t border-border/20 flex-wrap">
+                                    <Button size="sm" className="rounded-xl flex-1 h-9 font-bold tracking-tight text-xs shadow-md shadow-primary/10" onClick={() => startDownload(book)}>
+                                        <Download className="h-3.5 w-3.5 mr-2" />
+                                        Demo Ekle
                                     </Button>
-                                    <Button size="sm" variant="outline" asChild className="rounded-xl h-10 w-10 p-0 border-border/50 text-muted-foreground">
-                                        <a href={book.downloadUrl} target="_blank" rel="noreferrer">
-                                            <ExternalLink className="h-4 w-4" />
-                                        </a>
-                                    </Button>
+
+                                    {book.externalLinks && (
+                                        <>
+                                            <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
+                                                <a href={book.externalLinks.annasArchive} target="_blank" rel="noreferrer" title="Anna's Arşivinde Ara">
+                                                    Anna's
+                                                    <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
+                                                </a>
+                                            </Button>
+                                            <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
+                                                <a href={book.externalLinks.libgen} target="_blank" rel="noreferrer" title="Libgen'de Ara">
+                                                    Libgen
+                                                    <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
+                                                </a>
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -198,23 +212,5 @@ export default function DiscoverPage() {
     );
 }
 
-// Helper icons
-function BookOpen(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-        </svg>
-    )
-}
+// Helper icons (eğer başka yerde import edilmediyse)
+// ... (Mevcut kodda importların çalıştığını varsayıyorum, eğer hata alırsam eklerim)
