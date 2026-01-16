@@ -29,13 +29,21 @@ const getHighResCover = (volumeInfo: any) => {
     return cover;
 };
 
-// Sadece kapak bulmak için (Manuel yüklemelerde)
+// Geliştirilmiş Kapak Bulma (İlk 5 sonucu tarar)
 export const findCoverImage = async (query: string): Promise<string | undefined> => {
     try {
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1&printType=books`);
+        // maxResults=5 yapıldı.
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=5&printType=books`);
         const data = await response.json();
+
         if (data.items && data.items.length > 0) {
-            return getHighResCover(data.items[0].volumeInfo);
+            // İlk 5 kitap içinde kapak resmi olan İLK kitabı bul
+            for (const item of data.items) {
+                const cover = getHighResCover(item.volumeInfo);
+                if (cover) {
+                    return cover; // Kapağı olan ilk sonucu döndür
+                }
+            }
         }
     } catch (e) {
         console.error("Cover fetch error:", e);
@@ -75,7 +83,6 @@ export const searchBooks = async (query: string): Promise<SearchResult[]> => {
                 publisher: info.publisher,
                 isbn: isbn,
                 language: info.language,
-                // GÜNCELLENMİŞ LİNKLER
                 externalLinks: {
                     annasArchive: `https://annas-archive.li/search?q=${searchQuerySafe}`,
                     libgen: `https://libgen.li/index.php?req=${searchQuerySafe}&columns%5B%5D=t&columns%5B%5D=a&columns%5B%5D=s&columns%5B%5D=y&columns%5B%5D=p&columns%5B%5D=i&objects%5B%5D=f&objects%5B%5D=e&objects%5B%5D=s&objects%5B%5D=a&objects%5B%5D=p&objects%5B%5D=w&topics%5B%5D=l&topics%5B%5D=c&topics%5B%5D=f&topics%5B%5D=a&topics%5B%5D=m&topics%5B%5D=r&topics%5B%5D=s&res=25`
