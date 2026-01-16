@@ -19,7 +19,7 @@ interface EpubReaderProps {
     onTextSelected?: (cfiRange: string, text: string, contents: any) => void;
 }
 
-const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLocation, onLocationChange, isSplit = false, options }, ref) => {
+const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLocation, onLocationChange, isSplit = false, options, annotations, onTextSelected }, ref) => {
     const viewerRef = useRef<HTMLDivElement>(null);
     const bookRef = useRef<Book | null>(null);
     const renditionRef = useRef<Rendition | null>(null);
@@ -120,8 +120,8 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
 
                         // Emit custom event or callback?
                         // Let's check props. We need a new prop 'onTextSelected'.
-                        if (props.onTextSelected) {
-                            props.onTextSelected(cfiRange, text, contents);
+                        if (onTextSelected) {
+                            onTextSelected(cfiRange, text, contents);
                         }
                     }
                 });
@@ -132,8 +132,8 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             // Restore annotations (highlights)
             // Ideally we get these from props. But we can access store or pass them down.
             // Let's assume parent controls this via a useEffect calling a method, or we pass `annotations` prop.
-            if (props.annotations) {
-                props.annotations.forEach((a: any) => {
+            if (annotations) {
+                annotations.forEach((a: any) => {
                     rendition.annotations.add('highlight', a.cfiRange, {}, (e: any) => {
                         console.log("Clicked highlight", a);
                     }, 'hl-default');
@@ -163,7 +163,7 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
 
     // React to annotations changes
     useEffect(() => {
-        if (!isReady || !renditionRef.current || !props.annotations) return;
+        if (!isReady || !renditionRef.current || !annotations) return;
         // Inefficient to clear all, but safe for MVP
         // renditionRef.current.annotations.remove() ??? No clear all method publicly simple.
         // Better: just add new ones? Or simple logic:
@@ -172,7 +172,7 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
         // renditionRef.current.views().forEach(view => view.pane ? ... : ...);
         // Let's try to remove by keeping track? 
         // For V1, let's just add. Removal requires tracking IDs.
-        props.annotations.forEach((a: any) => {
+        annotations.forEach((a: any) => {
             // Check if exists? EpubJS doesn't easily expose list of annotation CFIs.
             // We just re-add. It might duplicate DOM elements but visually okayish usually.
             // Correct way: track added annotations in a ref.
@@ -180,22 +180,39 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 renditionRef.current?.annotations.add('highlight', a.cfiRange, { fill: a.color }, undefined, 'hl-' + a.id);
             } catch (e) { }
         });
-    }, [props.annotations, isReady]);
+    }, [annotations, isReady]);
 
     const applySettings = (rendition: Rendition) => {
         // Font Size
         rendition.themes.fontSize(`${settings.fontSize}%`);
 
         // Theme
+        // Registering themes with colors matching our index.css
         if (settings.theme === 'dark') {
-            rendition.themes.register('dark', { body: { color: '#c9d1d9', background: '#0f172a' } }); // Better dark mode contrast
+            rendition.themes.register('dark', {
+                body: { color: '#e2e8f0', background: 'transparent' },
+                p: { 'line-height': 1.6, 'font-family': 'Lora, serif' }
+            });
             rendition.themes.select('dark');
         } else if (settings.theme === 'sepia') {
-            rendition.themes.register('sepia', { body: { color: '#5f4b32', background: '#f6f1d1' } });
+            rendition.themes.register('sepia', {
+                body: { color: '#433422', background: 'transparent' },
+                p: { 'line-height': 1.8, 'font-family': 'Lora, serif' }
+            });
             rendition.themes.select('sepia');
         } else {
-            rendition.themes.register('light', { body: { color: 'black', background: 'white' } });
+            rendition.themes.register('light', {
+                body: { color: '#262626', background: 'transparent' },
+                p: { 'line-height': 1.6, 'font-family': 'Lora, serif' }
+            });
             rendition.themes.select('light');
+        }
+
+        // For double page view in EPUB, if needed:
+        if (settings.readingMode.includes('double')) {
+            rendition.themes.default({ "body": { "column-count": 2, "column-gap": "60px", "padding": "20px 0" } });
+        } else {
+            rendition.themes.default({ "body": { "column-count": 1, "padding": "0" } });
         }
     };
 

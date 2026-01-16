@@ -4,8 +4,11 @@ export interface Book {
     user_id: string;
     title: string;
     author: string;
-    file_url: string; // Blob URL or base64 (simulated)
+    file_url: string;
     cover_url?: string;
+    publisher?: string;
+    year?: string;
+    isbn?: string;
     progress: {
         percentage: number;
         location?: string | number;

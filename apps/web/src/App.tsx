@@ -6,6 +6,7 @@ import LoginPage from '@/pages/Login';
 import Layout from '@/components/Layout';
 import LibraryPage from '@/pages/Library';
 import ReaderPage from '@/pages/ReaderPage';
+import BookDetails from '@/pages/BookDetails';
 import DiscoverPage from '@/pages/Discover';
 import ReloadPrompt from '@/components/ReloadPrompt';
 import { Toaster } from 'sonner';
@@ -21,7 +22,7 @@ function App() {
   }, []);
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Yükleniyor...</div>;
+    return <div className="flex h-screen items-center justify-center font-serif text-2xl">Yükleniyor...</div>;
   }
 
   return (
@@ -35,6 +36,7 @@ function App() {
         ) : (
           <Route element={<Layout />}>
             <Route path="/" element={<LibraryPage />} />
+            <Route path="/book/:id" element={<BookDetails />} />
             <Route path="/read/:id" element={<ReaderPage />} />
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/profile" element={<Profile />} />

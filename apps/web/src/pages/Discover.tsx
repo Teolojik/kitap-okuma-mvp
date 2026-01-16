@@ -8,6 +8,7 @@ import { searchBooks, SearchResult } from '@/lib/discovery-service';
 import { toast } from 'sonner';
 import { useBookStore } from '@/stores/useStore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { motion } from 'framer-motion';
 
 export default function DiscoverPage() {
     const [query, setQuery] = useState('');
@@ -91,86 +92,106 @@ export default function DiscoverPage() {
     };
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto pb-10">
+        <div className="space-y-12 max-w-5xl mx-auto pb-20 animate-in fade-in duration-700">
             <div className="text-center space-y-4 py-8">
-                <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Kitap Keşfet</h1>
-                <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                    Anna's Archive ve LibGen veritabanlarında arama yapın,
-                    kitapları saniyeler içinde kütüphanenize indirin.
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-5xl font-serif font-medium text-foreground/90"
+                >
+                    Yeni Dünyalar Keşfet
+                </motion.h1>
+                <p className="text-muted-foreground text-lg max-w-2xl mx-auto font-sans">
+                    Binlerce kitaba anında ulaşın ve saniyeler içinde kütüphanenize ekleyin.
                 </p>
             </div>
 
-            <form onSubmit={handleSearch} className="flex gap-2 max-w-2xl mx-auto">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                    <Input
-                        className="pl-10 h-12 text-lg"
-                        placeholder="Kitap adı, yazar, ISBN..."
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                    />
-                </div>
-                <Button type="submit" size="lg" disabled={loading} className="px-8">
+            <form onSubmit={handleSearch} className="relative group max-w-2xl mx-auto">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <input
+                    type="text"
+                    placeholder="Kitap adı, yazar veya ISBN ara..."
+                    className="w-full bg-card/50 border-none rounded-[2rem] py-6 pl-16 pr-6 focus:ring-4 focus:ring-primary/10 transition-all outline-none text-lg shadow-xl shadow-black/5"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                />
+                <Button
+                    type="submit"
+                    size="lg"
+                    disabled={loading}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-[1.5rem] h-12 px-8 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+                >
                     {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Ara'}
                 </Button>
             </form>
 
-            <div className="space-y-4 mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
                 {results.map((book) => (
-                    <Card key={book.id} className="overflow-hidden hover:shadow-md transition-shadow group">
-                        <CardContent className="p-4 flex gap-4 items-start">
-                            <div className="h-32 w-24 bg-slate-200 shrink-0 rounded-md overflow-hidden shadow-sm">
+                    <motion.div
+                        key={book.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{ y: -5 }}
+                        className="group relative bg-card/40 backdrop-blur-sm border border-border/30 rounded-[2.5rem] p-6 hover:bg-card/60 transition-all duration-500 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-primary/5"
+                    >
+                        <div className="flex gap-6 items-start">
+                            <div className="h-40 w-28 bg-secondary/50 shrink-0 rounded-2xl overflow-hidden shadow-lg group-hover:shadow-primary/10 transition-shadow">
                                 {book.cover_url ? (
-                                    <img src={book.cover_url} alt={book.title} className="h-full w-full object-cover" />
+                                    <img src={book.cover_url} alt={book.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                 ) : (
-                                    <div className="h-full w-full flex items-center justify-center text-slate-400 bg-slate-100">
-                                        <BookOpen className="h-8 w-8" />
+                                    <div className="h-full w-full flex items-center justify-center text-muted-foreground/30">
+                                        <BookOpen className="h-10 w-10" />
                                     </div>
                                 )}
                             </div>
-                            <div className="flex-1 flex flex-col gap-1">
-                                <h3 className="font-bold text-xl leading-tight group-hover:text-blue-600 transition-colors">{book.title}</h3>
-                                <p className="text-base text-muted-foreground">{book.author}</p>
-                                <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-500 mt-2">
-                                    <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">{book.source}</span>
-                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded uppercase">{book.format}</span>
-                                    <span className="bg-slate-100 px-2 py-0.5 rounded">{book.size}</span>
-                                    {book.language && <span className="bg-slate-100 px-2 py-0.5 rounded uppercase">{book.language}</span>}
+                            <div className="flex-1 flex flex-col gap-2 min-w-0">
+                                <h3 className="font-serif font-bold text-xl leading-tight text-foreground/90 group-hover:text-primary transition-colors line-clamp-2">{book.title}</h3>
+                                <p className="text-sm font-medium text-muted-foreground/80 truncate">{book.author}</p>
+
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    <span className="bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg">{book.format}</span>
+                                    {book.language && <span className="bg-secondary text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg">{book.language}</span>}
+                                </div>
+
+                                <div className="flex gap-2 mt-4 pt-4 border-t border-border/20">
+                                    <Button size="sm" className="rounded-xl flex-1 h-10 font-bold tracking-tight" onClick={() => startDownload(book)}>
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Kütüphaneye Ekle
+                                    </Button>
+                                    <Button size="sm" variant="outline" asChild className="rounded-xl h-10 w-10 p-0 border-border/50 text-muted-foreground">
+                                        <a href={book.downloadUrl} target="_blank" rel="noreferrer">
+                                            <ExternalLink className="h-4 w-4" />
+                                        </a>
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-2 pt-2">
-                                <Button size="sm" onClick={() => startDownload(book)}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    İndir
-                                </Button>
-                                <Button size="sm" variant="ghost" asChild className="text-muted-foreground">
-                                    <a href={book.downloadUrl} target="_blank" rel="noreferrer">
-                                        <ExternalLink className="h-4 w-4" />
-                                    </a>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </motion.div>
                 ))}
             </div>
 
+            {results.length === 0 && !loading && query && (
+                <div className="text-center py-20 bg-secondary/20 rounded-[3rem] border-2 border-dashed border-border/50">
+                    <Search className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                    <p className="text-muted-foreground font-medium">Böyle bir kitap bulamadık. Lütfen farklı bir isim deneyin.</p>
+                </div>
+            )}
+
             <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-amber-600">
-                            <AlertTriangle className="h-5 w-5" />
-                            Yasal Uyarı
-                        </DialogTitle>
-                        <DialogDescription className="pt-2 text-base">
-                            Bu kitabı <strong>Anna's Archive / LibGen</strong> kaynağından indirmek üzeresiniz.
-                            <br /><br />
-                            Lütfen telif haklarına ve ülkenizdeki yasal düzenlemelere uygun hareket ettiğinizden emin olun.
-                            Sorumluluk tamamen kullanıcıya aittir.
+                <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8 max-w-m">
+                    <DialogHeader className="space-y-4">
+                        <div className="h-16 w-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <AlertTriangle className="h-8 w-8" />
+                        </div>
+                        <DialogTitle className="text-2xl font-serif text-center">Yasal Uyarı</DialogTitle>
+                        <DialogDescription className="text-center text-base font-sans">
+                            Bu kitap <strong>açık kaynaklı kitap arşivlerinden</strong> getirilmektedir.
+                            Lütfen telif haklarına saygı gösterdiğinizden emin olun.
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>İptal</Button>
-                        <Button variant="destructive" onClick={confirmDownload}>Onaylıyorum ve İndir</Button>
+                    <DialogFooter className="sm:justify-center flex-col sm:flex-row gap-2 mt-6">
+                        <Button variant="ghost" className="rounded-2xl px-8 h-12 font-bold" onClick={() => setIsDialogOpen(false)}>Vazgeç</Button>
+                        <Button variant="destructive" className="rounded-2xl px-8 h-12 font-bold shadow-xl shadow-red-500/20" onClick={confirmDownload}>Onaylıyorum ve İndir</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -178,7 +199,7 @@ export default function DiscoverPage() {
     );
 }
 
-// Helper icon
+// Helper icons
 function BookOpen(props: any) {
     return (
         <svg

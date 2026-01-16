@@ -7,36 +7,50 @@ import { Book } from '@/lib/mock-api';
 interface DoubleStaticProps {
     book: Book;
     data: string | ArrayBuffer;
+    pageNumber?: number;
     onLocationChange: (loc: string, pct: number) => void;
+    onTotalPages?: (total: number) => void;
+    onTextSelected?: (cfi: string, text: string) => void;
+    annotations?: any[];
 }
 
 const EPUB_OPTIONS = { flow: 'paginated', manager: 'default', width: '100%', height: '100%' };
 
 import { getFileType } from '@/lib/file-utils';
 
-export default function DoubleStatic({ book, data, onLocationChange }: DoubleStaticProps) {
+const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
+    book, data, pageNumber, onLocationChange, onTotalPages, onTextSelected, annotations
+}, ref) => {
     const fileType = getFileType(data, book.title);
-    const epubRef = useRef<EpubReaderRef>(null);
 
     if (fileType === 'pdf') {
-        // React-PDF doesn't natively support double spread easily in Document without custom layout, 
-        // for MVP we fall back to single view or could enforce a wide scale.
-        // But let's try to keep it simple.
-        return <PdfReader url={data} />;
+        return <PdfReader
+            ref={ref}
+            url={data}
+            pageNumber={pageNumber}
+            onPageChange={(p) => onLocationChange(String(p), 0)}
+            onTotalPages={onTotalPages}
+            onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
+            annotations={annotations}
+        />;
     }
 
     return (
         <div className="h-full w-full relative group">
             <EpubReader
-                ref={epubRef}
+                ref={ref}
                 url={data}
                 initialLocation={book.progress?.location as string}
                 onLocationChange={onLocationChange}
+                onTextSelected={onTextSelected}
+                annotations={annotations}
                 options={EPUB_OPTIONS}
             />
             {/* Simple Navigation Overlay */}
-            <div className="absolute inset-y-0 left-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => epubRef.current?.prev()} title="Önceki" />
-            <div className="absolute inset-y-0 right-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => epubRef.current?.next()} title="Sonraki" />
+            <div className="absolute inset-y-0 left-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => (ref as any).current?.prev()} title="Önceki" />
+            <div className="absolute inset-y-0 right-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => (ref as any).current?.next()} title="Sonraki" />
         </div>
     );
-}
+});
+
+export default DoubleStatic;

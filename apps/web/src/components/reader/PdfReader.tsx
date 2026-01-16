@@ -6,30 +6,43 @@ import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Configure worker for Vite
-// Configure worker for Vite using CDN fallback since local package install failed
-// This ensures PDF rendering works even without pdfjs-dist in node_modules
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Configure worker to use the local file served via vite-plugin-static-copy
+// Using a root-relative path ensures the worker is loaded from our own server
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 import { ErrorBoundary } from 'react-error-boundary';
+import { useBookStore } from '@/stores/useStore';
+import { Separator } from '@/components/ui/separator';
 
 interface PdfReaderProps {
     url: string | ArrayBuffer;
     pageNumber?: number;
     onPageChange?: (page: number) => void;
+    onTotalPages?: (total: number) => void;
     scale?: number;
     onScaleChange?: (scale: number) => void;
-    simpleMode?: boolean; // If true, hides internal controls (for custom modes)
+    simpleMode?: boolean;
+    onTextSelected?: (page: number, text: string) => void;
+    annotations?: any[];
 }
 
-function PdfReaderInner({
+export interface PdfReaderRef {
+    next: () => void;
+    prev: () => void;
+}
+
+const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     url,
     pageNumber: propPageNumber,
     onPageChange,
+    onTotalPages,
     scale: propScale,
     onScaleChange,
-    simpleMode = false
-}: PdfReaderProps) {
+    simpleMode = false,
+    onTextSelected,
+    annotations
+}: PdfReaderProps, ref) => {
+    const { settings } = useBookStore();
     const [numPages, setNumPages] = useState<number>(0);
     const [internalPage, setInternalPage] = useState(1);
     const [internalScale, setInternalScale] = useState(1.0);
@@ -37,37 +50,51 @@ function PdfReaderInner({
 
     const page = propPageNumber || internalPage;
     const currentScale = propScale || internalScale;
+    const isDoubleMode = settings.readingMode.includes('double');
 
-    // Memoize options to prevent unnecessary re-renders
+    React.useImperativeHandle(ref, () => ({
+        next: () => {
+            const nextP = page + (isDoubleMode ? 2 : 1);
+            if (nextP <= numPages) {
+                if (onPageChange) onPageChange(nextP);
+                else setInternalPage(nextP);
+            }
+        },
+        prev: () => {
+            const prevP = page - (isDoubleMode ? 2 : 1);
+            if (prevP >= 1) {
+                if (onPageChange) onPageChange(prevP);
+                else setInternalPage(prevP);
+            }
+        }
+    }));
+    const pageBgClass = settings.theme === 'dark'
+        ? 'invert brightness-90 contrast-110'
+        : settings.theme === 'sepia'
+            ? 'sepia-[0.3] brightness-[0.95] contrast-[1.05]'
+            : '';
+
+    // Memoize options
     const options = React.useMemo(() => ({
         cMapUrl: '/cmaps/',
         cMapPacked: true,
         standardFontDataUrl: '/standard_fonts/',
+        wasmUrl: '/wasm/',
+        imageResourcesPath: '/image_decoders/',
     }), []);
 
-    // Handle URL/Buffer conversion safely to prevent detached buffer issues
     React.useEffect(() => {
         let objectUrl = '';
         let isRevocable = false;
 
-        const processUrl = async () => {
-            if (url instanceof ArrayBuffer) {
-                const blob = new Blob([url], { type: 'application/pdf' });
-                objectUrl = URL.createObjectURL(blob);
-                isRevocable = true;
-                setSafeUrl(objectUrl);
-            } else if (typeof url === 'string') {
-                // Check if remote URL to fetch as blob (fixes potential CORS/detached buffer on some implementations)
-                // But for now assume local string is fine, unless it's a "local://" mock one which mock-api handles
-                // Actually, if it's a blob url already, it's fine.
-                // If the user said "Dosyayı önce blob olarak fetch et", they might imply remote URL string.
-                // But usually 'url' here is ArrayBuffer from ReaderPage.
-                // If it is a string, use as is.
-                setSafeUrl(url);
-            }
-        };
-
-        processUrl();
+        if (url instanceof ArrayBuffer) {
+            const blob = new Blob([url], { type: 'application/pdf' });
+            objectUrl = URL.createObjectURL(blob);
+            isRevocable = true;
+            setSafeUrl(objectUrl);
+        } else if (typeof url === 'string') {
+            setSafeUrl(url);
+        }
 
         return () => {
             if (isRevocable && objectUrl) {
@@ -76,71 +103,67 @@ function PdfReaderInner({
         };
     }, [url]);
 
+    React.useEffect(() => {
+        const handleMouseUp = () => {
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim().length > 0) {
+                const text = selection.toString();
+                if (onTextSelected) onTextSelected(page, text);
+            }
+        };
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => document.removeEventListener('mouseup', handleMouseUp);
+    }, [page, onTextSelected]);
+
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
+        if (onTotalPages) onTotalPages(numPages);
     }
 
-    const handlePageChange = (newPage: number) => {
-        const p = Math.max(1, Math.min(numPages, newPage));
-        if (onPageChange) onPageChange(p);
-        else setInternalPage(p);
-    };
-
-    const handleScaleChange = (newScale: number) => {
-        const s = Math.max(0.5, Math.min(3.0, newScale));
-        if (onScaleChange) onScaleChange(s);
-        else setInternalScale(s);
-    };
-
-    if (!safeUrl) return <div className="flex items-center justify-center p-10">Hazırlanıyor...</div>;
+    if (!safeUrl) return <div className="flex items-center justify-center p-10 font-bold opacity-30 text-xs uppercase tracking-[0.2em]">Dosya Hazırlanıyor...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 overflow-hidden relative user-select-none">
-            {!simpleMode && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-background/90 backdrop-blur shadow-lg rounded-full px-4 py-2 flex items-center gap-2 border">
-                    <Button variant="ghost" size="icon" onClick={() => handlePageChange(page - 1)} disabled={page <= 1}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium w-16 text-center">{page} / {numPages || '--'}</span>
-                    <Button variant="ghost" size="icon" onClick={() => handlePageChange(page + 1)} disabled={page >= numPages}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <div className="w-px h-4 bg-border mx-2" />
-                    <Button variant="ghost" size="icon" onClick={() => handleScaleChange(currentScale - 0.1)}>
-                        <ZoomOut className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleScaleChange(currentScale + 0.1)}>
-                        <ZoomIn className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
-
-            <div className="flex-1 overflow-auto flex justify-center p-4">
+        <div className="flex flex-col h-full bg-transparent overflow-hidden relative selection:bg-primary/30">
+            <div className="flex-1 overflow-auto flex justify-center pt-8 pb-32 no-scrollbar scroll-smooth">
                 <Document
                     file={safeUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     options={options}
-                    loading={<div className="flex items-center justify-center p-10">PDF yükleniyor...</div>}
-                    error={<div className="flex items-center justify-center p-10 text-red-500">PDF yüklenemedi.</div>}
-                    className="shadow-lg"
+                    loading={<div className="flex items-center justify-center p-20 font-serif italic text-muted-foreground animate-pulse">Sayfa Yapısı Oluşturuluyor...</div>}
+                    className="flex gap-6 lg:gap-16 items-start"
                 >
-                    <Page
-                        pageNumber={page}
-                        scale={currentScale}
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                        className="bg-white shadow-xl"
-                    />
+                    <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden`}>
+                        <Page
+                            pageNumber={page}
+                            scale={currentScale}
+                            renderTextLayer={true}
+                            renderAnnotationLayer={false}
+                            className="bg-transparent"
+                        />
+                    </div>
+                    {isDoubleMode && page < numPages && (
+                        <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden`}>
+                            <Page
+                                pageNumber={page + 1}
+                                scale={currentScale}
+                                renderTextLayer={true}
+                                renderAnnotationLayer={false}
+                                className="bg-transparent"
+                            />
+                        </div>
+                    )}
                 </Document>
             </div>
         </div>
     );
-}
+});
 
-export default function PdfReader(props: PdfReaderProps) {
+const PdfReader = React.forwardRef<PdfReaderRef, PdfReaderProps>((props, ref) => {
     return (
         <ErrorBoundary fallback={<div className="p-4 text-red-500">PDF Görüntüleyici Hatası. Lütfen sayfayı yenileyin.</div>}>
-            <PdfReaderInner {...props} />
+            <PdfReaderInner {...props} ref={ref} />
         </ErrorBoundary>
     );
-}
+});
+
+export default PdfReader;

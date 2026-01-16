@@ -12,18 +12,35 @@ import SplitScreenReader from './modes/SplitScreenReader';
 interface ReaderContainerProps {
     book: Book;
     data: string | ArrayBuffer;
+    pageNumber?: number;
     secondaryBook: Book | null;
     secondaryData: string | ArrayBuffer | null;
     onLocationChange: (loc: string, pct: number) => void;
+    onTotalPages?: (total: number) => void;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
 }
 
-export default function ReaderContainer({
-    book, data, secondaryBook, secondaryData, onLocationChange, ...props
-}: ReaderContainerProps) {
+export interface ReaderContainerRef {
+    next: () => void;
+    prev: () => void;
+}
+
+const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProps>(({
+    book, data, pageNumber, secondaryBook, secondaryData, onLocationChange, ...props
+}, ref) => {
     const { settings } = useBookStore();
     const [hasError, setHasError] = React.useState(false);
+    const contentRef = React.useRef<any>(null);
+
+    React.useImperativeHandle(ref, () => ({
+        next: () => {
+            if (contentRef.current?.next) contentRef.current.next();
+        },
+        prev: () => {
+            if (contentRef.current?.prev) contentRef.current.prev();
+        }
+    }));
 
     // Reset error when book changes
     React.useEffect(() => {
@@ -67,25 +84,30 @@ export default function ReaderContainer({
     try {
         switch (settings.readingMode) {
             case 'single':
-                return <SinglePageReader book={book} data={data} onLocationChange={onLocationChange} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
 
             case 'double-static':
-                return <DoubleStatic book={book} data={data} onLocationChange={onLocationChange} />;
+                return <DoubleStatic ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
 
             case 'double-animated':
-                return <DoubleAnimated book={book} data={data} onLocationChange={onLocationChange} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <DoubleAnimated ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
 
             case 'split':
                 return <SplitScreenReader
+                    ref={contentRef}
                     primaryBook={book}
                     primaryData={data}
+                    primaryPageNumber={pageNumber}
                     onPrimaryLocationChange={onLocationChange}
+                    onTotalPages={props.onTotalPages}
                     secondaryBook={secondaryBook}
                     secondaryData={secondaryData}
+                    onTextSelected={props.onTextSelected}
+                    annotations={props.annotations}
                 />;
 
             default:
-                return <SinglePageReader book={book} data={data} onLocationChange={onLocationChange} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
         }
     } catch (err) {
         console.error("Critical Reader Error:", err);
@@ -103,4 +125,6 @@ export default function ReaderContainer({
             </div>
         );
     }
-}
+});
+
+export default ReaderContainer;
