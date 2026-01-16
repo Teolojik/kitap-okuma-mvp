@@ -1,10 +1,8 @@
-
-import React from 'react';
+import React, { useRef, useImperativeHandle } from 'react';
 import EpubReader from '../EpubReader';
 import PdfReader from '../PdfReader';
 import { Book } from '@/lib/mock-api';
 import { BookOpen } from 'lucide-react';
-import { useBookStore } from '@/stores/useStore';
 import { Button } from '@/components/ui/button';
 import { cleanTitle } from '@/lib/metadata-utils';
 
@@ -18,32 +16,57 @@ interface SplitScreenProps {
 
     secondaryBook: Book | null;
     secondaryData: string | ArrayBuffer | null;
+    secondaryPageNumber?: number;
+    onSecondaryLocationChange?: (loc: string, pct: number) => void;
+
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
     onOpenSettings?: () => void;
+
+    activePanel?: 'primary' | 'secondary';
+    onPanelActivate?: (panel: 'primary' | 'secondary') => void;
 }
 
 const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
 
 const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
     primaryBook, primaryData, primaryPageNumber, onPrimaryLocationChange, onTotalPages, scale,
-    secondaryBook, secondaryData, onTextSelected, annotations, onOpenSettings
+    secondaryBook, secondaryData, secondaryPageNumber, onSecondaryLocationChange,
+    onTextSelected, annotations, onOpenSettings,
+    activePanel = 'primary', onPanelActivate
 }, ref) => {
     const primaryType = primaryBook.format;
     const secondaryType = secondaryBook?.format || null;
 
+    const primaryRef = useRef<any>(null);
+    const secondaryRef = useRef<any>(null);
+
+    useImperativeHandle(ref, () => ({
+        next: () => {
+            if (activePanel === 'primary') primaryRef.current?.next();
+            else secondaryRef.current?.next();
+        },
+        prev: () => {
+            if (activePanel === 'primary') primaryRef.current?.prev();
+            else secondaryRef.current?.prev();
+        }
+    }));
+
     return (
         <div className="grid grid-cols-2 h-full w-full divide-x-4 divide-border/20">
             {/* Left Side (Primary) */}
-            <div className="relative h-full w-full overflow-hidden bg-transparent">
+            <div
+                className={`relative h-full w-full overflow-hidden transition-all duration-300 ${activePanel === 'primary' ? 'ring-inset ring-4 ring-primary/20 bg-background' : 'bg-background/50 hover:bg-background/80'}`}
+                onClick={() => onPanelActivate?.('primary')}
+            >
                 {primaryType === 'pdf' ? (
                     <PdfReader
-                        ref={ref}
+                        ref={primaryRef}
                         url={primaryData}
                         pageNumber={primaryPageNumber}
                         onPageChange={(p) => onPrimaryLocationChange(String(p), 0)}
                         onTotalPages={onTotalPages}
-                        scale={scale}
+                        scale={activePanel === 'primary' ? scale : scale}
                         simpleMode
                         onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
                         annotations={annotations}
@@ -51,7 +74,7 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                 ) : (
                     <div className="h-full w-full relative">
                         <EpubReader
-                            ref={ref}
+                            ref={primaryRef}
                             url={primaryData}
                             initialLocation={primaryBook.progress?.location as string}
                             onLocationChange={onPrimaryLocationChange}
@@ -61,18 +84,29 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                         />
                     </div>
                 )}
-                <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-border/20 z-30 pointer-events-none shadow-2xl">
+                <div className={`absolute top-4 left-4 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border z-30 pointer-events-none shadow-2xl transition-colors duration-300 ${activePanel === 'primary' ? 'bg-primary text-primary-foreground border-primary/20' : 'bg-background/80 border-border/20'}`}>
                     {cleanTitle(primaryBook.title).length > 30 ? cleanTitle(primaryBook.title).substring(0, 30) + '...' : cleanTitle(primaryBook.title)}
                 </div>
             </div>
 
             {/* Right Side (Secondary) */}
-            <div className="relative h-full w-full overflow-hidden bg-transparent transition-colors duration-500">
+            <div
+                className={`relative h-full w-full overflow-hidden transition-all duration-300 ${activePanel === 'secondary' ? 'ring-inset ring-4 ring-primary/20 bg-background' : 'bg-background/50 hover:bg-background/80'}`}
+                onClick={() => onPanelActivate?.('secondary')}
+            >
                 {secondaryBook && secondaryData ? (
                     secondaryType === 'pdf' ? (
-                        <PdfReader url={secondaryData} simpleMode />
+                        <PdfReader
+                            ref={secondaryRef}
+                            url={secondaryData}
+                            simpleMode
+                            pageNumber={secondaryPageNumber || 1}
+                            onPageChange={(p) => onSecondaryLocationChange?.(String(p), 0)}
+                            scale={activePanel === 'secondary' ? scale : scale}
+                        />
                     ) : (
                         <EpubReader
+                            ref={secondaryRef}
                             url={secondaryData}
                             options={EPUB_OPTIONS}
                         />
@@ -96,7 +130,7 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                     </div>
                 )}
                 {secondaryBook && (
-                    <div className="absolute top-4 right-4 bg-background/80 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-border/20 z-30 pointer-events-none shadow-2xl">
+                    <div className={`absolute top-4 right-4 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border z-30 pointer-events-none shadow-2xl transition-colors duration-300 ${activePanel === 'secondary' ? 'bg-primary text-primary-foreground border-primary/20' : 'bg-background/80 border-border/20'}`}>
                         {cleanTitle(secondaryBook.title).length > 30 ? cleanTitle(secondaryBook.title).substring(0, 30) + '...' : cleanTitle(secondaryBook.title)}
                     </div>
                 )}

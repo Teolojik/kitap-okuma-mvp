@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useBookStore, useAuthStore } from '@/stores/useStore';
+import { useBookStore } from '@/stores/useStore';
 import { Book, getBook, updateProgress, getBooks } from '@/lib/mock-api';
 import ReaderContainer from '@/components/reader/ReaderContainer';
 import { Button } from '@/components/ui/button';
@@ -15,31 +15,38 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
 import { useSwipeable } from 'react-swipeable';
 
-// Basit Çizim Canvas Bileşeni
-const DrawingCanvas = ({ active, tool, onClear }: { active: boolean, tool: 'pen' | 'marker' | 'eraser', onClear?: () => void }) => {
+// Gelişmiş Çizim Canvas Bileşeni (Sayfa Bazlı Kayıtlı)
+const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave }: { active: boolean, tool: 'pen' | 'marker' | 'eraser', pageKey: string, savedData?: string, onSave: (data: string) => void }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
 
+    // Sayfa değiştiğinde veya savedData değiştiğinde canvas'ı geri yükle
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Resize canvas to fill parent
-        const resize = () => {
-            canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth;
-            canvas.height = canvas.parentElement?.offsetHeight || window.innerHeight;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-        };
-        resize();
-        window.addEventListener('resize', resize);
-        return () => window.removeEventListener('resize', resize);
-    }, []);
+        // Boyutlandırma
+        canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth;
+        canvas.height = canvas.parentElement?.offsetHeight || window.innerHeight;
 
-    // Tool değişiminde context ayarla
+        // Context ayarları (Geri yükleme öncesi)
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Temizle (Eski sayfanın çizimi silinmeli)
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Önceki çizimi yükle
+        if (savedData) {
+            const img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0);
+            img.src = savedData;
+        }
+    }, [pageKey, savedData]);
+
+    // Tool ayarları
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
@@ -52,12 +59,19 @@ const DrawingCanvas = ({ active, tool, onClear }: { active: boolean, tool: 'pen'
         } else if (tool === 'marker') {
             ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
             ctx.lineWidth = 15;
-            ctx.globalCompositeOperation = 'multiply'; // Marker etkisi için
+            ctx.globalCompositeOperation = 'multiply';
         } else if (tool === 'eraser') {
             ctx.globalCompositeOperation = 'destination-out';
             ctx.lineWidth = 20;
         }
     }, [tool]);
+
+    const saveDrawing = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            onSave(canvas.toDataURL());
+        }
+    };
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
         if (!active) return;
@@ -67,7 +81,6 @@ const DrawingCanvas = ({ active, tool, onClear }: { active: boolean, tool: 'pen'
         if (!canvas || !ctx) return;
 
         const rect = canvas.getBoundingClientRect();
-        // Mouse veya Touch koordinatlarını al
         const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
 
@@ -90,7 +103,10 @@ const DrawingCanvas = ({ active, tool, onClear }: { active: boolean, tool: 'pen'
     };
 
     const stopDrawing = () => {
-        setIsDrawing(false);
+        if (isDrawing) {
+            setIsDrawing(false);
+            saveDrawing(); // Çizim bittiğinde kaydet
+        }
     };
 
     return (
@@ -112,22 +128,27 @@ const ReaderPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { settings, setSettings, addAnnotation, annotations: storeAnnotations } = useBookStore();
+
+    // Main Book State
     const [book, setBook] = useState<Book | null>(null);
     const [bookData, setBookData] = useState<string | ArrayBuffer | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Dialog & Sheet States
+    // UI States
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isBookSelectOpen, setIsBookSelectOpen] = useState(false);
 
-    const readerRef = useRef<any>(null);
+    // Split Screen & Navigation State
+    const [activePanel, setActivePanel] = useState<'primary' | 'secondary'>('primary');
+    const readerRef = useRef<any>(null); // Ref to ReaderContainer
 
     // Tools
     const [activeTool, setActiveTool] = useState<'cursor' | 'pen' | 'marker' | 'eraser'>('cursor');
+    const [drawings, setDrawings] = useState<{ [key: string]: string }>({}); // pageKey -> dataURL
 
-    // Split view support
+    // Secondary Book State
     const { secondaryBookId, setSecondaryBookId } = useBookStore();
     const [secondaryBook, setSecondaryBook] = useState<Book | null>(null);
     const [secondaryBookData, setSecondaryBookData] = useState<string | ArrayBuffer | null>(null);
@@ -138,7 +159,7 @@ const ReaderPage: React.FC = () => {
     const [totalPages, setTotalPages] = useState<number>(0);
     const [scale, setScale] = useState(1.0);
 
-    // ... (Loader logic same as before)
+    // Initial Load
     useEffect(() => {
         if (!id) return;
         const loadContent = async () => {
@@ -147,6 +168,7 @@ const ReaderPage: React.FC = () => {
                 setError(null);
                 const bookInfo = await getBook(id);
                 if (!bookInfo) throw new Error('Kitap bulunamadı');
+
                 setBook(bookInfo);
                 if (bookInfo.format === 'epub') {
                     const fileRes = await fetch(bookInfo.file_url);
@@ -162,6 +184,7 @@ const ReaderPage: React.FC = () => {
         loadContent();
     }, [id]);
 
+    // Secondary Book Load
     useEffect(() => {
         if (settings.readingMode === 'split' && secondaryBookId) {
             const loadSecondary = async () => {
@@ -169,7 +192,10 @@ const ReaderPage: React.FC = () => {
                 try {
                     const b = await getBook(secondaryBookId);
                     if (b) {
-                        setSecondaryBook(b);
+                        setSecondaryBook(b); // State'i güncelle
+                        // Eğer ikincil kitabın progress bilgisi yoksa varsayılan ekle
+                        if (!b.progress) b.progress = { percentage: 0, page: 1, location: '0' };
+
                         const res = await fetch(b.file_url);
                         const blob = await res.blob();
                         if (b.file_url.endsWith('.epub')) {
@@ -184,36 +210,75 @@ const ReaderPage: React.FC = () => {
         } else { setSecondaryBook(null); setSecondaryBookData(null); }
     }, [settings.readingMode, secondaryBookId]);
 
+    // Primary Location Change
     const handleLocationChange = (loc: string, percentage: number) => {
         if (!book) return;
         const pageNum = parseInt(loc);
         let actualPercentage = percentage;
         if (!isNaN(pageNum) && totalPages > 0) actualPercentage = (pageNum / totalPages) * 100;
+
         const newProgress = { ...book.progress, percentage: actualPercentage, location: loc, page: !isNaN(pageNum) ? pageNum : (book.progress?.page || 1) };
         updateProgress(book.id, newProgress);
         setBook(prev => prev ? { ...prev, progress: newProgress } : null);
     };
 
-    // Navigation Helpers
+    // Secondary Location Change
+    const handleSecondaryLocationChange = (loc: string, percentage: number) => {
+        if (!secondaryBook) return;
+        const pageNum = parseInt(loc);
+        const newProgress = { ...secondaryBook.progress, location: loc, page: !isNaN(pageNum) ? pageNum : (secondaryBook.progress?.page || 1) };
+
+        // State update for UI
+        setSecondaryBook(prev => prev ? { ...prev, progress: newProgress } : null);
+    };
+
+    // Navigation Logic
     const nextPage = React.useCallback(() => {
-        if (!book) return;
-        if (book.format === 'epub') readerRef.current?.next();
-        else {
-            const currentPage = book.progress?.page || 1;
-            const nextP = Math.min(currentPage + 1, totalPages || 9999);
-            handleLocationChange(String(nextP), 0);
+        console.log("Next Page Triggered. Active Panel:", activePanel);
+        if (activePanel === 'primary') {
+            if (!book) return;
+            if (book.format === 'epub') readerRef.current?.next();
+            else {
+                const currentPage = book.progress?.page || 1;
+                const nextP = Math.min(currentPage + 1, totalPages || 9999);
+                handleLocationChange(String(nextP), 0);
+            }
+        } else {
+            // Secondary Book Navigation
+            if (!secondaryBook) return;
+            if (secondaryBook.format === 'pdf') {
+                // PDF ref handling for split screen happens inside SplitScreenReader if it uses the passed ref correctly.
+                // However, we are controlling page via state.
+                const currentPage = secondaryBook.progress?.page || 1;
+                const nextP = currentPage + 1;
+                handleSecondaryLocationChange(String(nextP), 0);
+            } else {
+                // EPUB icin imperative handle trigger
+                readerRef.current?.next();
+            }
         }
-    }, [book, totalPages]);
+    }, [book, secondaryBook, activePanel, totalPages]);
 
     const prevPage = React.useCallback(() => {
-        if (!book) return;
-        if (book.format === 'epub') readerRef.current?.prev();
-        else {
-            const currentPage = book.progress?.page || 1;
-            const prevP = Math.max(currentPage - 1, 1);
-            handleLocationChange(String(prevP), 0);
+        if (activePanel === 'primary') {
+            if (!book) return;
+            if (book.format === 'epub') readerRef.current?.prev();
+            else {
+                const currentPage = book.progress?.page || 1;
+                const prevP = Math.max(currentPage - 1, 1);
+                handleLocationChange(String(prevP), 0);
+            }
+        } else {
+            if (!secondaryBook) return;
+            if (secondaryBook.format === 'pdf') {
+                const currentPage = secondaryBook.progress?.page || 1;
+                const prevP = Math.max(currentPage - 1, 1);
+                handleSecondaryLocationChange(String(prevP), 0);
+            } else {
+                readerRef.current?.prev();
+            }
         }
-    }, [book, totalPages]);
+    }, [book, secondaryBook, activePanel, totalPages]);
 
     const swipeHandlers = useSwipeable({
         onSwipedLeft: nextPage,
@@ -244,6 +309,16 @@ const ReaderPage: React.FC = () => {
         }
     };
 
+    // Drawing Key Logic
+    const getCurrentPageKey = () => {
+        if (activePanel === 'primary' && book) {
+            return `${book.id}-${book.progress?.page || 1}`;
+        } else if (activePanel === 'secondary' && secondaryBook) {
+            return `${secondaryBook.id}-${secondaryBook.progress?.page || 1}`;
+        }
+        return 'unknown';
+    };
+
     if (loading) return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-background gap-4">
             <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -262,8 +337,14 @@ const ReaderPage: React.FC = () => {
     return (
         <div {...swipeHandlers} className={`flex flex-col h-screen w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-background text-foreground relative group/ui`}>
 
-            {/* Drawing Layer */}
-            <DrawingCanvas active={activeTool !== 'cursor'} tool={activeTool as any} />
+            {/* Drawing Layer with Persistence */}
+            <DrawingCanvas
+                active={activeTool !== 'cursor'}
+                tool={activeTool as any}
+                pageKey={getCurrentPageKey()}
+                savedData={drawings[getCurrentPageKey()]}
+                onSave={(data) => setDrawings(prev => ({ ...prev, [getCurrentPageKey()]: data }))}
+            />
 
             {/* Premium Header */}
             <div className="absolute top-0 left-0 right-0 h-20 z-[90] flex justify-center pt-4 pointer-events-none transition-opacity duration-300 opacity-0 group-hover/ui:opacity-100 focus-within:opacity-100">
@@ -273,8 +354,8 @@ const ReaderPage: React.FC = () => {
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                         <div className="flex flex-col min-w-[100px]">
-                            <h1 className="font-sans font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[200px] text-foreground/90">{cleanTitle(book.title)}</h1>
-                            <p className="font-sans text-[10px] font-medium tracking-wide text-muted-foreground/70">{cleanAuthor(book.author)}</p>
+                            <h1 className="font-sans font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[200px] text-foreground/90">{activePanel === 'primary' ? cleanTitle(book.title) : cleanTitle(secondaryBook?.title || '')}</h1>
+                            <p className="font-sans text-[10px] font-medium tracking-wide text-muted-foreground/70">{activePanel === 'primary' ? cleanAuthor(book.author) : cleanAuthor(secondaryBook?.author || '')}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -356,8 +437,8 @@ const ReaderPage: React.FC = () => {
                 </Button>
             </div>
 
-            {/* Creative Toolbar (Right Side) */}
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-[90] bg-background/80 backdrop-blur-xl p-2 rounded-full border border-border/20 shadow-2xl transition-transform duration-500 translate-x-32 group-hover/ui:translate-x-0">
+            {/* Creative Toolbar (Moved to Bottom Right) */}
+            <div className="absolute right-6 bottom-24 flex flex-col gap-3 z-[90] bg-background/80 backdrop-blur-xl p-2 rounded-full border border-border/20 shadow-2xl transition-transform duration-500 translate-x-32 group-hover/ui:translate-x-0">
                 {[
                     { id: 'cursor', icon: MousePointer2, label: 'İmleç' },
                     { id: 'marker', icon: Highlighter, label: 'Vurgula' },
@@ -379,21 +460,25 @@ const ReaderPage: React.FC = () => {
 
             {/* Main Reader Container */}
             <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full">
-                {/* w-full ve h-full ile container'ı genişlettik */}
                 <div className={`w-full h-full transition-all duration-500 ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
                     <ReaderContainer
                         ref={readerRef}
                         book={book}
                         data={bookData}
                         pageNumber={book.progress?.page || 1}
+
                         secondaryBook={secondaryBook}
                         secondaryData={secondaryBookData}
+                        secondaryPageNumber={secondaryBook?.progress?.page || 1}
+                        onSecondaryLocationChange={handleSecondaryLocationChange}
+                        activePanel={activePanel}
+                        onPanelActivate={setActivePanel}
+
                         onLocationChange={handleLocationChange}
                         onTotalPages={setTotalPages}
                         scale={scale}
                         onTextSelected={(cfi: string, text: string) => setSelection({ cfi, text })}
                         annotations={storeAnnotations[book.id] || []}
-                        // İkinci kitap seçimi için modalı aç
                         onOpenSettings={() => setIsBookSelectOpen(true)}
                     />
                 </div>
@@ -401,21 +486,25 @@ const ReaderPage: React.FC = () => {
 
             {/* Minimalist Bottom Footer */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 h-10 px-6 rounded-full bg-background/80 backdrop-blur-xl border border-border/10 shadow-lg flex items-center justify-between gap-6 z-[90] transition-all duration-300 opacity-0 group-hover/ui:opacity-100">
-                <span className="text-[10px] font-black text-primary opacity-60">%{Math.round(book.progress?.percentage || 0)}</span>
+                <span className="text-[10px] font-black text-primary opacity-60">
+                    %{Math.round(activePanel === 'primary' ? (book.progress?.percentage || 0) : (secondaryBook?.progress?.percentage || 0))}
+                </span>
                 <div className="w-32 h-1.5 bg-secondary/30 rounded-full cursor-pointer hover:scale-y-150 transition-all"
                     onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = e.clientX - rect.left;
                         const pct = (x / rect.width);
                         const targetPage = Math.max(1, Math.round(pct * totalPages));
-                        handleLocationChange(String(targetPage), pct * 100);
+                        if (activePanel === 'primary') handleLocationChange(String(targetPage), pct * 100);
+                        else handleSecondaryLocationChange(String(targetPage), pct * 100);
                     }}>
-                    <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${book.progress?.percentage || 0}%` }} />
+                    <div className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${activePanel === 'primary' ? (book.progress?.percentage || 0) : (secondaryBook?.progress?.percentage || 0)}%` }} />
                 </div>
-                <span className="text-[10px] font-black tabular-nums text-primary">{book.progress?.page || 1} / {totalPages || '?'}</span>
+                <span className="text-[10px] font-black tabular-nums text-primary">{activePanel === 'primary' ? (book.progress?.page || 1) : (secondaryBook?.progress?.page || 1)}</span>
             </div>
 
-            {/* Book Selection Dialog for Split Screen */}
+            {/* Book Selection Dialog */}
             <Dialog open={isBookSelectOpen} onOpenChange={setIsBookSelectOpen}>
                 <DialogContent className="sm:max-w-[600px] bg-background/95 backdrop-blur-2xl border-primary/10 rounded-[32px] p-0 overflow-hidden shadow-2xl">
                     <DialogHeader className="p-8 pb-4">
@@ -440,13 +529,6 @@ const ReaderPage: React.FC = () => {
                                         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/20 to-secondary p-2 text-center">
                                             <BookOpen className="h-6 w-6 text-primary/40 mb-2" />
                                             <span className="text-[8px] font-bold leading-tight opacity-50 line-clamp-2">{cleanTitle(b.title)}</span>
-                                        </div>
-                                    )}
-                                    {secondaryBookId === b.id && (
-                                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                                            <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg">
-                                                <BookmarkPlus className="h-4 w-4" />
-                                            </div>
                                         </div>
                                     )}
                                 </div>

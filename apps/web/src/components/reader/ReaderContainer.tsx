@@ -21,6 +21,12 @@ interface ReaderContainerProps {
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
     onOpenSettings?: () => void;
+
+    // New split screen props
+    activePanel?: 'primary' | 'secondary';
+    onPanelActivate?: (panel: 'primary' | 'secondary') => void;
+    secondaryPageNumber?: number;
+    onSecondaryLocationChange?: (loc: string, pct: number) => void;
 }
 
 export interface ReaderContainerRef {
@@ -105,9 +111,13 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
                     scale={props.scale}
                     secondaryBook={secondaryBook}
                     secondaryData={secondaryData}
+                    secondaryPageNumber={props.secondaryPageNumber}
+                    onSecondaryLocationChange={props.onSecondaryLocationChange}
                     onTextSelected={props.onTextSelected}
                     annotations={props.annotations}
                     onOpenSettings={props.onOpenSettings}
+                    activePanel={props.activePanel}
+                    onPanelActivate={props.onPanelActivate}
                 />;
 
             default:
