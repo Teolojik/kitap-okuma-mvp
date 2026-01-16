@@ -24,9 +24,6 @@ export default function DiscoverPage() {
         if (!query.trim()) return;
 
         setLoading(true);
-        // Simulate fetch from multiple sources
-        // In real world: props to real API endpoints
-        // Here we stick to refined mock service which now simulates "fetching"
         try {
             const data = await searchBooks(query);
             setResults(data);
@@ -57,25 +54,20 @@ export default function DiscoverPage() {
         const toastId = toast.loading(`${selectedBook.title} indiriliyor... %0`);
 
         try {
-            // 1. Fetch File (Simulation)
-            // In a real scenario we would fetch(selectedBook.downloadUrl) via proxy
-            // Mocking the progress
             await new Promise(r => setTimeout(r, 1000));
             toast.loading(`${selectedBook.title} indiriliyor... %45`, { id: toastId });
 
             await new Promise(r => setTimeout(r, 1000));
 
-            // Fix: Fetch a REAL valid EPUB file so epub.js can actually render it
-            // Using a public domain sample (Alice's Adventures in Wonderland)
+            // DEMO: Gerçek EPUB indiriliyor (Alice in Wonderland)
             const sampleEpubUrl = 'https://react-reader.metabits.no/files/alice.epub';
             const response = await fetch(sampleEpubUrl);
             const blob = await response.blob();
 
-            const file = new File([blob], `${selectedBook.title}.${selectedBook.format}`, { type: 'application/epub+zip' });
+            const file = new File([blob], `${selectedBook.title}.epub`, { type: 'application/epub+zip' });
 
             toast.loading(`${selectedBook.title} kütüphaneye işleniyor...`, { id: toastId });
 
-            // 2. Upload to Supabase/Store
             await uploadBook(file, {
                 title: selectedBook.title,
                 author: selectedBook.author,
@@ -156,7 +148,7 @@ export default function DiscoverPage() {
                                 <div className="flex gap-2 mt-4 pt-4 border-t border-border/20">
                                     <Button size="sm" className="rounded-xl flex-1 h-10 font-bold tracking-tight" onClick={() => startDownload(book)}>
                                         <Download className="h-4 w-4 mr-2" />
-                                        Kütüphaneye Ekle
+                                        İndir
                                     </Button>
                                     <Button size="sm" variant="outline" asChild className="rounded-xl h-10 w-10 p-0 border-border/50 text-muted-foreground">
                                         <a href={book.downloadUrl} target="_blank" rel="noreferrer">
@@ -178,20 +170,27 @@ export default function DiscoverPage() {
             )}
 
             <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-                <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8 max-w-m">
+                <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8 max-w-md bg-background/95 backdrop-blur-xl">
                     <DialogHeader className="space-y-4">
-                        <div className="h-16 w-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <div className="h-16 w-16 bg-orange-100 dark:bg-orange-900/20 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-2">
                             <AlertTriangle className="h-8 w-8" />
                         </div>
-                        <DialogTitle className="text-2xl font-serif text-center">Yasal Uyarı</DialogTitle>
-                        <DialogDescription className="text-center text-base font-sans">
-                            Bu kitap <strong>açık kaynaklı kitap arşivlerinden</strong> getirilmektedir.
-                            Lütfen telif haklarına saygı gösterdiğinizden emin olun.
+                        <DialogTitle className="text-2xl font-serif text-center">Demo İçerik Uyarısı</DialogTitle>
+                        <DialogDescription className="text-center text-sm font-sans space-y-2 text-muted-foreground">
+                            <p>
+                                Şu anda <strong>Demo Modu</strong>ndasınız. Telif hakları nedeniyle seçtiğiniz
+                                <span className="font-bold text-foreground mx-1">"{selectedBook?.title}"</span>
+                                kitabı yerine, örnek olarak public domain (kamu malı) bir klasik eser indirilecektir.
+                            </p>
+                            <div className="bg-secondary/50 p-3 rounded-xl text-xs mt-4">
+                                <p className="font-semibold text-foreground">İndirilecek Örnek Kitap:</p>
+                                <p>Alice Harikalar Diyarında (EPUB)</p>
+                            </div>
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="sm:justify-center flex-col sm:flex-row gap-2 mt-6">
-                        <Button variant="ghost" className="rounded-2xl px-8 h-12 font-bold" onClick={() => setIsDialogOpen(false)}>Vazgeç</Button>
-                        <Button variant="destructive" className="rounded-2xl px-8 h-12 font-bold shadow-xl shadow-red-500/20" onClick={confirmDownload}>Onaylıyorum ve İndir</Button>
+                        <Button variant="ghost" className="rounded-2xl px-8 h-12 font-bold hover:bg-secondary" onClick={() => setIsDialogOpen(false)}>Vazgeç</Button>
+                        <Button className="rounded-2xl px-8 h-12 font-bold shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 text-white" onClick={confirmDownload}>Anladım, İndir</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

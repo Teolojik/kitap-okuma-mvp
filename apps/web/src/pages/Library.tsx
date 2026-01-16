@@ -251,13 +251,20 @@ export default function LibraryPage() {
                     </div>
                     <Card className="rounded-[2.5rem] border-none bg-card/30 shadow-sm overflow-hidden p-6 ring-1 ring-border/30">
                         <div className="flex justify-between text-center">
-                            {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((day, i) => {
-                                const isToday = i === new Date().getDay() - 1;
+                            {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((dayLabel, i) => {
+                                const today = new Date();
+                                const currentDay = today.getDay(); // 0(Sun) - 6(Sat)
+                                const mondayOffset = currentDay === 0 ? 6 : currentDay - 1; // Days from Monday
+                                const date = new Date(today);
+                                date.setDate(today.getDate() - mondayOffset + i);
+
+                                const isToday = date.toDateString() === today.toDateString();
+
                                 return (
                                     <div key={i} className="flex flex-col gap-3 items-center">
-                                        <span className="text-[9px] text-muted-foreground/60 font-black">{day}</span>
+                                        <span className="text-[9px] text-muted-foreground/60 font-black">{dayLabel}</span>
                                         <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isToday ? 'bg-primary text-primary-foreground shadow-lg scale-110' : 'text-foreground/70'}`}>
-                                            {new Date().getDate() - (new Date().getDay() - 1) + i}
+                                            {date.getDate()}
                                         </div>
                                     </div>
                                 )
