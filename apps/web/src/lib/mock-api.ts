@@ -1,4 +1,6 @@
 
+import { findCoverImage } from './discovery-service';
+
 export interface Book {
     id: string;
     user_id: string;
@@ -115,7 +117,7 @@ export const MockAPI = {
 
             const format = (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'epub';
 
-            // Rastgele güzel bir kapak rengi seçelim
+            // Rastgele güzel bir kapak rengi seçelim (Fallback)
             const gradients = [
                 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=600&fit=crop',
                 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&h=600&fit=crop',
@@ -124,13 +126,29 @@ export const MockAPI = {
             ];
             const randomCover = gradients[Math.floor(Math.random() * gradients.length)];
 
+            // OTO-KAPAK: Eğer kapak yoksa, kitap isminden bulmaya çalış
+            let finalCover = metadata.cover_url;
+            if (!finalCover) {
+                try {
+                    const searchTerm = `${metadata.title || file.name} ${metadata.author || ''}`.trim();
+                    console.log("Auto-fetching cover for:", searchTerm);
+                    const foundCover = await findCoverImage(searchTerm);
+                    if (foundCover) {
+                        finalCover = foundCover;
+                        console.log("Cover found:", finalCover);
+                    }
+                } catch (e) {
+                    console.error("Auto cover fetch failed", e);
+                }
+            }
+
             const newBook: Book = {
                 id,
                 user_id: user?.id || 'anon',
                 title: metadata.title || file.name,
                 author: metadata.author || 'Bilinmiyor',
                 file_url: `local://${id}`,
-                cover_url: metadata.cover_url || randomCover, // Varsayılan kapak
+                cover_url: finalCover || randomCover, // Bulunan kapak veya random gradient
                 progress: { percentage: 0, page: 1 },
                 last_read: new Date().toISOString(),
                 mode_pref: 'single',
@@ -159,7 +177,7 @@ export const MockAPI = {
     }
 };
 
-// HELPER EXPORTS - Bunlar çok önemli
+// HELPER EXPORTS
 export const getBooks = () => MockAPI.books.list();
 export const deleteBook = (id: string) => MockAPI.books.delete(id);
 export const updateProgress = (bookId: string, progress: any) => MockAPI.books.updateProgress(bookId, progress);

@@ -7,7 +7,7 @@ export interface SearchResult {
     source: string;
     format: 'epub' | 'pdf';
     size?: string;
-    downloadUrl: string; // This will now point to external search or demo download
+    downloadUrl: string;
     description?: string;
     publishedDate?: string;
     publisher?: string;
@@ -19,11 +19,34 @@ export interface SearchResult {
     };
 }
 
+// Helper to get high-res cover
+const getHighResCover = (volumeInfo: any) => {
+    let cover = volumeInfo.imageLinks?.thumbnail || volumeInfo.imageLinks?.smallThumbnail;
+    if (cover) {
+        cover = cover.replace('http://', 'https://');
+        cover = cover.replace('&zoom=1', '&zoom=0');
+    }
+    return cover;
+};
+
+// Sadece kapak bulmak için (Manuel yüklemelerde)
+export const findCoverImage = async (query: string): Promise<string | undefined> => {
+    try {
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1&printType=books`);
+        const data = await response.json();
+        if (data.items && data.items.length > 0) {
+            return getHighResCover(data.items[0].volumeInfo);
+        }
+    } catch (e) {
+        console.error("Cover fetch error:", e);
+    }
+    return undefined;
+};
+
 export const searchBooks = async (query: string): Promise<SearchResult[]> => {
     if (!query) return [];
 
     try {
-        // Google Books API (No key required for public search)
         const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&printType=books`);
         const data = await response.json();
 
@@ -31,16 +54,7 @@ export const searchBooks = async (query: string): Promise<SearchResult[]> => {
 
         return data.items.map((item: any) => {
             const info = item.volumeInfo;
-
-            // High res cover logic: replace zoom=1 with zoom=0 or remove it
-            let cover = info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail;
-            if (cover) {
-                // Force HTTPS
-                cover = cover.replace('http://', 'https://');
-                // Try to get higher resolution
-                // Note: content=true sometimes helps with full resolution
-                cover = cover.replace('&zoom=1', '&zoom=0');
-            }
+            const cover = getHighResCover(info);
 
             const isbn = info.industryIdentifiers?.find((id: any) => id.type === 'ISBN_13')?.identifier ||
                 info.industryIdentifiers?.find((id: any) => id.type === 'ISBN_10')?.identifier;
@@ -53,17 +67,18 @@ export const searchBooks = async (query: string): Promise<SearchResult[]> => {
                 author: info.authors ? info.authors[0] : 'Bilinmeyen Yazar',
                 cover_url: cover,
                 source: 'Google Books',
-                format: 'epub', // Default assumption for UI
+                format: 'epub',
                 size: 'Bilinmiyor',
-                downloadUrl: 'demo-download', // Handled by Discover.tsx
+                downloadUrl: 'demo-download',
                 description: info.description,
                 publishedDate: info.publishedDate,
                 publisher: info.publisher,
                 isbn: isbn,
                 language: info.language,
+                // GÜNCELLENMİŞ LİNKLER
                 externalLinks: {
-                    annasArchive: `https://annas-archive.org/search?q=${searchQuerySafe}`,
-                    libgen: `https://libgen.is/search.php?req=${searchQuerySafe}`
+                    annasArchive: `https://annas-archive.li/search?q=${searchQuerySafe}`,
+                    libgen: `https://libgen.li/index.php?req=${searchQuerySafe}&columns%5B%5D=t&columns%5B%5D=a&columns%5B%5D=s&columns%5B%5D=y&columns%5B%5D=p&columns%5B%5D=i&objects%5B%5D=f&objects%5B%5D=e&objects%5B%5D=s&objects%5B%5D=a&objects%5B%5D=p&objects%5B%5D=w&topics%5B%5D=l&topics%5B%5D=c&topics%5B%5D=f&topics%5B%5D=a&topics%5B%5D=m&topics%5B%5D=r&topics%5B%5D=s&res=25`
                 }
             };
         });
