@@ -3,11 +3,11 @@ import { useBookStore, useAuthStore } from '@/stores/useStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Plus, BookOpen, Search, ArrowRight, Calendar, Users, Star, ChevronLeft, ChevronRight, Trash } from 'lucide-react';
+import { Plus, BookOpen, Search, ArrowRight, Calendar, Star, ChevronLeft, ChevronRight, Trash, Upload, Library } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { parseBookFilename, cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
 
 export default function LibraryPage() {
@@ -40,191 +40,244 @@ export default function LibraryPage() {
         book.author.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const latestBook = filteredBooks.length > 0 ? filteredBooks[0] : null;
+    // Sort books by last read or added
+    const sortedBooks = [...filteredBooks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const latestBook = sortedBooks.length > 0 ? sortedBooks[0] : null;
 
     return (
-        <div className="flex flex-col lg:flex-row gap-12 pb-20 lg:pb-0">
+        <div className="flex flex-col lg:flex-row gap-8 pb-20 lg:pb-0 h-full">
             {/* Left Section: Main Content */}
-            <div className="flex-1 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                {/* Search Bar */}
-                <div className="relative group max-w-2xl">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Kitaplığında ara..."
-                        className="w-full bg-card/50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-primary/20 transition-all outline-none text-sm placeholder:text-muted-foreground/60 shadow-sm"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
+            <div className="flex-1 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-                {/* Greeting & Hero */}
-                <div className="space-y-4">
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-5xl font-serif font-medium leading-tight text-foreground/90"
-                    >
-                        Gününüz nasıl geçiyor,<br />{user?.name?.split(' ')[0] || 'Okur'}?
-                    </motion.h1>
-                    <p className="text-muted-foreground text-lg max-w-lg leading-relaxed font-sans">
-                        Kaldığınız yerden devam etmeye ne dersiniz? En son okuduğunuz kitap sizi bekliyor.
-                    </p>
-                    <div className="flex gap-4 pt-2">
-                        {latestBook && (
-                            <Link to={`/read/${latestBook.id}`}>
-                                <Button className="rounded-2xl h-14 px-8 text-lg font-medium shadow-xl shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
-                                    Okumaya Devam Et <ArrowRight className="ml-2 h-5 w-5" />
-                                </Button>
-                            </Link>
-                        )}
-                        <Button
-                            variant="secondary"
-                            className="rounded-2xl h-14 px-8 text-lg font-medium border-none bg-card/50 hover:bg-card/80 transition-all"
-                            onClick={() => fileInputRef.current?.click()}
+                {/* Header & Search */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                    <div>
+                        <motion.h1
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-3xl font-serif font-medium text-foreground/90 tracking-tight"
                         >
-                            <Plus className="mr-2 h-5 w-5" /> Kitap Yükle
-                        </Button>
+                            İyi okumalar, <span className="text-primary italic">{user?.name || 'Misafir'}</span>
+                        </motion.h1>
+                        <p className="text-muted-foreground text-sm mt-1">
+                            Kütüphanende {books.length} kitap seni bekliyor.
+                        </p>
+                    </div>
+
+                    <div className="relative group w-full sm:w-72">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <input
+                            type="text"
+                            placeholder="Kitap ara..."
+                            className="w-full bg-card border border-border/40 rounded-full py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-primary/10 focus:border-primary/30 transition-all outline-none text-sm placeholder:text-muted-foreground/60 shadow-sm"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
                 </div>
 
-                {/* Popular Now - Horizontal Scroll */}
-                <section className="space-y-6">
-                    <div className="flex justify-between items-end">
-                        <h2 className="text-2xl font-serif font-semibold">Senin İçin Seçtiklerimiz</h2>
-                        <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 border border-border/50"><ChevronLeft className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 border border-border/50"><ChevronRight className="h-4 w-4" /></Button>
+                {/* Continue Reading Card (Compact) */}
+                {latestBook && !searchQuery && (
+                    <div className="bg-gradient-to-r from-secondary/50 to-card border border-border/50 rounded-3xl p-6 flex flex-col sm:flex-row gap-6 items-center shadow-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/10 transition-colors" />
+
+                        <div className="w-24 shrink-0 aspect-[2/3] rounded-lg shadow-md overflow-hidden relative bg-muted">
+                            {latestBook.cover_url ? (
+                                <img src={latestBook.cover_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-primary/20 text-primary">
+                                    <BookOpen className="h-8 w-8" />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 text-center sm:text-left z-10">
+                            <h3 className="text-lg font-bold font-serif mb-1 line-clamp-1">{cleanTitle(latestBook.title)}</h3>
+                            <p className="text-sm text-muted-foreground mb-4">{cleanAuthor(latestBook.author)}</p>
+                            <div className="flex items-center justify-center sm:justify-start gap-4">
+                                <Link to={`/read/${latestBook.id}`}>
+                                    <Button size="sm" className="rounded-full px-6 shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+                                        Devam Et <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                                    </Button>
+                                </Link>
+                                <div className="text-xs font-medium text-muted-foreground bg-background/50 px-3 py-1.5 rounded-full border border-border/50">
+                                    Sayfa {latestBook.progress?.page || 1}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="flex gap-6 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2 mask-fade-right">
-                        {filteredBooks.length > 0 ? filteredBooks.map((book) => (
-                            <motion.div
-                                key={book.id}
-                                whileHover={{ y: -10 }}
-                                className="min-w-[180px] group cursor-pointer"
-                            >
-                                <Link to={`/book/${book.id}`}>
-                                    <div className="aspect-[2/3] rounded-3xl overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] group-hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] transition-all duration-500 bg-secondary relative">
-                                        <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button
-                                                variant="destructive"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-full shadow-lg"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    if (window.confirm('Bu kitabı silmek istediğinize emin misiniz?')) {
-                                                        deleteBook(book.id);
-                                                        toast.success('Kitap silindi');
-                                                    }
-                                                }}
-                                            >
-                                                <Trash className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        {book.cover_url ? (
-                                            <img
-                                                src={book.cover_url}
-                                                alt={book.title}
-                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                onError={(e) => {
-                                                    // Fallback to placeholder if image fails
-                                                    e.currentTarget.style.display = 'none';
-                                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                                }}
-                                            />
-                                        ) : null}
+                )}
 
-                                        {/* Placeholder if no cover or error */}
-                                        <div className={`w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-primary/80 to-primary/40 text-primary-foreground ${book.cover_url ? 'hidden' : ''} absolute top-0 left-0`}>
-                                            <BookOpen className="h-12 w-12 text-white/50 mb-4" />
-                                            <h3 className="font-serif font-bold text-center leading-tight mb-2 text-white drop-shadow-md line-clamp-3">{book.title}</h3>
-                                            <p className="text-xs font-sans text-white/80 uppercase tracking-widest text-center">{book.author}</p>
+                {/* Library Grid */}
+                <section className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-xl font-serif font-semibold flex items-center gap-2">
+                            <Library className="h-5 w-5 text-primary/70" />
+                            Kitaplığım
+                        </h2>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="rounded-full h-9 px-4 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary"
+                        >
+                            <Upload className="mr-2 h-3.5 w-3.5" /> KİTAP EKLE
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
+                        <AnimatePresence>
+                            {sortedBooks.length > 0 ? sortedBooks.map((book) => (
+                                <motion.div
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    key={book.id}
+                                    className="group relative flex flex-col items-center sm:items-start"
+                                >
+                                    <Link to={`/read/${book.id}`} className="w-full">
+                                        {/* Book Cover Container */}
+                                        <div className="w-full aspect-[2/3.2] rounded-xl overflow-hidden shadow-md group-hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)] transition-all duration-500 bg-secondary relative transform group-hover:-translate-y-2">
+
+                                            {/* Gerçek Kapak veya Placeholder */}
+                                            {book.cover_url ? (
+                                                <img
+                                                    src={book.cover_url}
+                                                    alt={book.title}
+                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                                    }}
+                                                />
+                                            ) : null}
+
+                                            {/* ZARİF Placeholder */}
+                                            <div className={`w-full h-full flex flex-col justify-between p-3 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-white/20 ${book.cover_url ? 'hidden' : 'flex'} absolute inset-0`}>
+                                                <div className="w-full h-1 bg-primary/20 rounded-full" />
+                                                <div className="text-center">
+                                                    <h3 className="font-serif font-bold text-xs leading-tight text-foreground/80 line-clamp-3 mb-1">{cleanTitle(book.title)}</h3>
+                                                    <p className="text-[9px] font-sans font-medium text-muted-foreground uppercase tracking-wider line-clamp-1">{cleanAuthor(book.author)}</p>
+                                                </div>
+                                                <div className="flex justify-center">
+                                                    <BookOpen className="h-6 w-6 text-primary/30" />
+                                                </div>
+                                            </div>
+
+                                            {/* Hover Action: Delete */}
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                                <Button
+                                                    variant="destructive"
+                                                    size="icon"
+                                                    className="h-7 w-7 rounded-full shadow-lg bg-red-500/90 hover:bg-red-600 ring-2 ring-white/20"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        if (window.confirm('Bu kitabı silmek istediğinize emin misiniz?')) {
+                                                            deleteBook(book.id);
+                                                            toast.success('Kitap silindi');
+                                                        }
+                                                    }}
+                                                >
+                                                    <Trash className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+
+                                            {/* Reading Progress Overlay (If started) */}
+                                            {book.progress && book.progress.percentage > 0 && (
+                                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-secondary/50">
+                                                    <div className="h-full bg-primary" style={{ width: `${book.progress.percentage}%` }} />
+                                                </div>
+                                            )}
                                         </div>
+                                    </Link>
+
+                                    {/* Book Info below cover */}
+                                    <div className="mt-3 w-full text-center sm:text-left space-y-0.5 px-0.5">
+                                        <h3 className="font-bold text-[13px] leading-tight line-clamp-2 text-foreground/90 group-hover:text-primary transition-colors cursor-pointer" title={book.title}>
+                                            <Link to={`/read/${book.id}`}>{cleanTitle(book.title)}</Link>
+                                        </h3>
+                                        <p className="text-[11px] font-medium text-muted-foreground truncate">{cleanAuthor(book.author)}</p>
                                     </div>
-                                    <div className="mt-4 space-y-1">
-                                        <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">{cleanTitle(book.title)}</h3>
-                                        <p className="text-xs text-muted-foreground">{cleanAuthor(book.author)}</p>
+                                </motion.div>
+                            )) : (
+                                <div className="col-span-full py-24 text-center">
+                                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-secondary/30 mb-6">
+                                        <Library className="h-10 w-10 text-muted-foreground/30" />
                                     </div>
-                                </Link>
-                            </motion.div>
-                        )) : (
-                            <div className="w-full py-20 text-center text-muted-foreground border-2 border-dashed rounded-[2.5rem] bg-secondary/10">
-                                <Search className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                                <p>Aradığınız kitap bulunamadı.</p>
-                            </div>
-                        )}
+                                    <h3 className="text-lg font-semibold text-foreground/80 mb-2">Henüz kitabın yok</h3>
+                                    <p className="text-muted-foreground max-w-sm mx-auto mb-8 text-sm">
+                                        Kütüphanen boş görünüyor. Hemen bir EPUB veya PDF yükleyerek okumaya başla.
+                                    </p>
+                                    <Button
+                                        className="rounded-full px-8 shadow-lg shadow-primary/20"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Upload className="mr-2 h-4 w-4" /> İlk Kitabını Yükle
+                                    </Button>
+                                </div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </section>
 
-                {/* Internal Hidden Input */}
                 <input type="file" ref={fileInputRef} className="hidden" accept=".epub,.pdf" onChange={handleFileUpload} />
             </div>
 
-            {/* Right Section: Sidebar Widgets */}
-            <div className="w-full lg:w-[320px] space-y-12 animate-in fade-in slide-in-from-right-4 duration-1000">
-                {/* User Stats/Profile mini */}
-                <div className="flex items-center gap-4 bg-card/30 p-4 rounded-3xl border border-border/30">
-                    <Avatar className="h-12 w-12 border-2 border-primary/20">
-                        <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id || 'default'}`} />
-                        <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
+            {/* Right Section: Sidebar (User & Stats) */}
+            <div className="hidden lg:block w-[300px] space-y-10 animate-in fade-in slide-in-from-right-4 duration-1000">
+                {/* Profile Card */}
+                <div className="flex items-center gap-4 bg-card/40 p-5 rounded-3xl border border-border/40 shadow-sm backdrop-blur-sm">
+                    <Avatar className="h-14 w-14 border-2 border-primary/10 shadow-sm">
+                        <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user?.id || 'd1'}&backgroundColor=e5e7eb`} />
+                        <AvatarFallback>{user?.name?.[0] || 'O'}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                        <p className="text-sm font-semibold">{user?.name || 'Değerli Okur'}</p>
-                        <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Aktif Üyelik</span>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate text-foreground/90">{user?.name || 'Misafir Okur'}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Çevrimiçi</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Schedule Reading */}
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-serif font-semibold">Okuma Takvimi</h2>
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><ArrowRight className="h-4 w-4" /></Button>
+                {/* Simplified Calendar */}
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Calendar className="h-4 w-4" /> Takvim
+                        </h2>
                     </div>
-                    <Card className="rounded-[2.5rem] border-none bg-card/50 shadow-sm overflow-hidden p-6">
-                        <div className="flex justify-between text-center pb-2">
-                            {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((day, i) => (
-                                <div key={i} className="flex flex-col gap-2">
-                                    <span className="text-[10px] text-muted-foreground font-bold">{day}</span>
-                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${i === new Date().getDay() - 1 ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'hover:bg-secondary'}`}>
-                                        {new Date().getDate() - (new Date().getDay() - 1) + i}
+                    <Card className="rounded-[2.5rem] border-none bg-card/30 shadow-sm overflow-hidden p-6 ring-1 ring-border/30">
+                        <div className="flex justify-between text-center">
+                            {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((day, i) => {
+                                const isToday = i === new Date().getDay() - 1;
+                                return (
+                                    <div key={i} className="flex flex-col gap-3 items-center">
+                                        <span className="text-[9px] text-muted-foreground/60 font-black">{day}</span>
+                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isToday ? 'bg-primary text-primary-foreground shadow-lg scale-110' : 'text-foreground/70'}`}>
+                                            {new Date().getDate() - (new Date().getDay() - 1) + i}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     </Card>
                 </div>
 
-                {/* Reader Friends */}
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-serif font-semibold">Topluluk Hareketleri</h2>
-                        <Users className="h-5 w-5 text-muted-foreground" />
+                {/* Reading Stats Mini */}
+                <div className="bg-primary/5 rounded-[2.5rem] p-6 border border-primary/10 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <Star className="w-32 h-32" />
                     </div>
-                    <div className="space-y-6 relative before:absolute before:left-6 before:top-2 before:bottom-2 before:w-px before:bg-border/50">
-                        {[
-                            { name: 'Cem Ömer', action: 'Harika bir eser!', book: 'Simyacı', time: 'Az önce' },
-                            { name: 'Elif Yılmaz', action: 'Farklı bir bakış açısı.', book: 'Kürk Mantolu Madonna', time: '12 dk önce' }
-                        ].map((friend, i) => (
-                            <div key={i} className="flex gap-4 relative">
-                                <Avatar className="h-12 w-12 border-4 border-background z-10 shadow-sm">
-                                    <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${friend.name}`} />
-                                    <AvatarFallback>{friend.name[0]}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 pt-1">
-                                    <p className="text-sm font-semibold">{friend.name}</p>
-                                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1">
-                                        "{friend.action}" <span className="text-primary/80 font-medium">@{friend.book}</span>
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground/60 mt-2">{friend.time}</p>
-                                </div>
-                            </div>
-                        ))}
+                    <h3 className="text-lg font-serif font-bold text-primary mb-1">Haftalık Hedef</h3>
+                    <p className="text-xs text-muted-foreground mb-4">Okuma serini koruyorsun!</p>
+                    <div className="flex items-end gap-2 mb-2">
+                        <span className="text-4xl font-bold tabular-nums text-foreground/90">3</span>
+                        <span className="text-sm font-medium text-muted-foreground mb-1.5">/ 5 Kitap</span>
                     </div>
+                    <Progress value={60} className="h-2 bg-primary/10" />
                 </div>
             </div>
         </div>
