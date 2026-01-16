@@ -1,4 +1,4 @@
-// Google Books API Service for high quality covers and metadata
+// Google Books API & OpenLibrary API Service
 export interface SearchResult {
     id: string;
     title: string;
@@ -19,8 +19,8 @@ export interface SearchResult {
     };
 }
 
-// Helper to get high-res cover
-const getHighResCover = (volumeInfo: any) => {
+// Helper to get high-res cover from Google
+const getHighResCoverGoogle = (volumeInfo: any) => {
     let cover = volumeInfo.imageLinks?.thumbnail || volumeInfo.imageLinks?.smallThumbnail;
     if (cover) {
         cover = cover.replace('http://', 'https://');
@@ -29,38 +29,62 @@ const getHighResCover = (volumeInfo: any) => {
     return cover;
 };
 
-// Geliştirilmiş Kapak Bulma (Gelişmiş Filtreleme + İlk 3 Sonuç)
-export const findCoverImage = async (query: string, author?: string): Promise<string | undefined> => {
+// OpenLibrary Cover Search
+const searchOpenLibrary = async (title: string, author?: string): Promise<string | undefined> => {
     try {
-        let apiUrl = `https://www.googleapis.com/books/v1/volumes?q=`;
-
-        // Eğer yazar bilgisi varsa nokta atışı filtreleme yap
-        if (author && author.length > 2 && !author.includes('Bilinmiyor')) {
-            // Google Books Advanced Search Operators: intitle ve inauthor
-            // Örn: intitle:Var Mısın+inauthor:Doğan Cüceloğlu
-            const q = `intitle:${encodeURIComponent(query)}+inauthor:${encodeURIComponent(author)}`;
-            apiUrl += `${q}&maxResults=3&printType=books`;
-        } else {
-            // Fallback: Sadece isme göre ara (ama tırnak içine alarak tam eşleşme zorla şansını dene)
-            apiUrl += `${encodeURIComponent(query)}&maxResults=5&printType=books`;
+        // OpenLibrary Search API
+        // q=title+author
+        let query = `title=${encodeURIComponent(title)}`;
+        if (author && !author.includes('Bilinmiyor')) {
+            query += `&author=${encodeURIComponent(author)}`;
         }
 
-        const response = await fetch(apiUrl);
+        const response = await fetch(`https://openlibrary.org/search.json?${query}&limit=5`);
+        const data = await response.json();
+
+        if (data.docs && data.docs.length > 0) {
+            // Cover ID'si olan ilk kitabı bul
+            const bookWithCover = data.docs.find((doc: any) => doc.cover_i);
+            if (bookWithCover) {
+                // Large boyutta kapak URL'i oluştur
+                return `https://covers.openlibrary.org/b/id/${bookWithCover.cover_i}-L.jpg`;
+            }
+        }
+    } catch (e) {
+        console.error("OpenLibrary Error:", e);
+    }
+    return undefined;
+};
+
+// Geliştirilmiş Kapak Bulma (Google Books -> OpenLibrary Fallback)
+export const findCoverImage = async (query: string, author?: string): Promise<string | undefined> => {
+    // 1. STRATEJİ: Google Books (Detaylı Arama)
+    try {
+        let googleQuery = `intitle:${encodeURIComponent(query)}`;
+        if (author && author.length > 2 && !author.includes('Bilinmiyor')) {
+            googleQuery += `+inauthor:${encodeURIComponent(author)}`;
+        }
+
+        // Önce Google'ı dene
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${googleQuery}&maxResults=3&printType=books`);
         const data = await response.json();
 
         if (data.items && data.items.length > 0) {
             for (const item of data.items) {
-                const cover = getHighResCover(item.volumeInfo);
-                // Ek kontrol: Kitap adı eşleşiyor mu? (Çok alakasız sonuçları elemek için basit bir kontrol)
-                // const titleMatch = item.volumeInfo.title.toLowerCase().includes(query.toLowerCase().split(' ')[0]); 
-                if (cover) {
-                    return cover;
-                }
+                const cover = getHighResCoverGoogle(item.volumeInfo);
+                if (cover) return cover;
             }
         }
     } catch (e) {
-        console.error("Cover fetch error:", e);
+        console.error("Google Books Error:", e);
     }
+
+    // 2. STRATEJİ: OpenLibrary (Fallback)
+    // Google bulamazsa veya hata verirse buraya düşer
+    console.log("Google Books failed, trying OpenLibrary...");
+    const olCover = await searchOpenLibrary(query, author);
+    if (olCover) return olCover;
+
     return undefined;
 };
 
@@ -75,7 +99,7 @@ export const searchBooks = async (query: string): Promise<SearchResult[]> => {
 
         return data.items.map((item: any) => {
             const info = item.volumeInfo;
-            const cover = getHighResCover(info);
+            const cover = getHighResCoverGoogle(info);
 
             const isbn = info.industryIdentifiers?.find((id: any) => id.type === 'ISBN_13')?.identifier ||
                 info.industryIdentifiers?.find((id: any) => id.type === 'ISBN_10')?.identifier;
