@@ -45,7 +45,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     const { settings } = useBookStore();
     const [numPages, setNumPages] = useState<number>(0);
     const [internalPage, setInternalPage] = useState(1);
-    const [internalScale, setInternalScale] = useState(1.0);
+    const [internalScale, setInternalScale] = useState(1.2);
     const [safeUrl, setSafeUrl] = useState<string | null>(null);
 
     const page = propPageNumber || internalPage;
@@ -124,13 +124,13 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
     return (
         <div className="flex flex-col h-full bg-transparent overflow-hidden relative selection:bg-primary/30">
-            <div className="flex-1 overflow-auto flex justify-center pt-8 pb-32 no-scrollbar scroll-smooth">
+            <div className="flex-1 overflow-auto flex justify-center pt-4 pb-20 no-scrollbar scroll-smooth">
                 <Document
                     file={safeUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     options={options}
                     loading={<div className="flex items-center justify-center p-20 font-serif italic text-muted-foreground animate-pulse">Sayfa Yapısı Oluşturuluyor...</div>}
-                    className="flex gap-6 lg:gap-16 items-start"
+                    className="flex gap-4 lg:gap-8 items-start"
                 >
                     <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden`}>
                         <Page

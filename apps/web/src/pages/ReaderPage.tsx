@@ -471,8 +471,8 @@ const ReaderPage: React.FC = () => {
             </div>
 
             {/* Main Reader Container */}
-            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full p-4 sm:p-8 min-h-0">
-                <div className={`w-full h-full max-w-[1600px] transition-all duration-500 rounded-lg shadow-2xl bg-white ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
+            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full min-h-0 bg-background/50">
+                <div className={`w-full h-full transition-all duration-500 ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
                     <ReaderContainer
                         ref={readerRef}
                         book={book}
