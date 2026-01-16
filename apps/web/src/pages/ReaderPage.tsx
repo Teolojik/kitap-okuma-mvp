@@ -368,20 +368,31 @@ const ReaderPage: React.FC = () => {
                         <Separator orientation="vertical" className="h-6 mx-1 opacity-20 hidden sm:block" />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="rounded-full px-4 h-9 border border-primary/20 bg-primary/5 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm hidden sm:flex">
-                                    <Columns className="h-3.5 w-3.5 mr-2 opacity-70" />
-                                    {settings.readingMode === 'single' ? 'TEK' : 'ÇİFT'}
-                                    <ChevronDown className="h-3 w-3 ml-2 opacity-50" />
+                                <Button variant="outline" className="w-[240px] h-10 px-4 justify-between border-2 border-primary/20 bg-background/50 backdrop-blur-md rounded-xl text-xs font-bold uppercase tracking-widest hover:border-primary hover:bg-primary/5 transition-all shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <Columns className="h-4 w-4 text-primary" />
+                                        <span>
+                                            {settings.readingMode === 'single' && 'Tek Sayfa Modu'}
+                                            {settings.readingMode === 'double-animated' && 'Çift (Animasyonlu)'}
+                                            {settings.readingMode === 'double-static' && 'Çift (Sabit)'}
+                                            {settings.readingMode === 'split' && 'Split Screen'}
+                                        </span>
+                                    </div>
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center" className="w-[200px] rounded-2xl p-2 bg-card/95 backdrop-blur-2xl shadow-2xl border-border/20">
+                            <DropdownMenuContent align="end" className="w-[240px] rounded-xl p-2 bg-card/95 backdrop-blur-2xl shadow-2xl border-border/20 z-[100]">
                                 {[
-                                    { id: 'single', label: 'Tek Sayfa (Klasik)' },
-                                    { id: 'double-animated', label: 'Çift Sayfa (Mekanik)' },
-                                    { id: 'double-static', label: 'Çift Sayfa (Sabit)' },
-                                    { id: 'split', label: 'Split Screen (İki Kitap)' }
+                                    { id: 'single', label: 'Tek Sayfa Modu' },
+                                    { id: 'double-animated', label: 'Çift Yaprak (Animasyonlu)' },
+                                    { id: 'double-static', label: 'Çift Yaprak (Sabit)' },
+                                    { id: 'split', label: 'Çift Kitap (Split-Screen)' }
                                 ].map(mode => (
-                                    <DropdownMenuItem key={mode.id} className={`rounded-xl p-3 cursor-pointer text-[11px] font-bold uppercase tracking-wider mb-1 last:mb-0 ${settings.readingMode === mode.id ? 'bg-primary text-primary-foreground' : ''}`} onClick={() => setSettings({ readingMode: mode.id as any })}>
+                                    <DropdownMenuItem
+                                        key={mode.id}
+                                        className={`rounded-lg p-3 cursor-pointer text-xs font-bold uppercase tracking-wide mb-1 last:mb-0 transition-colors ${settings.readingMode === mode.id ? 'bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground' : 'focus:bg-primary/10'}`}
+                                        onClick={() => setSettings({ readingMode: mode.id as any })}
+                                    >
                                         {mode.label}
                                     </DropdownMenuItem>
                                 ))}
