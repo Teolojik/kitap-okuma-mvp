@@ -336,7 +336,7 @@ const ReaderPage: React.FC = () => {
     );
 
     return (
-        <div {...swipeHandlers} className={`flex flex-col h-screen w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-stone-100 dark:bg-zinc-950 text-foreground relative group/ui`}>
+        <div {...swipeHandlers} className={`flex flex-col h-[100dvh] w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-stone-100 dark:bg-zinc-950 text-foreground relative group/ui overscroll-none`}>
 
             {/* Drawing Layer with Persistence */}
             <DrawingCanvas
@@ -460,7 +460,7 @@ const ReaderPage: React.FC = () => {
             </div>
 
             {/* Main Reader Container */}
-            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full p-4 sm:p-8">
+            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full p-4 sm:p-8 min-h-0">
                 <div className={`w-full h-full max-w-[1600px] transition-all duration-500 rounded-lg shadow-2xl bg-white ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
                     <ReaderContainer
                         ref={readerRef}

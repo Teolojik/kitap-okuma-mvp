@@ -1,5 +1,6 @@
 
 import { findCoverImage } from './discovery-service';
+import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils'; // Helper'ları kullan
 
 export interface Book {
     id: string;
@@ -73,6 +74,16 @@ const deleteFile = async (id: string): Promise<void> => {
     });
 };
 
+// Akıllı Temizleme Fonksiyonu
+const smartClean = (text: string) => {
+    if (!text) return '';
+    return text
+        .replace(/\.(pdf|epub|mobi)$/i, '') // Uzantıları kaldır
+        .replace(/[_\-]/g, ' ') // Alt çizgi ve tireleri boşluk yap
+        .replace(/\s+/g, ' ') // Çift boşlukları temizle
+        .trim();
+};
+
 // Mock API Class
 export const MockAPI = {
     auth: {
@@ -101,41 +112,53 @@ export const MockAPI = {
 
         delete: async (bookId: string) => {
             await new Promise(r => setTimeout(r, 500));
-            // 1. Delete from IndexedDB
             await deleteFile(bookId);
-
-            // 2. Delete from LocalStorage
             const books = await MockAPI.books.list();
             const newBooks = books.filter(b => b.id !== bookId);
             localStorage.setItem('mock_books', JSON.stringify(newBooks));
         },
 
         upload: async (file: File, metadata: Partial<Book>) => {
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 1000));
             const id = crypto.randomUUID();
             const user = MockAPI.auth.getUser();
 
             const format = (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'epub';
 
-            // Rastgele güzel bir kapak rengi seçelim (Fallback)
+            // Placeholder
             const gradients = [
                 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=600&fit=crop',
                 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&h=600&fit=crop',
-                'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=400&h=600&fit=crop',
-                'https://images.unsplash.com/photo-1557682260-96773eb01377?w=400&h=600&fit=crop'
+                'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=400&h=600&fit=crop'
             ];
             const randomCover = gradients[Math.floor(Math.random() * gradients.length)];
 
-            // OTO-KAPAK: Eğer kapak yoksa, kitap isminden bulmaya çalış
+            // OTO-KAPAK STRATEJİSİ
             let finalCover = metadata.cover_url;
             if (!finalCover) {
                 try {
-                    const searchTerm = `${metadata.title || file.name} ${metadata.author || ''}`.trim();
-                    console.log("Auto-fetching cover for:", searchTerm);
-                    const foundCover = await findCoverImage(searchTerm);
+                    // Strateji 1: Temiz Dosya İsmi + Yazar
+                    const cleanName = smartClean(metadata.title || file.name);
+                    const cleanAuth = smartClean(metadata.author || '');
+
+                    let searchTerm = `${cleanName} ${cleanAuth}`.trim();
+                    console.log("Cover Search 1:", searchTerm);
+
+                    let foundCover = await findCoverImage(searchTerm);
+
+                    // Strateji 2: Eğer bulunamazsa, sadece kitap adını (daha kısa) ara
+                    if (!foundCover) {
+                        // Parantez içindekileri sil (örn: "Dune (2020 Edition)" -> "Dune")
+                        const simplerName = cleanName.replace(/\(.*?\)/g, '').trim();
+                        console.log("Cover Search 2 (Fallback):", simplerName);
+                        if (simplerName !== cleanName && simplerName.length > 3) {
+                            foundCover = await findCoverImage(simplerName);
+                        }
+                    }
+
                     if (foundCover) {
                         finalCover = foundCover;
-                        console.log("Cover found:", finalCover);
+                        console.log("Cover Found:", finalCover);
                     }
                 } catch (e) {
                     console.error("Auto cover fetch failed", e);
@@ -145,10 +168,10 @@ export const MockAPI = {
             const newBook: Book = {
                 id,
                 user_id: user?.id || 'anon',
-                title: metadata.title || file.name,
-                author: metadata.author || 'Bilinmiyor',
-                file_url: `local://${id}`,
-                cover_url: finalCover || randomCover, // Bulunan kapak veya random gradient
+                title: smartClean(metadata.title || file.name), // İsmi de temiz kaydet
+                author: smartClean(metadata.author || 'Bilinmiyor'),
+                file_url: null as any, // IDB'de saklanacak
+                cover_url: finalCover || randomCover,
                 progress: { percentage: 0, page: 1 },
                 last_read: new Date().toISOString(),
                 mode_pref: 'single',
@@ -157,7 +180,10 @@ export const MockAPI = {
                 ...metadata
             };
 
+            // IDB'ye kaydet (LocalURI oluşturmadan önce)
             await saveFile(id, file);
+            newBook.file_url = `local://${id}`;
+
             const books = await MockAPI.books.list();
             books.push(newBook);
             localStorage.setItem('mock_books', JSON.stringify(books));
@@ -177,7 +203,6 @@ export const MockAPI = {
     }
 };
 
-// HELPER EXPORTS
 export const getBooks = () => MockAPI.books.list();
 export const deleteBook = (id: string) => MockAPI.books.delete(id);
 export const updateProgress = (bookId: string, progress: any) => MockAPI.books.updateProgress(bookId, progress);
