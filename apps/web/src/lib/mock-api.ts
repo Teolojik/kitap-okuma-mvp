@@ -1,6 +1,6 @@
 
 import { findCoverImage } from './discovery-service';
-import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils'; // Helper'ları kullan
+import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
 
 export interface Book {
     id: string;
@@ -23,7 +23,6 @@ export interface Book {
     created_at: string;
 }
 
-// Simple IndexedDB wrapper for large files (books)
 const DB_NAME = 'KitapOkumaDB';
 const STORE_NAME = 'books_files';
 
@@ -78,13 +77,16 @@ const deleteFile = async (id: string): Promise<void> => {
 const smartClean = (text: string) => {
     if (!text) return '';
     return text
-        .replace(/\.(pdf|epub|mobi)$/i, '') // Uzantıları kaldır
-        .replace(/[_\-]/g, ' ') // Alt çizgi ve tireleri boşluk yap
-        .replace(/\s+/g, ' ') // Çift boşlukları temizle
+        .replace(/\.(pdf|epub|mobi)$/i, '')
+        .replace(/[_\-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        // Parantez içi bilgileri (yıl, yayıncı vb) temizle
+        .replace(/\(.*?\)/g, '')
+        // Yaygın eklentileri temizle
+        .replace(/\b(indir|download|full|tam|surum|baski|edition)\b/gi, '')
         .trim();
 };
 
-// Mock API Class
 export const MockAPI = {
     auth: {
         signIn: async () => {
@@ -105,7 +107,7 @@ export const MockAPI = {
 
     books: {
         list: async (): Promise<Book[]> => {
-            await new Promise(r => setTimeout(r, 800)); // Network delay
+            await new Promise(r => setTimeout(r, 800));
             const stored = localStorage.getItem('mock_books');
             return stored ? JSON.parse(stored) : [];
         },
@@ -125,7 +127,6 @@ export const MockAPI = {
 
             const format = (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'epub';
 
-            // Placeholder
             const gradients = [
                 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=600&fit=crop',
                 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&h=600&fit=crop',
@@ -133,27 +134,28 @@ export const MockAPI = {
             ];
             const randomCover = gradients[Math.floor(Math.random() * gradients.length)];
 
-            // OTO-KAPAK STRATEJİSİ
+            // OTO-KAPAK STRATEJİSİ (Structured Search)
             let finalCover = metadata.cover_url;
             if (!finalCover) {
                 try {
-                    // Strateji 1: Temiz Dosya İsmi + Yazar
-                    const cleanName = smartClean(metadata.title || file.name);
-                    const cleanAuth = smartClean(metadata.author || '');
+                    // Metadata'dan veya dosya adından temizleyerek al
+                    const rawTitle = metadata.title || file.name;
+                    const rawAuthor = metadata.author || '';
 
-                    let searchTerm = `${cleanName} ${cleanAuth}`.trim();
-                    console.log("Cover Search 1:", searchTerm);
+                    // İsimleri temizle
+                    const cleanName = smartClean(rawTitle);
+                    const cleanAuth = smartClean(rawAuthor);
 
-                    let foundCover = await findCoverImage(searchTerm);
+                    console.log("Structured Search -> Title:", cleanName, "Author:", cleanAuth);
 
-                    // Strateji 2: Eğer bulunamazsa, sadece kitap adını (daha kısa) ara
-                    if (!foundCover) {
-                        // Parantez içindekileri sil (örn: "Dune (2020 Edition)" -> "Dune")
-                        const simplerName = cleanName.replace(/\(.*?\)/g, '').trim();
-                        console.log("Cover Search 2 (Fallback):", simplerName);
-                        if (simplerName !== cleanName && simplerName.length > 3) {
-                            foundCover = await findCoverImage(simplerName);
-                        }
+                    // Yeni fonksiyona ayrı ayrı gönder
+                    let foundCover = await findCoverImage(cleanName, cleanAuth);
+
+                    // Eğer bulunamazsa ve isim çok uzunsa, sadece ilk 3-4 kelimeyi al (subtitle temizliği)
+                    if (!foundCover && cleanName.split(' ').length > 4) {
+                        const shortName = cleanName.split(' ').slice(0, 4).join(' ');
+                        console.log("Fallback Search (Short Title):", shortName);
+                        foundCover = await findCoverImage(shortName, cleanAuth);
                     }
 
                     if (foundCover) {
@@ -168,9 +170,9 @@ export const MockAPI = {
             const newBook: Book = {
                 id,
                 user_id: user?.id || 'anon',
-                title: smartClean(metadata.title || file.name), // İsmi de temiz kaydet
+                title: smartClean(metadata.title || file.name),
                 author: smartClean(metadata.author || 'Bilinmiyor'),
-                file_url: null as any, // IDB'de saklanacak
+                file_url: null as any,
                 cover_url: finalCover || randomCover,
                 progress: { percentage: 0, page: 1 },
                 last_read: new Date().toISOString(),
@@ -180,7 +182,6 @@ export const MockAPI = {
                 ...metadata
             };
 
-            // IDB'ye kaydet (LocalURI oluşturmadan önce)
             await saveFile(id, file);
             newBook.file_url = `local://${id}`;
 

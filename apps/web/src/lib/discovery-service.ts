@@ -29,19 +29,32 @@ const getHighResCover = (volumeInfo: any) => {
     return cover;
 };
 
-// Geliştirilmiş Kapak Bulma (İlk 5 sonucu tarar)
-export const findCoverImage = async (query: string): Promise<string | undefined> => {
+// Geliştirilmiş Kapak Bulma (Gelişmiş Filtreleme + İlk 3 Sonuç)
+export const findCoverImage = async (query: string, author?: string): Promise<string | undefined> => {
     try {
-        // maxResults=5 yapıldı.
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=5&printType=books`);
+        let apiUrl = `https://www.googleapis.com/books/v1/volumes?q=`;
+
+        // Eğer yazar bilgisi varsa nokta atışı filtreleme yap
+        if (author && author.length > 2 && !author.includes('Bilinmiyor')) {
+            // Google Books Advanced Search Operators: intitle ve inauthor
+            // Örn: intitle:Var Mısın+inauthor:Doğan Cüceloğlu
+            const q = `intitle:${encodeURIComponent(query)}+inauthor:${encodeURIComponent(author)}`;
+            apiUrl += `${q}&maxResults=3&printType=books`;
+        } else {
+            // Fallback: Sadece isme göre ara (ama tırnak içine alarak tam eşleşme zorla şansını dene)
+            apiUrl += `${encodeURIComponent(query)}&maxResults=5&printType=books`;
+        }
+
+        const response = await fetch(apiUrl);
         const data = await response.json();
 
         if (data.items && data.items.length > 0) {
-            // İlk 5 kitap içinde kapak resmi olan İLK kitabı bul
             for (const item of data.items) {
                 const cover = getHighResCover(item.volumeInfo);
+                // Ek kontrol: Kitap adı eşleşiyor mu? (Çok alakasız sonuçları elemek için basit bir kontrol)
+                // const titleMatch = item.volumeInfo.title.toLowerCase().includes(query.toLowerCase().split(' ')[0]); 
                 if (cover) {
-                    return cover; // Kapağı olan ilk sonucu döndür
+                    return cover;
                 }
             }
         }
