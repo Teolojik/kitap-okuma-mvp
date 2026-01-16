@@ -33,24 +33,26 @@ const getHighResCoverGoogle = (volumeInfo: any) => {
     return cover;
 };
 
+// Normalize Helper
 const normalize = (str: string) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+const normalizeSimple = (str: string) => str ? str.toLowerCase().trim() : '';
 
-// Basit Uyumluluk Skoru (0-100)
-const calculateRelevance = (item: any, searchTitle: string, searchAuthor?: string) => {
+// STRICT Relevance Score (Exact Match Preferring)
+const calculateStrictRelevance = (itemTitle: string, itemAuthors: string[], searchTitle: string, searchAuthor?: string) => {
     let score = 0;
-    const itemTitle = normalize(item.title);
-    const itemAuthors = item.authors ? item.authors.map((a: string) => normalize(a)) : [];
-    const qTitle = normalize(searchTitle);
-    const qAuthor = searchAuthor ? normalize(searchAuthor) : '';
 
-    // Title Match
-    if (itemTitle.includes(qTitle) || qTitle.includes(itemTitle)) {
-        score += 50;
-    }
+    const iTitle = normalizeSimple(itemTitle);
+    const qTitle = normalizeSimple(searchTitle);
 
-    // Author Match
-    if (qAuthor && itemAuthors.some((a: string) => a.includes(qAuthor) || qAuthor.includes(a))) {
-        score += 50;
+    // Strict Title Check: Must include the search title
+    // Example: "Var Mısın?" -> "Var Mısın Güçlü Bir Yaşam İçin" (Match!)
+    if (iTitle.includes(qTitle)) score += 50;
+
+    // Strict Author Check
+    if (searchAuthor && itemAuthors.length > 0) {
+        const qAuthor = normalizeSimple(searchAuthor);
+        const hasAuthor = itemAuthors.some(a => normalizeSimple(a).includes(qAuthor));
+        if (hasAuthor) score += 50;
     }
 
     return score;
@@ -58,7 +60,6 @@ const calculateRelevance = (item: any, searchTitle: string, searchAuthor?: strin
 
 // OpenLibrary Cover Search
 const searchOpenLibrary = async (title: string, author?: string): Promise<string | undefined> => {
-    // OpenLibrary için temiz arama yap
     let query = `title=${encodeURIComponent(title)}`;
     if (author && !author.includes('Bilinmiyor') && !author.includes('LIBRARY')) {
         query += `&author=${encodeURIComponent(author)}`;
@@ -67,22 +68,23 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
     console.log(`OpenLibrary Searching: ${query}`);
 
     try {
-        const response = await fetch(`https://openlibrary.org/search.json?${query}&limit=5`);
+        const response = await fetch(`https://openlibrary.org/search.json?${query}&limit=10`);
         const data = await response.json();
         console.log("Open Library sonucu:", data);
 
         if (data.docs && data.docs.length > 0) {
-            // SKORLAMA VE FILTRELEME
             let bestMatch = null;
             let maxScore = 0;
 
-            for (const doc of data.docs) {
-                if (!doc.cover_i) continue; // Kapak yoksa geç
+            data.docs.forEach((doc: any) => {
+                if (!doc.cover_i) return;
 
-                const score = calculateRelevance({
-                    title: doc.title,
-                    authors: doc.author_name
-                }, title, author);
+                const score = calculateStrictRelevance(
+                    doc.title,
+                    doc.author_name || [],
+                    title,
+                    author
+                );
 
                 console.log(`OL Candidate: ${doc.title} (${doc.author_name}) - Score: ${score}`);
 
@@ -90,10 +92,11 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
                     maxScore = score;
                     bestMatch = doc;
                 }
-            }
+            });
 
-            if (bestMatch && maxScore >= 50) { // En azından başlık tutmalı
-                const coverUrl = `https://covers.openlibrary.org/b/id/${bestMatch.cover_i}-L.jpg`;
+            // Must be exact match (Title + Author = 100) or at least Title (50) match
+            if (bestMatch && maxScore >= 50) {
+                const coverUrl = `https://covers.openlibrary.org/b/id/${(bestMatch as any).cover_i}-L.jpg`;
                 console.log("Open Library Winner:", coverUrl, "Score:", maxScore);
                 return coverUrl;
             }
@@ -104,25 +107,28 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
     return undefined;
 };
 
-// Geliştirilmiş Kapak Bulma (Google Books -> OpenLibrary Fallback)
+// IMPROVED Find Cover Image
 export const findCoverImage = async (title: string, author: string = ''): Promise<string | undefined> => {
-    console.log("Google Books araması başlıyor: title=", title, "author=", author);
+    console.log("Exact match query requested: title=", title, "author=", author);
 
     let foundCover: string | undefined = undefined;
 
-    // 1. STRATEJİ: Google Books
+    // 1. STRATEJİ: Google Books (Strict Query)
     try {
-        // Daha kesin sonuç için intitle/inauthor
+        // Enforced strict quotes query
+        // "intitle:ExactTitle" + "inauthor:ExactAuthor"
         let q = `intitle:"${title}"`;
         if (author && author.length > 2 && !author.toUpperCase().includes('BILINMIYOR')) {
             q += `+inauthor:"${author}"`;
         }
 
-        console.log("Google Query:", q);
+        console.log("Exact match query:", q);
 
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books`); // 5 sonuç
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=10&printType=books`);
         const data = await response.json();
-        console.log("Google Books Raw Data:", data);
+
+        let filtered: any[] = [];
+        let selectedCover = null;
 
         if (data.items && data.items.length > 0) {
             let bestItem = null;
@@ -131,8 +137,14 @@ export const findCoverImage = async (title: string, author: string = ''): Promis
             for (const item of data.items) {
                 if (!item.volumeInfo?.imageLinks?.thumbnail) continue;
 
-                const score = calculateRelevance(item.volumeInfo, title, author);
-                console.log(`GB Candidate: ${item.volumeInfo.title} by ${item.volumeInfo.authors} - Score: ${score}`);
+                const score = calculateStrictRelevance(
+                    item.volumeInfo.title,
+                    item.volumeInfo.authors || [],
+                    title,
+                    author
+                );
+
+                filtered.push({ title: item.volumeInfo.title, authors: item.volumeInfo.authors, score });
 
                 if (score > maxScore) {
                     maxScore = score;
@@ -140,14 +152,17 @@ export const findCoverImage = async (title: string, author: string = ''): Promis
                 }
             }
 
-            if (bestItem && maxScore > 0) {
-                foundCover = getHighResCoverGoogle(bestItem.volumeInfo);
-                console.log("Google Books Winner:", foundCover, "Score:", maxScore);
+            console.log("Filtered results:", filtered);
+
+            if (bestItem && maxScore >= 50) {
+                selectedCover = getHighResCoverGoogle(bestItem.volumeInfo);
+                console.log("Selected cover:", selectedCover, "Score:", maxScore);
+                foundCover = selectedCover;
             } else {
-                console.log("Google Books: Sonuçlar var ama uygun eşleşme bulunamadı.");
+                console.log("No exact match in Google Books (Highest Score < 50)");
             }
         } else {
-            console.log("Google Books: Hiçbir sonuç dönmedi.");
+            console.log("No exact match in Google Books (Zero Results)");
         }
     } catch (e) {
         console.error("Google Books hatası:", e);
@@ -155,7 +170,7 @@ export const findCoverImage = async (title: string, author: string = ''): Promis
 
     // 2. STRATEJİ: OpenLibrary (Fallback)
     if (!foundCover) {
-        console.log("Google Books failed/nomatch, trying OpenLibrary...");
+        console.log("Google Books failed/nomatch, trying OpenLibrary fallback...");
         foundCover = await searchOpenLibrary(title, author);
     }
 
