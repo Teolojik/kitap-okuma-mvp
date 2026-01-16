@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBookStore } from '@/stores/useStore';
@@ -335,7 +336,7 @@ const ReaderPage: React.FC = () => {
     );
 
     return (
-        <div {...swipeHandlers} className={`flex flex-col h-screen w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-background text-foreground relative group/ui`}>
+        <div {...swipeHandlers} className={`flex flex-col h-screen w-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-stone-100 dark:bg-zinc-950 text-foreground relative group/ui`}>
 
             {/* Drawing Layer with Persistence */}
             <DrawingCanvas
@@ -459,8 +460,8 @@ const ReaderPage: React.FC = () => {
             </div>
 
             {/* Main Reader Container */}
-            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full">
-                <div className={`w-full h-full transition-all duration-500 ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
+            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full h-full p-4 sm:p-8">
+                <div className={`w-full h-full max-w-[1600px] transition-all duration-500 rounded-lg shadow-2xl bg-white ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
                     <ReaderContainer
                         ref={readerRef}
                         book={book}
@@ -524,7 +525,7 @@ const ReaderPage: React.FC = () => {
                             >
                                 <div className="aspect-[2/3] rounded-xl bg-muted overflow-hidden shadow-md relative">
                                     {b.cover_url ? (
-                                        <img src={b.cover_url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                        <img src={b.cover_url} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                     ) : (
                                         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/20 to-secondary p-2 text-center">
                                             <BookOpen className="h-6 w-6 text-primary/40 mb-2" />

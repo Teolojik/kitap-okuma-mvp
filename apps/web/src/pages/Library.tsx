@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import { useBookStore, useAuthStore } from '@/stores/useStore';
 import { Button } from '@/components/ui/button';
@@ -24,12 +25,12 @@ export default function LibraryPage() {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
-            toast.info('Kitap yükleniyor...');
+            toast.info('Kitap taranıyor ve kapağı bulunuyor...');
             const meta = parseBookFilename(file.name);
             await uploadBook(file, meta);
-            toast.success('Kitap başarıyla eklendi!');
+            toast.success('Kitap kütüphanenize eklendi!');
         } catch (error) {
-            toast.error('Yükleme başarısız.');
+            toast.error('Yükleme sırasında bir hata oluştu.');
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
@@ -83,7 +84,7 @@ export default function LibraryPage() {
 
                         <div className="w-24 shrink-0 aspect-[2/3] rounded-lg shadow-md overflow-hidden relative bg-muted">
                             {latestBook.cover_url ? (
-                                <img src={latestBook.cover_url} alt="" className="w-full h-full object-cover" />
+                                <img src={latestBook.cover_url} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-primary/20 text-primary">
                                     <BookOpen className="h-8 w-8" />
@@ -140,20 +141,22 @@ export default function LibraryPage() {
                                         {/* Book Cover Container */}
                                         <div className="w-full aspect-[2/3.2] rounded-xl overflow-hidden shadow-md group-hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)] transition-all duration-500 bg-secondary relative transform group-hover:-translate-y-2">
 
-                                            {/* Gerçek Kapak veya Placeholder */}
+                                            {/* Gerçek Kapak */}
                                             {book.cover_url ? (
                                                 <img
                                                     src={book.cover_url}
                                                     alt={book.title}
+                                                    referrerPolicy="no-referrer" // ÖNEMLİ: Google Books resimlerinin yüklenmesi için
                                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                                     onError={(e) => {
+                                                        // Fallback logic
                                                         e.currentTarget.style.display = 'none';
                                                         e.currentTarget.nextElementSibling?.classList.remove('hidden');
                                                     }}
                                                 />
                                             ) : null}
 
-                                            {/* ZARİF Placeholder */}
+                                            {/* Placeholder (Sadece resim yoksa veya yüklenmezse görünür) */}
                                             <div className={`w-full h-full flex flex-col justify-between p-3 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-white/20 ${book.cover_url ? 'hidden' : 'flex'} absolute inset-0`}>
                                                 <div className="w-full h-1 bg-primary/20 rounded-full" />
                                                 <div className="text-center">
@@ -254,7 +257,7 @@ export default function LibraryPage() {
                             {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((dayLabel, i) => {
                                 const today = new Date();
                                 const currentDay = today.getDay(); // 0(Sun) - 6(Sat)
-                                const mondayOffset = currentDay === 0 ? 6 : currentDay - 1; // Days from Monday
+                                const mondayOffset = currentDay === 0 ? 6 : currentDay - 1;
                                 const date = new Date(today);
                                 date.setDate(today.getDate() - mondayOffset + i);
 
