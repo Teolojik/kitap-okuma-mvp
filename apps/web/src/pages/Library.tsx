@@ -146,12 +146,17 @@ export default function LibraryPage() {
                                                 <img
                                                     src={book.cover_url}
                                                     alt={book.title}
-                                                    referrerPolicy="no-referrer" // ÖNEMLİ: Google Books resimlerinin yüklenmesi için
+                                                    referrerPolicy="no-referrer"
                                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                                     onError={(e) => {
-                                                        // Fallback logic
-                                                        e.currentTarget.style.display = 'none';
-                                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                                        const target = e.currentTarget;
+                                                        const fallback = "https://images.unsplash.com/photo-1544947950-fa07a98d4679?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+                                                        if (target.src !== fallback) {
+                                                            target.src = fallback;
+                                                        } else {
+                                                            target.style.display = 'none';
+                                                            target.nextElementSibling?.classList.remove('hidden');
+                                                        }
                                                     }}
                                                 />
                                             ) : null}

@@ -84,27 +84,67 @@ const smartClean = (text: string) => {
         .trim();
 };
 
-// Zeki İsim Ayrıştırıcı (Dosya Adından Yazar/Kitap Bulma)
 const parseFileName = (fileName: string) => {
-    // Örnek: "Talha Uğurluel - Kudüs.pdf"
-    // Tire varsa, tireden öncesi yazar, sonrası kitap (veya tam tersi) olabilir.
-    // Genellikle: Yazar - Kitap veya Kitap - Yazar
     const parts = fileName.replace(/\.(pdf|epub|mobi)$/i, '').split(/\s*-\s*/);
 
     if (parts.length >= 2) {
-        // En uzun parça kitap adı, en kısa parça yazar adıdır (genellikle)
-        // Ama "Talha Uğurluel" (2 kelime) ve "Kudüs" (1 kelime). Yazar genelde 2-3 kelime olur.
-        // Basit bir varsayım yapalım: İlk parça Yazar olabilir mi?
         const p1 = smartClean(parts[0]);
         const p2 = smartClean(parts[1]);
-
-        // Eğer ilk parça 2-3 kelime ise ve "Library" gibi yasaklı kelime değilse, yazar kabul et.
         if (p1.split(' ').length <= 3 && !p1.toUpperCase().includes('LIBRARY')) {
             return { author: p1, title: p2 };
         }
     }
     return null;
 };
+
+// --- LOCAL EXTRACTOR ---
+const extractCoverLocally = async (file: File): Promise<string | undefined> => {
+    try {
+        if (file.type === 'application/epub+zip' || file.name.endsWith('.epub')) {
+            console.log("EPUB Local Extraction attempting...");
+            // Dynamic import to avoid SSR issues if any
+            const ePub = (await import('epubjs')).default;
+            const reader = new FileReader();
+            return new Promise((resolve) => {
+                reader.onload = async (e) => {
+                    try {
+                        const book = ePub(e.target?.result as ArrayBuffer);
+                        const coverUrl = await book.coverUrl();
+                        if (coverUrl) {
+                            console.log("EPUB Local Cover Found:", coverUrl);
+                            // Convert blob URL to base64 if needed, or just return blob url (epubjs returns blob url)
+                            // Note: Blob URL might be revoked if not handled carefully, but for now it might work.
+                            // Better: fetch the blob and convert to base64
+                            const res = await fetch(coverUrl);
+                            const blob = await res.blob();
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result as string);
+                            reader.readAsDataURL(blob);
+                        } else {
+                            resolve(undefined);
+                        }
+                    } catch (err) {
+                        console.error("EPUB extract error", err);
+                        resolve(undefined);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+            console.log("PDF Local Extraction attempting (First Page)...");
+            // PDF extraction is complex due to worker setup. Skipping complex setup to avoid breaking build.
+            // Using a simple placeholder logic for now or rely on API.
+            // If user really wants it, we need pdfjs configured.
+            // For now, let's log.
+            console.log("PDF extraction requires heavy workers, skipping for safety in this context.");
+        }
+    } catch (e) {
+        console.error("Local extraction failed", e);
+    }
+    return undefined;
+};
+
 
 export const MockAPI = {
     auth: {
@@ -146,18 +186,10 @@ export const MockAPI = {
 
             const format = (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'epub';
 
-            const gradients = [
-                'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=600&fit=crop',
-                'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=400&h=600&fit=crop',
-                'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=400&h=600&fit=crop'
-            ];
-            const randomCover = gradients[Math.floor(Math.random() * gradients.length)];
-
-            // METADATA İYİLEŞTİRME (Yazar/Başlık Ayrıştırma)
+            // Metadata refinement
             let finalTitle = metadata.title || file.name;
             let finalAuthor = metadata.author || 'Bilinmiyor';
 
-            // Eğer yazar bilgisi kötü ise (Library, Unknown, Admin, boş)
             const badAuthors = ['LIBRARY', 'UNKNOWN', 'ADMIN', 'BILINMIYOR', 'ANONIM', ''];
             if (badAuthors.some(bad => finalAuthor.toUpperCase().includes(bad))) {
                 console.log("Bad author detected:", finalAuthor, "Trying to parse filename...");
@@ -169,40 +201,46 @@ export const MockAPI = {
                 }
             }
 
-            // OTO-KAPAK STRATEJİSİ
+            // AUTO COVER STRATEGY
             let finalCover = metadata.cover_url;
+
             if (!finalCover) {
+                // 1. Try Remote Search (Google -> OpenLibrary)
                 try {
                     const cleanName = smartClean(finalTitle);
                     const cleanAuth = smartClean(finalAuthor);
 
-                    // 1. Kısa Başlık + Yazar (En Güçlü Arama)
-                    // "Ezbere Yaşayanlar Vazgeçemediğimiz..." -> "Ezbere Yaşayanlar"
+                    // Truncate title for better search results
                     const shortTitle = cleanName.split(' ').slice(0, 3).join(' ');
-                    console.log("Searching Cover -> Title:", shortTitle, "Author:", cleanAuth);
 
-                    let foundCover = await findCoverImage(shortTitle, cleanAuth);
+                    finalCover = await findCoverImage(shortTitle, cleanAuth);
 
-                    // 2. Yazar eşleşmedi mi? Sadece başlık ara (OpenLibrary bu konuda iyidir)
-                    if (!foundCover) {
-                        const veryShortTitle = cleanName.split(' ').slice(0, 2).join(' '); // "Var Mısın"
-                        console.log("Fallback Search -> Title Only:", veryShortTitle);
-                        foundCover = await findCoverImage(veryShortTitle, undefined);
-                    }
-
-                    if (foundCover) {
-                        finalCover = foundCover;
-                        // Google Placeholder Filtresi (Basit Kontrol)
-                        // Eğer URL içinde "books.google.com" varsa ve "zoom=0" yoksa, belki kalitesizdir ama şimdilik kabul edelim.
-                        // Kullanıcıya "Image Not Available" çıkmaması için Google API tarafında zoom=0 zorladık zaten.
+                    if (!finalCover) {
+                        console.log("Remote search failed. Trying fallback (shorter title)...");
+                        const veryShortTitle = cleanName.split(' ').slice(0, 2).join(' ');
+                        finalCover = await findCoverImage(veryShortTitle, undefined);
                     }
                 } catch (e) {
-                    console.error("Auto cover fetch failed", e);
+                    console.error("Remote cover fetch failed", e);
+                }
+
+                // 2. Try Local Extraction if Remote Failed
+                if (!finalCover) {
+                    console.log("Remote failed completely. Trying local extraction...");
+                    const localCover = await extractCoverLocally(file);
+                    if (localCover) {
+                        finalCover = localCover;
+                        console.log("Using Local Cover");
+                    }
                 }
             }
 
-            // Temizlenmiş ve Ayrıştırılmış Verilerle Kaydet
-            // Title temizlerken çok agresif olmayalım, orijinali kalsın ama gereksizleri atalım.
+            // FALLBACK DEFAULT IMAGE (Unsplash) - If everything fails
+            if (!finalCover) {
+                console.log("All strategies failed. Using Unsplash fallback.");
+                finalCover = "https://images.unsplash.com/photo-1544947950-fa07a98d4679?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+            }
+
             const displayTitle = smartClean(finalTitle);
 
             const newBook: Book = {
@@ -211,7 +249,7 @@ export const MockAPI = {
                 title: displayTitle,
                 author: smartClean(finalAuthor),
                 file_url: null as any,
-                cover_url: finalCover || randomCover,
+                cover_url: finalCover,
                 progress: { percentage: 0, page: 1 },
                 last_read: new Date().toISOString(),
                 mode_pref: 'single',
