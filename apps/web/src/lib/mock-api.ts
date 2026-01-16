@@ -84,6 +84,28 @@ const smartClean = (text: string) => {
         .trim();
 };
 
+// Zeki İsim Ayrıştırıcı (Dosya Adından Yazar/Kitap Bulma)
+const parseFileName = (fileName: string) => {
+    // Örnek: "Talha Uğurluel - Kudüs.pdf"
+    // Tire varsa, tireden öncesi yazar, sonrası kitap (veya tam tersi) olabilir.
+    // Genellikle: Yazar - Kitap veya Kitap - Yazar
+    const parts = fileName.replace(/\.(pdf|epub|mobi)$/i, '').split(/\s*-\s*/);
+
+    if (parts.length >= 2) {
+        // En uzun parça kitap adı, en kısa parça yazar adıdır (genellikle)
+        // Ama "Talha Uğurluel" (2 kelime) ve "Kudüs" (1 kelime). Yazar genelde 2-3 kelime olur.
+        // Basit bir varsayım yapalım: İlk parça Yazar olabilir mi?
+        const p1 = smartClean(parts[0]);
+        const p2 = smartClean(parts[1]);
+
+        // Eğer ilk parça 2-3 kelime ise ve "Library" gibi yasaklı kelime değilse, yazar kabul et.
+        if (p1.split(' ').length <= 3 && !p1.toUpperCase().includes('LIBRARY')) {
+            return { author: p1, title: p2 };
+        }
+    }
+    return null;
+};
+
 export const MockAPI = {
     auth: {
         signIn: async () => {
@@ -131,44 +153,63 @@ export const MockAPI = {
             ];
             const randomCover = gradients[Math.floor(Math.random() * gradients.length)];
 
-            // OTO-KAPAK STRATEJİSİ (KISALTILMIŞ BAŞLIK)
+            // METADATA İYİLEŞTİRME (Yazar/Başlık Ayrıştırma)
+            let finalTitle = metadata.title || file.name;
+            let finalAuthor = metadata.author || 'Bilinmiyor';
+
+            // Eğer yazar bilgisi kötü ise (Library, Unknown, Admin, boş)
+            const badAuthors = ['LIBRARY', 'UNKNOWN', 'ADMIN', 'BILINMIYOR', 'ANONIM', ''];
+            if (badAuthors.some(bad => finalAuthor.toUpperCase().includes(bad))) {
+                console.log("Bad author detected:", finalAuthor, "Trying to parse filename...");
+                const parsed = parseFileName(file.name);
+                if (parsed) {
+                    finalTitle = parsed.title;
+                    finalAuthor = parsed.author;
+                    console.log("Parsed from filename:", parsed);
+                }
+            }
+
+            // OTO-KAPAK STRATEJİSİ
             let finalCover = metadata.cover_url;
             if (!finalCover) {
                 try {
-                    const cleanName = smartClean(metadata.title || file.name);
-                    const cleanAuth = smartClean(metadata.author || '');
+                    const cleanName = smartClean(finalTitle);
+                    const cleanAuth = smartClean(finalAuthor);
 
-                    // ÖNEMLİ DÜZELTME: Başlığı maksimum 3 kelime ile sınırla.
-                    // Uzun başlıklar ("Ezbere Yaşayanlar Vazgeçemediğimiz...") Google Search'ü bozuyor.
+                    // 1. Kısa Başlık + Yazar (En Güçlü Arama)
+                    // "Ezbere Yaşayanlar Vazgeçemediğimiz..." -> "Ezbere Yaşayanlar"
                     const shortTitle = cleanName.split(' ').slice(0, 3).join(' ');
+                    console.log("Searching Cover -> Title:", shortTitle, "Author:", cleanAuth);
 
-                    console.log("Structured Search -> Truncated Title:", shortTitle, "Author:", cleanAuth);
-
-                    // Nokta atışı arama (Kısa Başlık + Yazar)
                     let foundCover = await findCoverImage(shortTitle, cleanAuth);
 
-                    // Eğer hala bulunamazsa, yazarsız ve sadece ilk 2 kelime ile ara
+                    // 2. Yazar eşleşmedi mi? Sadece başlık ara (OpenLibrary bu konuda iyidir)
                     if (!foundCover) {
-                        const veryShortTitle = cleanName.split(' ').slice(0, 2).join(' ');
-                        console.log("Fallback Search (Very Short Title):", veryShortTitle);
-                        // İkinci parametre (author) vermiyoruz, sadece başlık araması
+                        const veryShortTitle = cleanName.split(' ').slice(0, 2).join(' '); // "Var Mısın"
+                        console.log("Fallback Search -> Title Only:", veryShortTitle);
                         foundCover = await findCoverImage(veryShortTitle, undefined);
                     }
 
                     if (foundCover) {
                         finalCover = foundCover;
-                        console.log("Cover Found:", finalCover);
+                        // Google Placeholder Filtresi (Basit Kontrol)
+                        // Eğer URL içinde "books.google.com" varsa ve "zoom=0" yoksa, belki kalitesizdir ama şimdilik kabul edelim.
+                        // Kullanıcıya "Image Not Available" çıkmaması için Google API tarafında zoom=0 zorladık zaten.
                     }
                 } catch (e) {
                     console.error("Auto cover fetch failed", e);
                 }
             }
 
+            // Temizlenmiş ve Ayrıştırılmış Verilerle Kaydet
+            // Title temizlerken çok agresif olmayalım, orijinali kalsın ama gereksizleri atalım.
+            const displayTitle = smartClean(finalTitle);
+
             const newBook: Book = {
                 id,
                 user_id: user?.id || 'anon',
-                title: smartClean(metadata.title || file.name),
-                author: smartClean(metadata.author || 'Bilinmiyor'),
+                title: displayTitle,
+                author: smartClean(finalAuthor),
                 file_url: null as any,
                 cover_url: finalCover || randomCover,
                 progress: { percentage: 0, page: 1 },
