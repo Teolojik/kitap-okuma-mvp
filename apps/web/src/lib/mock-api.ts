@@ -73,16 +73,13 @@ const deleteFile = async (id: string): Promise<void> => {
     });
 };
 
-// Akıllı Temizleme Fonksiyonu
 const smartClean = (text: string) => {
     if (!text) return '';
     return text
         .replace(/\.(pdf|epub|mobi)$/i, '')
         .replace(/[_\-]/g, ' ')
         .replace(/\s+/g, ' ')
-        // Parantez içi bilgileri (yıl, yayıncı vb) temizle
         .replace(/\(.*?\)/g, '')
-        // Yaygın eklentileri temizle
         .replace(/\b(indir|download|full|tam|surum|baski|edition)\b/gi, '')
         .trim();
 };
@@ -134,28 +131,28 @@ export const MockAPI = {
             ];
             const randomCover = gradients[Math.floor(Math.random() * gradients.length)];
 
-            // OTO-KAPAK STRATEJİSİ (Structured Search)
+            // OTO-KAPAK STRATEJİSİ (KISALTILMIŞ BAŞLIK)
             let finalCover = metadata.cover_url;
             if (!finalCover) {
                 try {
-                    // Metadata'dan veya dosya adından temizleyerek al
-                    const rawTitle = metadata.title || file.name;
-                    const rawAuthor = metadata.author || '';
+                    const cleanName = smartClean(metadata.title || file.name);
+                    const cleanAuth = smartClean(metadata.author || '');
 
-                    // İsimleri temizle
-                    const cleanName = smartClean(rawTitle);
-                    const cleanAuth = smartClean(rawAuthor);
+                    // ÖNEMLİ DÜZELTME: Başlığı maksimum 3 kelime ile sınırla.
+                    // Uzun başlıklar ("Ezbere Yaşayanlar Vazgeçemediğimiz...") Google Search'ü bozuyor.
+                    const shortTitle = cleanName.split(' ').slice(0, 3).join(' ');
 
-                    console.log("Structured Search -> Title:", cleanName, "Author:", cleanAuth);
+                    console.log("Structured Search -> Truncated Title:", shortTitle, "Author:", cleanAuth);
 
-                    // Yeni fonksiyona ayrı ayrı gönder
-                    let foundCover = await findCoverImage(cleanName, cleanAuth);
+                    // Nokta atışı arama (Kısa Başlık + Yazar)
+                    let foundCover = await findCoverImage(shortTitle, cleanAuth);
 
-                    // Eğer bulunamazsa ve isim çok uzunsa, sadece ilk 3-4 kelimeyi al (subtitle temizliği)
-                    if (!foundCover && cleanName.split(' ').length > 4) {
-                        const shortName = cleanName.split(' ').slice(0, 4).join(' ');
-                        console.log("Fallback Search (Short Title):", shortName);
-                        foundCover = await findCoverImage(shortName, cleanAuth);
+                    // Eğer hala bulunamazsa, yazarsız ve sadece ilk 2 kelime ile ara
+                    if (!foundCover) {
+                        const veryShortTitle = cleanName.split(' ').slice(0, 2).join(' ');
+                        console.log("Fallback Search (Very Short Title):", veryShortTitle);
+                        // İkinci parametre (author) vermiyoruz, sadece başlık araması
+                        foundCover = await findCoverImage(veryShortTitle, undefined);
                     }
 
                     if (foundCover) {
