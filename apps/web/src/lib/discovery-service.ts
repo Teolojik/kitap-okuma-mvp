@@ -33,6 +33,29 @@ const getHighResCoverGoogle = (volumeInfo: any) => {
     return cover;
 };
 
+const normalize = (str: string) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+
+// Basit Uyumluluk Skoru (0-100)
+const calculateRelevance = (item: any, searchTitle: string, searchAuthor?: string) => {
+    let score = 0;
+    const itemTitle = normalize(item.title);
+    const itemAuthors = item.authors ? item.authors.map((a: string) => normalize(a)) : [];
+    const qTitle = normalize(searchTitle);
+    const qAuthor = searchAuthor ? normalize(searchAuthor) : '';
+
+    // Title Match
+    if (itemTitle.includes(qTitle) || qTitle.includes(itemTitle)) {
+        score += 50;
+    }
+
+    // Author Match
+    if (qAuthor && itemAuthors.some((a: string) => a.includes(qAuthor) || qAuthor.includes(a))) {
+        score += 50;
+    }
+
+    return score;
+};
+
 // OpenLibrary Cover Search
 const searchOpenLibrary = async (title: string, author?: string): Promise<string | undefined> => {
     // OpenLibrary için temiz arama yap
@@ -49,11 +72,29 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
         console.log("Open Library sonucu:", data);
 
         if (data.docs && data.docs.length > 0) {
-            // Cover ID'si olan ilk kitabı bul
-            const bookWithCover = data.docs.find((doc: any) => doc.cover_i);
-            if (bookWithCover) {
-                const coverUrl = `https://covers.openlibrary.org/b/id/${bookWithCover.cover_i}-L.jpg`;
-                console.log("Open Library kapak:", coverUrl);
+            // SKORLAMA VE FILTRELEME
+            let bestMatch = null;
+            let maxScore = 0;
+
+            for (const doc of data.docs) {
+                if (!doc.cover_i) continue; // Kapak yoksa geç
+
+                const score = calculateRelevance({
+                    title: doc.title,
+                    authors: doc.author_name
+                }, title, author);
+
+                console.log(`OL Candidate: ${doc.title} (${doc.author_name}) - Score: ${score}`);
+
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestMatch = doc;
+                }
+            }
+
+            if (bestMatch && maxScore >= 50) { // En azından başlık tutmalı
+                const coverUrl = `https://covers.openlibrary.org/b/id/${bestMatch.cover_i}-L.jpg`;
+                console.log("Open Library Winner:", coverUrl, "Score:", maxScore);
                 return coverUrl;
             }
         }
@@ -71,36 +112,50 @@ export const findCoverImage = async (title: string, author: string = ''): Promis
 
     // 1. STRATEJİ: Google Books
     try {
-        // Daha geniş bir arama için intitle/inauthor yerine genel arama yapalım ama terimleri tırnak içine alalım
+        // Daha kesin sonuç için intitle/inauthor
         let q = `intitle:"${title}"`;
         if (author && author.length > 2 && !author.toUpperCase().includes('BILINMIYOR')) {
             q += `+inauthor:"${author}"`;
         }
 
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=3&printType=books`);
+        console.log("Google Query:", q);
+
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books`); // 5 sonuç
         const data = await response.json();
-        console.log("Google Books sonucu:", data);
+        console.log("Google Books Raw Data:", data);
 
         if (data.items && data.items.length > 0) {
-            // İlk geçerli kapağı bul
+            let bestItem = null;
+            let maxScore = 0;
+
             for (const item of data.items) {
-                if (item.volumeInfo?.imageLinks?.thumbnail) {
-                    foundCover = getHighResCoverGoogle(item.volumeInfo);
-                    console.log("Kapak bulundu (Google):", foundCover);
-                    break;
+                if (!item.volumeInfo?.imageLinks?.thumbnail) continue;
+
+                const score = calculateRelevance(item.volumeInfo, title, author);
+                console.log(`GB Candidate: ${item.volumeInfo.title} by ${item.volumeInfo.authors} - Score: ${score}`);
+
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestItem = item;
                 }
             }
+
+            if (bestItem && maxScore > 0) {
+                foundCover = getHighResCoverGoogle(bestItem.volumeInfo);
+                console.log("Google Books Winner:", foundCover, "Score:", maxScore);
+            } else {
+                console.log("Google Books: Sonuçlar var ama uygun eşleşme bulunamadı.");
+            }
         } else {
-            console.log("Google Books'ta kapak yok");
+            console.log("Google Books: Hiçbir sonuç dönmedi.");
         }
     } catch (e) {
         console.error("Google Books hatası:", e);
     }
 
     // 2. STRATEJİ: OpenLibrary (Fallback)
-    // Eğer Google kapak bulamazsa VEYA bulduğu kapak "image not available" ise (bunu anlamak zor ama en azından Google null dönerse)
     if (!foundCover) {
-        console.log("Google Books failed or no cover, trying OpenLibrary...");
+        console.log("Google Books failed/nomatch, trying OpenLibrary...");
         foundCover = await searchOpenLibrary(title, author);
     }
 
