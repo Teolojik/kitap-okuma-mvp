@@ -215,6 +215,17 @@ const ReaderPage: React.FC = () => {
         } else { setSecondaryBook(null); setSecondaryBookData(null); }
     }, [settings.readingMode, secondaryBookId]);
 
+    // Sync state with book load
+    useEffect(() => {
+        if (book && book.progress) {
+            // For PDF, location usually matches page string '1', '2' etc.
+            // If location is '0' or empty, fallback to page 1
+            const initialLoc = book.progress.location || String(book.progress.page || 1);
+            setCurrentLocation(initialLoc);
+            setCurrentPercentage(book.progress.percentage || 0);
+        }
+    }, [book]);
+
     // Primary Location Change
     const handleLocationChange = (loc: string, percentage: number) => {
         if (!book) return;

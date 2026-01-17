@@ -43,34 +43,35 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     annotations
 }: PdfReaderProps, ref) => {
     const { settings } = useBookStore();
+    const { settings } = useBookStore();
     const [numPages, setNumPages] = useState<number>(0);
-    const [internalPage, setInternalPage] = useState(1);
-    const [internalScale, setInternalScale] = useState(1.2);
-    const [safeUrl, setSafeUrl] = useState<string | null>(null);
+    // Removed internalPage, internalScale, safeUrl - strictly controlled now
 
-    const page = propPageNumber || internalPage;
-    const currentScale = propScale || internalScale;
+    // Use props directly
+    const page = propPageNumber || 1;
+    const currentScale = propScale || 1.2;
     const isDoubleMode = settings.readingMode.includes('double');
 
+    // Callback on load
+    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+        setNumPages(numPages);
+        if (onTotalPages) onTotalPages(numPages);
+    };
+
+    // Imperative Handle strictly triggers callbacks now, NO internal state mutation
     React.useImperativeHandle(ref, () => ({
         next: () => {
             const nextP = page + (isDoubleMode ? 2 : 1);
-            if (nextP <= numPages) {
-                if (onLocationChange) {
-                    const pct = numPages > 0 ? (nextP / numPages) * 100 : 0;
-                    onLocationChange(String(nextP), pct);
-                }
-                else setInternalPage(nextP);
+            if (nextP <= numPages && onLocationChange) {
+                const pct = numPages > 0 ? (nextP / numPages) * 100 : 0;
+                onLocationChange(String(nextP), pct);
             }
         },
         prev: () => {
             const prevP = page - (isDoubleMode ? 2 : 1);
-            if (prevP >= 1) {
-                if (onLocationChange) {
-                    const pct = numPages > 0 ? (prevP / numPages) * 100 : 0;
-                    onLocationChange(String(prevP), pct);
-                }
-                else setInternalPage(prevP);
+            if (prevP >= 1 && onLocationChange) {
+                const pct = numPages > 0 ? (prevP / numPages) * 100 : 0;
+                onLocationChange(String(prevP), pct);
             }
         }
     }));
