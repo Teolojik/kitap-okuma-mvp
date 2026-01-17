@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 interface PdfReaderProps {
     url: string | ArrayBuffer;
     pageNumber?: number;
-    onPageChange?: (page: number) => void;
+    onLocationChange?: (location: string, percentage: number) => void;
     onTotalPages?: (total: number) => void;
     scale?: number;
     onScaleChange?: (scale: number) => void;
@@ -56,14 +56,20 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         next: () => {
             const nextP = page + (isDoubleMode ? 2 : 1);
             if (nextP <= numPages) {
-                if (onPageChange) onPageChange(nextP);
+                if (onLocationChange) {
+                    const pct = numPages > 0 ? (nextP / numPages) * 100 : 0;
+                    onLocationChange(String(nextP), pct);
+                }
                 else setInternalPage(nextP);
             }
         },
         prev: () => {
             const prevP = page - (isDoubleMode ? 2 : 1);
             if (prevP >= 1) {
-                if (onPageChange) onPageChange(prevP);
+                if (onLocationChange) {
+                    const pct = numPages > 0 ? (prevP / numPages) * 100 : 0;
+                    onLocationChange(String(prevP), pct);
+                }
                 else setInternalPage(prevP);
             }
         }

@@ -160,6 +160,10 @@ const ReaderPage: React.FC = () => {
     const [totalPages, setTotalPages] = useState<number>(0);
     const [scale, setScale] = useState(1.0);
 
+    // Current Location State (Source of Truth)
+    const [currentLocation, setCurrentLocation] = useState<string>('0');
+    const [currentPercentage, setCurrentPercentage] = useState<number>(0);
+
     // Initial Load
     useEffect(() => {
         if (!id) return;
@@ -247,9 +251,11 @@ const ReaderPage: React.FC = () => {
             if (!book) return;
             if (book.format === 'epub') readerRef.current?.next();
             else {
-                const currentPage = book.progress?.page || 1;
+                const currentPage = parseInt(currentLocation) || 1;
                 const nextP = Math.min(currentPage + 1, totalPages || 9999);
-                handleLocationChange(String(nextP), 0);
+                // Calculate percentage for PDF
+                const pct = totalPages > 0 ? (nextP / totalPages) * 100 : 0;
+                handleLocationChange(String(nextP), pct, nextP);
             }
         } else {
             // Secondary Book Navigation
@@ -272,9 +278,11 @@ const ReaderPage: React.FC = () => {
             if (!book) return;
             if (book.format === 'epub') readerRef.current?.prev();
             else {
-                const currentPage = book.progress?.page || 1;
+                const currentPage = parseInt(currentLocation) || 1;
                 const prevP = Math.max(currentPage - 1, 1);
-                handleLocationChange(String(prevP), 0);
+                // Calculate percentage for PDF
+                const pct = totalPages > 0 ? (prevP / totalPages) * 100 : 0;
+                handleLocationChange(String(prevP), pct, prevP);
             }
         } else {
             if (!secondaryBook) return;
@@ -512,10 +520,30 @@ const ReaderPage: React.FC = () => {
                     onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = e.clientX - rect.left;
-                        const pct = (x / rect.width);
-                        const targetPage = Math.max(1, Math.round(pct * totalPages));
-                        if (activePanel === 'primary') handleLocationChange(String(targetPage), pct * 100);
-                        else handleSecondaryLocationChange(String(targetPage), pct * 100);
+                        const pct = Math.max(0, Math.min(1, x / rect.width));
+                        const pct100 = pct * 100;
+
+                        if (activePanel === 'primary') {
+                            if (book.format === 'epub') {
+                                // Delegate to engine
+                                readerRef.current?.goToPercentage?.(pct100);
+                            } else {
+                                // PDF / Linear
+                                const targetPage = Math.max(1, Math.round(pct * totalPages));
+                                handleLocationChange(String(targetPage), pct100, targetPage);
+                            }
+                        } else {
+                            // Secondary Book Logic
+                            if (secondaryBook?.format === 'epub') {
+                                // Need secondary ref or improved container support. 
+                                // For now, assume primary ref handles primary book. 
+                                // MVP Limitation: Secondary seek might be tricky without explicit secondary ref.
+                            } else {
+                                // PDF
+                                const targetPage = Math.max(1, Math.round(pct * totalPages));
+                                handleSecondaryLocationChange(String(targetPage), pct100);
+                            }
+                        }
                     }}>
                     <div className="h-full bg-primary rounded-full transition-all duration-300"
                         style={{ width: `${activePanel === 'primary' ? (book.progress?.percentage || 0) : (secondaryBook?.progress?.percentage || 0)}%` }} />

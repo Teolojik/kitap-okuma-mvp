@@ -7,6 +7,7 @@ export interface EpubReaderRef {
     prev: () => void;
     next: () => void;
     goTo: (loc: string) => void;
+    goToPercentage: (pct: number) => void;
 }
 
 interface EpubReaderProps {
@@ -17,9 +18,10 @@ interface EpubReaderProps {
     options?: any; // Pass specific flow/manager options
     annotations?: any[];
     onTextSelected?: (cfiRange: string, text: string, contents: any) => void;
+    onTotalPages?: (total: number) => void; // Added for consistancy
 }
 
-const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLocation, onLocationChange, isSplit = false, options, annotations, onTextSelected }, ref) => {
+const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLocation, onLocationChange, isSplit = false, options, annotations, onTextSelected, onTotalPages }, ref) => {
     const viewerRef = useRef<HTMLDivElement>(null);
     const bookRef = useRef<Book | null>(null);
     const renditionRef = useRef<Rendition | null>(null);
@@ -31,7 +33,14 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
     useImperativeHandle(ref, () => ({
         prev: () => renditionRef.current?.prev(),
         next: () => renditionRef.current?.next(),
-        goTo: (loc: string) => renditionRef.current?.display(loc)
+        goTo: (loc: string) => renditionRef.current?.display(loc),
+        goToPercentage: (pct: number) => {
+            if (bookRef.current && bookRef.current.locations.length() > 0) {
+                // pct is 0-100, cfiFromPercentage expects 0-1
+                const cfi = bookRef.current.locations.cfiFromPercentage(pct / 100);
+                renditionRef.current?.display(cfi);
+            }
+        }
     }));
 
     useEffect(() => {
@@ -90,20 +99,50 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
 
             // Display initial page and handle errors
             book.ready.then(() => {
-                return rendition.display(initialLocation || undefined);
+                // Generate locations for progress calculation
+                // 1000 chars per location is a standard estimate
+                return book.locations.generate(1000);
             }).then(() => {
                 setIsReady(true);
                 applySettings(rendition);
+
+                // Report total pages (approximate screens)
+                // locations.total is the number of location steps generated
+                if (settings.readingMode === 'single' && onTotalPages) {
+                    onTotalPages(book.locations.total); // Usually returns length of location array
+                }
+
+                // Go to initial location
+                if (initialLocation) {
+                    rendition.display(initialLocation);
+                } else {
+                    rendition.display();
+                }
+
             }).catch((err) => {
                 console.error("EPUB Rendering Error:", err);
-                setError("Kitap içeriği okunamadı. Dosya bozuk veya geçersiz bir EPUB formatında olabilir.");
+                setError("Kitap içeriği okunamadı.");
             });
 
             // Event listeners
             rendition.on('relocated', (location: any) => {
                 if (onLocationChange) {
-                    const percentage = location.start.percentage;
-                    onLocationChange(location.start.cfi, percentage);
+                    // Start CFI
+                    const startCfi = location.start.cfi;
+                    // Calculate percentage using generated locations
+                    // location.start.percentage is often reliable if generate() was called
+                    let percentage = location.start.percentage;
+
+                    // Fallback to locations object calculation if needed
+                    if (percentage === undefined && book.locations.length() > 0) {
+                        percentage = book.locations.percentageFromCfi(startCfi);
+                    }
+
+                    // Estimate "Page Number" for display (1-based index of location)
+                    // This is 'fake' but useful for "Page X of Y" display
+                    // const pageIndex = book.locations.locationFromCfi(startCfi);
+
+                    onLocationChange(startCfi, (percentage || 0) * 100);
                 }
             });
 

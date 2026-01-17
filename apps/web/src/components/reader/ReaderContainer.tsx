@@ -32,6 +32,7 @@ interface ReaderContainerProps {
 export interface ReaderContainerRef {
     next: () => void;
     prev: () => void;
+    goToPercentage?: (pct: number) => void;
 }
 
 const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProps>(({
@@ -47,6 +48,9 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
         },
         prev: () => {
             if (contentRef.current?.prev) contentRef.current.prev();
+        },
+        goToPercentage: (pct: number) => {
+            if (contentRef.current?.goToPercentage) contentRef.current.goToPercentage(pct);
         }
     }));
 
