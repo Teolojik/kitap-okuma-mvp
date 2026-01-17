@@ -84,10 +84,8 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
         );
     }
 
-    // Debug logging
-    React.useEffect(() => {
-        console.log(`[Reader] Mode: ${settings.readingMode}, ID: ${book.id}`);
-    }, [book, data, settings.readingMode]);
+    // Debug logging removed for stability
+
 
     try {
         switch (settings.readingMode) {
