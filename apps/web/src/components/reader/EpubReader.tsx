@@ -8,6 +8,7 @@ export interface EpubReaderRef {
     next: () => void;
     goTo: (loc: string) => void;
     goToPercentage: (pct: number) => void;
+    getCurrentText: () => Promise<string>;
 }
 
 interface EpubReaderProps {
@@ -39,6 +40,23 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 // pct is 0-100, cfiFromPercentage expects 0-1
                 const cfi = bookRef.current.locations.cfiFromPercentage(pct / 100);
                 renditionRef.current?.display(cfi);
+            }
+        },
+        getCurrentText: async () => {
+            if (!renditionRef.current) return '';
+            const location = renditionRef.current.currentLocation() as any;
+            if (!location || !location.start) return '';
+
+            try {
+                const contents = renditionRef.current.getContents() as unknown as any[];
+                if (contents.length === 0) return '';
+                const doc = contents[0].document;
+                const text = doc.body.innerText || doc.body.textContent || '';
+                // Clean up extra whitespaces
+                return text.replace(/\s+/g, ' ').trim();
+            } catch (e) {
+                console.error("Error getting epub text", e);
+                return '';
             }
         }
     }));
@@ -99,29 +117,30 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
 
             // Display initial page and handle errors
             book.ready.then(() => {
-                // Generate locations for progress calculation
-                // 1000 chars per location is a standard estimate
-                return book.locations.generate(1000);
-            }).then(() => {
                 setIsReady(true);
                 applySettings(rendition);
 
-                // Report total pages (approximate screens)
-                // locations.total is the number of location steps generated
-                if (settings.readingMode === 'single' && onTotalPages) {
-                    onTotalPages(book.locations.total); // Usually returns length of location array
-                }
-
-                // Go to initial location
+                // Display content IMMEDIATELY without waiting for location generation
                 if (initialLocation) {
-                    rendition.display(initialLocation);
+                    return rendition.display(initialLocation);
                 } else {
-                    rendition.display();
+                    return rendition.display();
+                }
+            }).then(() => {
+                // Background task: Generate locations for progress calculation
+                // This doesn't block the initial render anymore
+                return book.locations.generate(1000);
+            }).then(() => {
+                // Report total pages (approximate screens) once locations are ready
+                if (onTotalPages) {
+                    onTotalPages(book.locations.length());
                 }
 
+                // Refresh settings once more after locations are ready to ensure proper layout
+                if (renditionRef.current) applySettings(renditionRef.current);
             }).catch((err) => {
                 console.error("EPUB Rendering Error:", err);
-                setError("Kitap içeriği okunamadı.");
+                setError("Kitap içeriği yüklenirken bir hata oluştu.");
             });
 
             // Event listeners
@@ -222,42 +241,66 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
     }, [annotations, isReady]);
 
     const applySettings = (rendition: Rendition) => {
-        // Font Size (Increased base size for better readability in immersive mode)
-        // Default is usually equal to browser default (16px). We boost it.
         const effectiveSize = Math.max(settings.fontSize, 100);
         rendition.themes.fontSize(`${effectiveSize}%`);
 
-        // Theme
-        // Registering themes with colors matching our index.css
-        // Enhanced line-height and margins for immersive feel
-        if (settings.theme === 'dark') {
-            rendition.themes.register('dark', {
-                body: { color: '#e2e8f0', background: 'transparent', 'font-size': '1.2em' },
-                p: { 'line-height': 1.8, 'font-family': 'Lora, serif', 'margin-bottom': '1.5em' },
-                h1: { 'color': '#f8fafc' }, h2: { 'color': '#f1f5f9' }, h3: { 'color': '#e2e8f0' }
-            });
-            rendition.themes.select('dark');
-        } else if (settings.theme === 'sepia') {
-            rendition.themes.register('sepia', {
-                body: { color: '#433422', background: 'transparent', 'font-size': '1.2em' },
-                p: { 'line-height': 1.8, 'font-family': 'Lora, serif', 'margin-bottom': '1.5em' }
-            });
-            rendition.themes.select('sepia');
-        } else {
-            rendition.themes.register('light', {
-                body: { color: '#262626', background: 'transparent', 'font-size': '1.2em' },
-                p: { 'line-height': 1.8, 'font-family': 'Lora, serif', 'margin-bottom': '1.5em' }
-            });
-            rendition.themes.select('light');
-        }
+        const isDouble = settings.readingMode.includes('double');
+        const marginPx = settings.margin;
 
-        // For double page view in EPUB
-        if (settings.readingMode.includes('double')) {
-            rendition.themes.default({ "body": { "column-count": 2, "column-gap": "80px", "padding": "40px !important" } });
-        } else {
-            // Single page - ensure it uses full width max
-            rendition.themes.default({ "body": { "column-count": 1, "padding": "0 20px !important", "max-width": "1200px", "margin": "0 auto" } });
-        }
+        // Base layout styles that should be applied to all themes
+        const layoutStyles = {
+            'body': {
+                'padding': `40px ${marginPx}px !important`,
+                'height': '100% !important',
+                'font-size': '1.15em !important',
+                'background': 'transparent !important'
+            },
+            'p': {
+                'line-height': `${settings.lineHeight} !important`,
+                'letter-spacing': `${settings.letterSpacing}px !important`,
+                'font-family': 'Inter, system-ui, sans-serif !important',
+                'margin-bottom': '1.5em !important',
+                'text-align': 'justify'
+            },
+            'img': {
+                'max-width': '100% !important',
+                'max-height': '90vh !important',
+                'height': 'auto !important',
+                'object-fit': 'contain',
+                'display': 'block',
+                'margin': '20px auto'
+            }
+        };
+
+        // Theme Specific Colors
+        const themes = {
+            light: {
+                body: { ...layoutStyles.body, color: '#1a1a1a' },
+                p: layoutStyles.p,
+                img: layoutStyles.img,
+                h1: { color: '#000' }, h2: { color: '#111' }, h3: { color: '#222' }
+            },
+            dark: {
+                body: { ...layoutStyles.body, color: '#e2e8f0' },
+                p: layoutStyles.p,
+                img: { ...layoutStyles.img, filter: 'brightness(0.8) contrast(1.2)' },
+                h1: { color: '#f8fafc' }, h2: { color: '#f1f5f9' }, h3: { color: '#e2e8f0' }
+            },
+            sepia: {
+                body: { ...layoutStyles.body, color: '#433422' },
+                p: layoutStyles.p,
+                img: { ...layoutStyles.img, opacity: '0.9' },
+                h1: { color: '#2d2419' }, h2: { color: '#382d20' }
+            }
+        };
+
+        // Register and select the current theme
+        const currentTheme = settings.theme || 'light';
+        rendition.themes.register(currentTheme, (themes as any)[currentTheme]);
+        rendition.themes.select(currentTheme);
+
+        // Also update default styles just in case
+        rendition.themes.default((themes as any)[currentTheme]);
     };
 
     if (error) {
@@ -271,7 +314,16 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
 
     return (
         <div className="relative w-full h-full flex flex-col">
-            <div className="flex-1 relative overflow-hidden bg-background/50">
+            <div className="flex-1 relative overflow-hidden bg-background">
+                {!isReady && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-30 gap-4">
+                        <div className="relative">
+                            <div className="h-12 w-12 rounded-full border-4 border-primary/20" />
+                            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                        </div>
+                        <p className="text-xs font-bold text-primary animate-pulse uppercase tracking-[0.2em]">Kitap Verisi İşleniyor...</p>
+                    </div>
+                )}
                 <div ref={viewerRef} className="w-full h-full" />
             </div>
             {/* Styles for highlights */}

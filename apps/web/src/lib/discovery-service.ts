@@ -37,6 +37,19 @@ const getHighResCoverGoogle = (volumeInfo: any) => {
 const normalize = (str: string) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
 const normalizeSimple = (str: string) => str ? str.toLowerCase().trim() : '';
 
+// Helper to check if image URL is valid and loadable
+const isImageValid = (url: string): Promise<boolean> => {
+    if (!url) return Promise.resolve(false);
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img.width > 10 && img.height > 10); // Check if it's not a pixel or placeholder
+        img.onerror = () => resolve(false);
+        img.src = url;
+        // Timeout for robustness
+        setTimeout(() => resolve(false), 5000);
+    });
+};
+
 // STRICT Relevance Score (Exact Match Preferring)
 const calculateStrictRelevance = (itemTitle: string, itemAuthors: string[], searchTitle: string, searchAuthor?: string) => {
     let score = 0;
@@ -110,32 +123,28 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
 // CORS Proxy ile Kitapyurdu'ndan Kapak Çekme
 const searchKitapyurdu = async (title: string, author: string): Promise<string | undefined> => {
     const query = `${title} ${author}`;
-    console.log("D&R/Kitapyurdu (Via Proxy) kapak aranıyor:", query);
+    // Using a more stable CORS proxy
+    const targetUrl = `https://www.kitapyurdu.com/index.php?route=product/search&filter_name=${encodeURIComponent(query)}`;
+    console.log("Kitapyurdu Searching via CORSProxy.io:", targetUrl);
 
     try {
-        // Kitapyurdu Arama URL'i
-        const targetUrl = `https://www.kitapyurdu.com/index.php?route=product/search&filter_name=${encodeURIComponent(query)}`;
-        // AllOrigins Proxy kullanarak HTML'i çekiyoruz
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-        const data = await response.json();
+        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+        const htmlText = await response.text();
 
-        if (data.contents) {
-            // HTML String'i DOM'a çevir
+        if (htmlText) {
             const parser = new DOMParser();
-            const doc = parser.parseFromString(data.contents, "text/html");
+            const doc = parser.parseFromString(htmlText, "text/html");
 
-            // İlk ürünün resmini bul (Kitapyurdu yapısına göre)
-            // .product-cr .cover .image a img
             const imgElement = doc.querySelector('.product-cr .cover .image img');
             if (imgElement) {
                 let src = imgElement.getAttribute('src');
                 if (src) {
-                    // Kaliteyi arttırmak için thumb boyutunu silebiliriz (varsa)
-                    // Genelde: https://img.kitapyurdu.com/v1/getImage/fn:11467438/wh:true/wi:220
-                    // wi:220 kısmını wi:600 yapalım
                     src = src.replace(/wi:\d+/, 'wi:600');
-                    console.log("Kitapyurdu kapak bulundu:", src);
-                    return src;
+                    const isValid = await isImageValid(src);
+                    if (isValid) {
+                        console.log("Kitapyurdu cover found & verified:", src);
+                        return src;
+                    }
                 }
             }
         }
@@ -178,15 +187,10 @@ export const findCoverImage = async (title: string, author: string = ''): Promis
                 q += `+inauthor:"${author}"`;
             }
 
-            console.log("Google Exact Match Query:", q);
-
             const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=10&printType=books`);
             const data = await response.json();
 
             if (data.items && data.items.length > 0) {
-                let bestItem = null;
-                let maxScore = 0;
-
                 for (const item of data.items) {
                     if (!item.volumeInfo?.imageLinks?.thumbnail) continue;
 
@@ -197,17 +201,14 @@ export const findCoverImage = async (title: string, author: string = ''): Promis
                         author
                     );
 
-                    if (score > maxScore) {
-                        maxScore = score;
-                        bestItem = item;
+                    if (score >= 40) { // Slightly lower threshold for Google
+                        const url = getHighResCoverGoogle(item.volumeInfo);
+                        if (url && await isImageValid(url)) {
+                            foundCover = url;
+                            console.log("Google Books winner verified:", url);
+                            break;
+                        }
                     }
-                }
-
-                if (bestItem && maxScore >= 50) {
-                    foundCover = getHighResCoverGoogle(bestItem.volumeInfo);
-                    console.log("Google Books Winner:", foundCover, "Score:", maxScore);
-                } else {
-                    console.log("Google Books: Strict match failed (Score < 50)");
                 }
             }
         } catch (e) {
@@ -218,14 +219,17 @@ export const findCoverImage = async (title: string, author: string = ''): Promis
     // 3. STRATEJİ: OpenLibrary (Fallback)
     if (!foundCover) {
         console.log("Trying OpenLibrary fallback...");
-        foundCover = await searchOpenLibrary(title, author);
+        const url = await searchOpenLibrary(title, author);
+        if (url && await isImageValid(url)) {
+            foundCover = url;
+        }
     }
 
     if (foundCover) return foundCover;
 
-    // 4. SON ÇARE: Default Unsplash Image
-    console.log("All strategies failed. Returning Default Unsplash Cover.");
-    return "https://images.unsplash.com/photo-1544947950-fa07a98d4679?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+    // 4. SON ÇARE: Default Unsplash Image (High Quality)
+    console.log("All strategies failed. Returning Default Placeholder Cover.");
+    return "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
 };
 
 export const searchBooks = async (query: string): Promise<SearchResult[]> => {

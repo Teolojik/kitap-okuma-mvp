@@ -29,12 +29,13 @@ interface PdfReaderProps {
 export interface PdfReaderRef {
     next: () => void;
     prev: () => void;
+    getCurrentText: () => Promise<string>;
 }
 
 const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     url,
     pageNumber: propPageNumber,
-    onPageChange,
+    onLocationChange,
     onTotalPages,
     scale: propScale,
     onScaleChange,
@@ -43,19 +44,21 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     annotations
 }: PdfReaderProps, ref) => {
     const { settings } = useBookStore();
-    const { settings } = useBookStore();
     const [numPages, setNumPages] = useState<number>(0);
-    // Removed internalPage, internalScale, safeUrl - strictly controlled now
+    const [pdfDoc, setPdfDoc] = useState<any>(null);
+    const [safeUrl, setSafeUrl] = useState<string | null>(null);
 
     // Use props directly
     const page = propPageNumber || 1;
-    const currentScale = propScale || 1.2;
+    // Default scale to 1.0 (Fit Width) instead of 1.2 to prevent overflow
+    const currentScale = propScale || 1.0;
     const isDoubleMode = settings.readingMode.includes('double');
 
     // Callback on load
-    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-        setNumPages(numPages);
-        if (onTotalPages) onTotalPages(numPages);
+    const onDocumentLoadSuccess = (pdf: any) => {
+        setNumPages(pdf.numPages);
+        setPdfDoc(pdf);
+        if (onTotalPages) onTotalPages(pdf.numPages);
     };
 
     // Imperative Handle strictly triggers callbacks now, NO internal state mutation
@@ -73,9 +76,30 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                 const pct = numPages > 0 ? (prevP / numPages) * 100 : 0;
                 onLocationChange(String(prevP), pct);
             }
+        },
+        getCurrentText: async () => {
+            if (!pdfDoc) return '';
+            try {
+                const extractPageText = async (pNum: number) => {
+                    const pageObj = await pdfDoc.getPage(pNum);
+                    const textContent = await pageObj.getTextContent();
+                    return textContent.items.map((item: any) => item.str).join(' ');
+                };
+
+                let text = await extractPageText(page);
+                if (isDoubleMode && page + 1 <= numPages) {
+                    text += ' ' + await extractPageText(page + 1);
+                }
+                return text.replace(/\s+/g, ' ').trim();
+            } catch (e) {
+                console.error("PDF Text extraction failed", e);
+                return '';
+            }
         }
     }));
-    const [wrapperWidth, setWrapperWidth] = useState<number>(0);
+    const [wrapperWidth, setWrapperWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 800);
+    const [wrapperHeight, setWrapperHeight] = useState<number>(typeof window !== 'undefined' ? window.innerHeight : 600);
+    const [pageRatio, setPageRatio] = useState<number>(0.707); // Default A4 ratio
     const wrapperRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
@@ -83,14 +107,17 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         const resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 if (entry.contentRect) {
-                    // %90 genişlik kullanarak kenarlardan hafif boşluk bırakıyoruz ama ekranı dolduruyoruz
-                    // Mobil için %100, Desktop için %90 veya %80 optimize edilebilir.
-                    // Şimdilik max-width olmadan ekranı doldurması için container width'i alıyoruz.
                     setWrapperWidth(entry.contentRect.width);
+                    setWrapperHeight(entry.contentRect.height);
                 }
             }
         });
         resizeObserver.observe(wrapperRef.current);
+        if (wrapperRef.current) {
+            const rect = wrapperRef.current.getBoundingClientRect();
+            setWrapperWidth(rect.width);
+            setWrapperHeight(rect.height);
+        }
         return () => resizeObserver.disconnect();
     }, []);
 
@@ -141,50 +168,117 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         return () => document.removeEventListener('mouseup', handleMouseUp);
     }, [page, onTextSelected]);
 
-    function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-        setNumPages(numPages);
-        if (onTotalPages) onTotalPages(numPages);
-    }
+
+
+    // Enhanced Fit-to-Page logic
+    const getPageWidthConstraint = () => {
+        if (!wrapperWidth || !wrapperHeight) return undefined;
+
+        // Margins to account for UI elements + User margins
+        const hPadding = (isDoubleMode ? 80 : 40) + (settings.margin * 2);
+        const vPadding = (simpleMode ? 40 : 120) + settings.margin;
+
+        const availableW = Math.max(0, (wrapperWidth - hPadding) / (isDoubleMode ? 2 : 1));
+        const availableH = Math.max(0, wrapperHeight - vPadding);
+
+        // Calculate width that fits in height
+        const widthToFitHeight = availableH * pageRatio;
+
+        // The effective "Fit" width is the smaller of the two
+        const fitWidth = Math.min(availableW, widthToFitHeight);
+
+        // Apply scale on top of the fit width
+        return Math.floor(fitWidth * currentScale);
+    };
+
+    const calculatedWidth = getPageWidthConstraint();
 
     if (!safeUrl) return <div className="flex items-center justify-center p-10 font-bold opacity-30 text-xs uppercase tracking-[0.2em]">Dosya Hazırlanıyor...</div>;
 
     return (
-        <div ref={wrapperRef} className="flex flex-col h-full bg-transparent overflow-hidden relative selection:bg-primary/30 w-full">
-            <div className="flex-1 overflow-auto flex justify-center pt-0 pb-0 no-scrollbar scroll-smooth w-full">
+        <div className="w-full h-full flex flex-col items-center justify-center overflow-hidden relative bg-background" ref={wrapperRef}>
+            <div className={`w-full h-full flex justify-center items-center no-scrollbar relative ${simpleMode ? '' : 'px-4'} ${currentScale > 1.0 ? 'overflow-auto' : 'overflow-hidden'}`}>
+                {/* Book Spine Shadow (Center) */}
+                {isDoubleMode && page + 1 <= numPages && (
+                    <div className="absolute left-1/2 top-0 bottom-0 w-16 -translate-x-1/2 z-20 pointer-events-none bg-gradient-to-r from-transparent via-black/15 to-transparent blur-md" />
+                )}
+
                 <Document
                     file={safeUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
                     options={options}
-                    loading={<div className="flex items-center justify-center p-20 font-serif italic text-muted-foreground animate-pulse">Sayfa Yapısı Oluşturuluyor...</div>}
-                    className="flex gap-0 items-start justify-center w-full"
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    className="flex gap-4 items-center justify-center"
+                    loading={
+                        <div className="flex items-center justify-center p-10 h-96 w-full">
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                <span className="text-xs font-bold text-primary animate-pulse">PDF Yükleniyor...</span>
+                            </div>
+                        </div>
+                    }
+                    error={
+                        <div className="flex items-center justify-center p-10 h-96 w-full text-destructive font-bold">
+                            PDF Yüklenemedi. Dosya bozuk veya şifreli olabilir.
+                        </div>
+                    }
                 >
-                    <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden shadow-2xl`}>
+                    {/* Primary Page (Left in double mode) - Stacked Effect */}
+                    <div className={`shadow-[0_20px_60px_rgba(0,0,0,0.3),0_0_0_1px_rgba(0,0,0,0.05)] transition-all duration-300 relative group rounded-sm bg-white dark:bg-zinc-900 overflow-hidden flex items-center justify-center ${isDoubleMode ? 'rounded-r-none' : ''}`}>
+                        {/* Layered Paper Effect (Stacked Pages) */}
+                        <div className="absolute top-0 bottom-0 -right-[1px] w-[1px] bg-black/5 z-[2]" />
+                        <div className="absolute top-0 bottom-0 -right-[3px] w-[1px] bg-black/[0.02] z-[2]" />
+
                         <Page
                             pageNumber={page}
-                            // Width prop is KEY. If defined, it ignores scale and fits width.
-                            // We use wrapperWidth minus some padding if needed.
-                            width={wrapperWidth ? Math.min(wrapperWidth, 1400) : undefined}
-                            // scale is only fallback if width is undefined
-                            scale={wrapperWidth ? undefined : currentScale}
+                            width={calculatedWidth}
+                            onLoadSuccess={(p) => setPageRatio(p.width / p.height)}
+                            className={`${pageBgClass} relative z-[1]`}
                             renderTextLayer={true}
                             renderAnnotationLayer={false}
-                            className="bg-transparent"
+                            loading=""
                         />
+                        {/* Paper Grain/Texture Overlay */}
+                        <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-[3] bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] mix-blend-multiply" />
+
+                        {/* Inner Paper Shadow (Left Page - Gutter/Spine) */}
+                        {isDoubleMode && (
+                            <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/15 via-black/5 to-transparent pointer-events-none z-[4]" />
+                        )}
                     </div>
-                    {isDoubleMode && page < numPages && (
-                        <div className={`${pageBgClass} transition-all duration-700 bg-transparent overflow-hidden shadow-2xl hidden lg:block`}>
+
+                    {/* Secondary Page (Right in double mode) - Stacked Effect */}
+                    {isDoubleMode && page + 1 <= numPages && (
+                        <div className="shadow-[0_20px_60px_rgba(0,0,0,0.3),0_0_0_1px_rgba(0,0,0,0.05)] transition-all duration-300 relative group rounded-sm rounded-l-none bg-white dark:bg-zinc-900 overflow-hidden flex items-center justify-center">
+                            {/* Layered Paper Effect (Stacked Pages) */}
+                            <div className="absolute top-0 bottom-0 -left-[1px] w-[1px] bg-black/5 z-[2]" />
+                            <div className="absolute top-0 bottom-0 -left-[3px] w-[1px] bg-black/[0.02] z-[2]" />
+
+                            {/* Inner Paper Shadow (Right Page - Gutter/Spine) */}
+                            <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-black/15 via-black/5 to-transparent pointer-events-none z-[10]" />
+
                             <Page
                                 pageNumber={page + 1}
-                                width={wrapperWidth ? Math.min(wrapperWidth / 2, 700) : undefined}
-                                scale={wrapperWidth ? undefined : currentScale}
+                                width={calculatedWidth}
+                                className={`${pageBgClass} relative z-[1]`}
                                 renderTextLayer={true}
                                 renderAnnotationLayer={false}
-                                className="bg-transparent"
+                                loading=""
                             />
+                            {/* Paper Grain/Texture Overlay */}
+                            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-[11] bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] mix-blend-multiply" />
                         </div>
                     )}
                 </Document>
             </div>
+
+            {/* Simple Controls if requested (e.g. for secondary reader) */}
+            {simpleMode && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
+                    <span className="text-[10px] bg-background/80 px-2 py-1 rounded-full shadow-sm backdrop-blur-sm tabular-nums">
+                        {page} / {numPages}
+                    </span>
+                </div>
+            )}
         </div>
     );
 });

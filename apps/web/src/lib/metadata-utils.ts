@@ -61,10 +61,19 @@ export function cleanTitle(text: string): string {
 
 export function cleanAuthor(text: string): string {
     if (!text || text === 'Bilinmiyor') return 'Bilinmiyor';
-    return text
+
+    // Split by common delimiters and take the first one (usually the primary author)
+    // Handle: "Author; Translator", "Author ve Author", "Author & Author"
+    let clean = text
+        .split(/[;|,]| ve | & /)[0]
         .replace(/\(.*\)/g, '')
         .replace(/[_\s]+/g, ' ')
         .trim();
+
+    // Special case removal for common non-author keywords
+    clean = clean.replace(/\b(evrilen|trans|çv|translator|çeviren|hazırlayan)\b/gi, '').trim();
+
+    return clean || 'Bilinmiyor';
 }
 
 export function generateDynamicSummary(title: string, author: string): string {

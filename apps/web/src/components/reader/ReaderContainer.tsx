@@ -33,6 +33,7 @@ export interface ReaderContainerRef {
     next: () => void;
     prev: () => void;
     goToPercentage?: (pct: number) => void;
+    getCurrentText: () => Promise<string>;
 }
 
 const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProps>(({
@@ -51,6 +52,9 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
         },
         goToPercentage: (pct: number) => {
             if (contentRef.current?.goToPercentage) contentRef.current.goToPercentage(pct);
+        },
+        getCurrentText: async () => {
+            return contentRef.current?.getCurrentText ? await contentRef.current.getCurrentText() : '';
         }
     }));
 

@@ -28,7 +28,7 @@ const SinglePageReader = React.forwardRef<any, SinglePageReaderProps>(({
             ref={ref}
             url={data}
             pageNumber={pageNumber}
-            onPageChange={(p) => onLocationChange(String(p), 0)}
+            onLocationChange={onLocationChange}
             onTotalPages={onTotalPages}
             scale={scale}
             onTextSelected={(page, text) => onTextSelected?.(String(page), text)}

@@ -1,18 +1,26 @@
 import { useParams, Link } from 'react-router-dom';
 import { useBookStore } from '@/stores/useStore';
 import { Button } from '@/components/ui/button';
-import { ChevronUp, ChevronDown, Bookmark, Share2, Download, ArrowRight, Star } from 'lucide-react';
+import { ChevronUp, ChevronDown, Bookmark, Share2, Download, ArrowRight, Star, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { motion } from 'framer-motion';
 import { generateDynamicSummary } from '@/lib/metadata-utils';
+import { toast } from 'sonner';
+import { useTranslation } from '@/lib/translations';
 
 export default function BookDetails() {
     const { id } = useParams();
-    const { books } = useBookStore();
+    const { books, toggleFavorite, settings } = useBookStore();
+    const t = useTranslation(settings.language);
     const book = books.find(b => b.id === id);
 
-    if (!book) return <div className="p-12 text-center text-muted-foreground">Kitap bulunamadı.</div>;
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href);
+        toast.success(t('bookLinkCopied'));
+    };
+
+    if (!book) return <div className="p-12 text-center text-muted-foreground">{t('bookNotFound')}</div>;
 
     const summary = generateDynamicSummary(book.title, book.author);
 
@@ -63,13 +71,25 @@ export default function BookDetails() {
                     <div className="flex items-center gap-6 pt-4">
                         <Link to={`/read/${book.id}`}>
                             <Button className="rounded-2xl h-14 px-10 text-lg font-medium shadow-xl shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
-                                Okumaya Başla <ArrowRight className="ml-2 h-5 w-5" />
+                                {t('startReading')} <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
                         </Link>
                         <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-colors" title="Favorilere Ekle"><Bookmark className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-colors" title="Paylaş"><Share2 className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-colors" title="İndir"><Download className="h-5 w-5" /></Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-all ${book.isFavorite ? 'text-red-500 border-red-500/20 bg-red-500/5' : ''}`}
+                                title={book.isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+                                onClick={() => toggleFavorite(book.id)}
+                            >
+                                <Bookmark className={`h-5 w-5 ${book.isFavorite ? 'fill-current' : ''}`} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-colors" title={t('share')} onClick={handleShare}>
+                                <Share2 className="h-5 w-5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-colors" title={t('download')} onClick={() => toast.info(t('premiumOnly'))}>
+                                <Download className="h-5 w-5" />
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -80,14 +100,12 @@ export default function BookDetails() {
                 {/* Description & Comment */}
                 <div className="md:col-span-2 space-y-8">
                     <div className="space-y-4">
-                        <h3 className="text-2xl font-serif font-semibold">Özet</h3>
+                        <h3 className="text-2xl font-serif font-semibold">{t('summary')}</h3>
                         <div className="space-y-4 text-muted-foreground leading-relaxed">
                             <p>{summary}</p>
                             <p>
-                                {book.author !== 'Bilinmiyor' ? `${book.author} tarafından kurgulanan bu eser, ` : 'Bu eser, '}
-                                sürükleyici yapısı ve etkileyici karakter gelişimiyle dikkat çekiyor.
-                                Okuyucuyu ilk sayfadan itibaren merak uyandıran bir atmosferin içine çeken kitap,
-                                türün meraklıları için kaçırılmaması gereken bir deneyim sunuyor.
+                                {book.author !== t('unknownAuthor') ? t('authorWorksPrefix', { author: book.author }) : t('genericWorksPrefix')}
+                                {t('worksDesc')}
                             </p>
                         </div>
                     </div>
@@ -96,17 +114,17 @@ export default function BookDetails() {
                         <div className="flex items-center gap-4">
                             <Avatar className="h-10 w-10">
                                 <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=Reader123`} />
-                                <AvatarFallback>OK</AvatarFallback>
+                                <AvatarFallback>{t('userInitial')}</AvatarFallback>
                             </Avatar>
                             <div>
-                                <p className="text-sm font-semibold">Aktif Okur</p>
+                                <p className="text-sm font-semibold">{t('activeReader')}</p>
                                 <div className="flex gap-0.5">
                                     {[1, 2, 3, 4, 5].map(s => <Star key={s} className="h-3 w-3 text-yellow-500 fill-yellow-500" />)}
                                 </div>
                             </div>
                         </div>
                         <p className="text-muted-foreground italic leading-relaxed">
-                            "Bu kitabı bir solukta bitirdim. Karakterlerin derinliği ve hikayenin akıcılığı muazzam. Kesinlikle kütüphanenizde bulunmalı."
+                            {t('sampleComment')}
                         </p>
                     </div>
                 </div>
@@ -115,34 +133,34 @@ export default function BookDetails() {
                 <div className="space-y-10">
                     <div className="space-y-6">
                         <div>
-                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Yazar Bilgisi</p>
+                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('authorInfo')}</p>
                             <p className="text-foreground font-medium">{book.author}</p>
                         </div>
                         {book.publisher && (
                             <div>
-                                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Yayınevi</p>
+                                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('publisher')}</p>
                                 <p className="text-foreground font-medium">{book.publisher}</p>
                             </div>
                         )}
                         {book.year && (
                             <div>
-                                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Basım Yılı</p>
+                                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('publishYear')}</p>
                                 <p className="text-foreground font-medium">{book.year}</p>
                             </div>
                         )}
                         {book.isbn && (
                             <div>
-                                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">ISBN</p>
+                                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('isbn')}</p>
                                 <p className="text-foreground font-medium font-mono text-xs">{book.isbn}</p>
                             </div>
                         )}
                         <div>
-                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Dil ve Format</p>
-                            <p className="text-foreground font-medium">Türkçe, {book.title.endsWith('.pdf') ? 'PDF' : 'EPUB'}</p>
+                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('languageFormat')}</p>
+                            <p className="text-foreground font-medium">{settings.language === 'tr' ? t('turkish') : t('english')}, {book.title.toLowerCase().endsWith('.pdf') ? 'PDF' : 'EPUB'}</p>
                         </div>
                         <div>
-                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">Okuma Durumu</p>
-                            <p className="text-foreground font-medium">%{book.progress?.percentage.toFixed(0) || 0} tamamlandı</p>
+                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('readingStatus')}</p>
+                            <p className="text-foreground font-medium">{t('percentCompleted', { percent: book.progress?.percentage.toFixed(0) || 0 })}</p>
                         </div>
                     </div>
                 </div>

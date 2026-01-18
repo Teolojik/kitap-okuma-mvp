@@ -3,10 +3,14 @@
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+import { useTranslation } from '@/lib/translations';
+import { useBookStore } from '@/stores/useStore';
 
 export default function ReloadPrompt() {
+    const { settings } = useBookStore();
+    const t = useTranslation(settings.language);
     const {
-        needRefresh: [needRefresh, setNeedRefresh],
+        needRefresh: [needRefresh, _setNeedRefresh],
         updateServiceWorker,
     } = useRegisterSW({
         onRegistered(r: ServiceWorkerRegistration | undefined) {
@@ -19,15 +23,15 @@ export default function ReloadPrompt() {
 
     useEffect(() => {
         if (needRefresh) {
-            toast('Yeni versiyon mevcut!', {
+            toast(t('newVersionAvailable'), {
                 action: {
-                    label: 'Yenile',
+                    label: t('refresh'),
                     onClick: () => updateServiceWorker(true)
                 },
                 duration: Infinity
             });
         }
-    }, [needRefresh]);
+    }, [needRefresh, t, updateServiceWorker]);
 
     return null;
 }

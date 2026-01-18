@@ -20,10 +20,21 @@ export interface Book {
     last_read: string;
     mode_pref: 'single' | 'double' | 'split';
     format: 'epub' | 'pdf';
+    isFavorite?: boolean;
+    tags?: string[];
+    collectionId?: string;
     created_at: string;
 }
 
-const DB_NAME = 'KitapOkumaDB';
+export interface Collection {
+    id: string;
+    name: string;
+    description?: string;
+    icon?: string;
+    color?: string;
+}
+
+const DB_NAME = 'EpigrafDB';
 const STORE_NAME = 'books_files';
 
 const openDB = (): Promise<IDBDatabase> => {
@@ -84,17 +95,31 @@ const smartClean = (text: string) => {
         .trim();
 };
 
-const parseFileName = (fileName: string) => {
-    const parts = fileName.replace(/\.(pdf|epub|mobi)$/i, '').split(/\s*-\s*/);
+function parseFileName(name: string) {
+    // 1. Extreme cleaning (Subtitle, Metadata, Hex, ISBN removal)
+    let clean = name.replace(/\.(epub|pdf)$/i, '')
+        .split(/\s*--\s*/)[0]
+        .split(' (')[0]
+        .split(' [')[0]
+        .split(' _ ')[0]
+        .split(' : ')[0]
+        .replace(/\[.*?\]/g, '')
+        .replace(/\(.*\)/g, '')
+        .replace(/\d{13}/, '')
+        .trim();
 
-    if (parts.length >= 2) {
-        const p1 = smartClean(parts[0]);
-        const p2 = smartClean(parts[1]);
-        if (p1.split(' ').length <= 3 && !p1.toUpperCase().includes('LIBRARY')) {
-            return { author: p1, title: p2 };
+    // 2. Format Handling
+    if (clean.includes(' - ')) {
+        const parts = clean.split(' - ').map(p => p.trim());
+        if (parts.length >= 2) {
+            if (parts[0].split(' ').length <= 4 && !parts[0].toLowerCase().includes('library')) {
+                return { author: parts[0], title: parts[1] };
+            }
+            return { title: parts[0], author: parts[1] };
         }
     }
-    return null;
+
+    return { title: clean, author: 'Bilinmiyor' };
 };
 
 // --- LOCAL EXTRACTOR ---
@@ -102,7 +127,6 @@ const extractCoverLocally = async (file: File): Promise<string | undefined> => {
     try {
         if (file.type === 'application/epub+zip' || file.name.endsWith('.epub')) {
             console.log("EPUB Local Extraction attempting...");
-            // Dynamic import to avoid SSR issues if any
             const ePub = (await import('epubjs')).default;
             const reader = new FileReader();
             return new Promise((resolve) => {
@@ -111,10 +135,6 @@ const extractCoverLocally = async (file: File): Promise<string | undefined> => {
                         const book = ePub(e.target?.result as ArrayBuffer);
                         const coverUrl = await book.coverUrl();
                         if (coverUrl) {
-                            console.log("EPUB Local Cover Found:", coverUrl);
-                            // Convert blob URL to base64 if needed, or just return blob url (epubjs returns blob url)
-                            // Note: Blob URL might be revoked if not handled carefully, but for now it might work.
-                            // Better: fetch the blob and convert to base64
                             const res = await fetch(coverUrl);
                             const blob = await res.blob();
                             const reader = new FileReader();
@@ -132,12 +152,88 @@ const extractCoverLocally = async (file: File): Promise<string | undefined> => {
             });
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            console.log("PDF Local Extraction attempting (First Page)...");
-            // PDF extraction is complex due to worker setup. Skipping complex setup to avoid breaking build.
-            // Using a simple placeholder logic for now or rely on API.
-            // If user really wants it, we need pdfjs configured.
-            // For now, let's log.
-            console.log("PDF extraction requires heavy workers, skipping for safety in this context.");
+            try {
+                const pdfjsLib = await import('pdfjs-dist');
+                // MATCH VERSION EXACTLY by using CDN for the worker temporarily 
+                // This bypasses the local version mismatch (v5.4.530 vs v5.4.296)
+                pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingOptions: any = {
+                    data: new Uint8Array(arrayBuffer),
+                    standardFontDataUrl: `${window.location.origin}/standard_fonts/`,
+                    cMapUrl: `${window.location.origin}/cmaps/`,
+                    cMapPacked: true,
+                    wasmUrl: `${window.location.origin}/wasm/`,
+                    imageResourcesPath: `${window.location.origin}/image_decoders/`,
+                };
+                const loadingTask = pdfjsLib.getDocument(loadingOptions);
+                const pdf = await loadingTask.promise;
+
+                let bestDataUrl = undefined;
+                let highestScore = -1;
+
+                // Scan first 5 pages to find the actual high-quality color cover
+                const pagesToScan = Math.min(pdf.numPages, 5);
+
+                for (let i = 1; i <= pagesToScan; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 0.5 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d', { willReadFrequently: true });
+                    if (!context) continue;
+
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    await page.render({ canvasContext: context, viewport, canvas }).promise;
+
+                    // Simple visual scoring based on color variation and density
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+                    let colorScore = 0;
+                    let nonWhitePixels = 0;
+
+                    // Sample pixels (every 10th for performance)
+                    for (let p = 0; p < imageData.length; p += 40) {
+                        const r = imageData[p];
+                        const g = imageData[p + 1];
+                        const b = imageData[p + 2];
+
+                        // Check if not white/grey (background)
+                        if (r < 245 || g < 245 || b < 245) {
+                            nonWhitePixels++;
+                            // Check for color variation (R-G-B difference)
+                            const diff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(b - r));
+                            if (diff > 20) colorScore += 2; // Real color
+                            else colorScore += 1; // Grey/Black text
+                        }
+                    }
+
+                    const fillRatio = nonWhitePixels / (imageData.length / 4);
+                    // Penalize extremely white or extremely dark/empty pages
+                    const pageScore = colorScore * fillRatio;
+
+                    if (fillRatio < 0.05) { // Very empty page
+                        console.log(`Page ${i} is too empty, ignoring.`);
+                        continue;
+                    }
+
+                    console.log(`PDF Page ${i} Visual Score:`, pageScore);
+
+                    // High threshold to distinguish real covers from interior pages
+                    if (pageScore > highestScore) {
+                        highestScore = pageScore;
+                        bestDataUrl = canvas.toDataURL('image/jpeg', 0.85); // Slightly higher quality
+                    }
+                }
+
+                if (highestScore > 8) {
+                    console.log("PDF Smart Cover Found with Score:", highestScore);
+                    return bestDataUrl;
+                }
+            } catch (err: any) {
+                console.error("PDF extraction failed", err);
+            }
         }
     } catch (e) {
         console.error("Local extraction failed", e);
@@ -161,18 +257,32 @@ export const MockAPI = {
         getUser: () => {
             const u = localStorage.getItem('auth_user');
             return u ? JSON.parse(u) : null;
+        },
+        updateProfile: async (updates: any) => {
+            await new Promise(r => setTimeout(r, 500));
+            const u = localStorage.getItem('auth_user');
+            const user = u ? JSON.parse(u) : null;
+            if (user) {
+                const updatedUser = { ...user, ...updates };
+                localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+                return { data: { user: updatedUser }, error: null };
+            }
+            return { data: null, error: 'User not found' };
+        },
+        changePassword: async (oldPass: string, newPass: string) => {
+            await new Promise(r => setTimeout(r, 800));
+            // Simulate success
+            return { error: null };
         }
     },
 
     books: {
         list: async (): Promise<Book[]> => {
-            await new Promise(r => setTimeout(r, 800));
             const stored = localStorage.getItem('mock_books');
             return stored ? JSON.parse(stored) : [];
         },
 
         delete: async (bookId: string) => {
-            await new Promise(r => setTimeout(r, 500));
             await deleteFile(bookId);
             const books = await MockAPI.books.list();
             const newBooks = books.filter(b => b.id !== bookId);
@@ -180,10 +290,8 @@ export const MockAPI = {
         },
 
         upload: async (file: File, metadata: Partial<Book>) => {
-            await new Promise(r => setTimeout(r, 1000));
             const id = crypto.randomUUID();
             const user = MockAPI.auth.getUser();
-
             const format = (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'epub';
 
             // Metadata refinement
@@ -192,63 +300,58 @@ export const MockAPI = {
 
             const badAuthors = ['LIBRARY', 'UNKNOWN', 'ADMIN', 'BILINMIYOR', 'ANONIM', ''];
             if (badAuthors.some(bad => finalAuthor.toUpperCase().includes(bad))) {
-                console.log("Bad author detected:", finalAuthor, "Trying to parse filename...");
                 const parsed = parseFileName(file.name);
                 if (parsed) {
                     finalTitle = parsed.title;
                     finalAuthor = parsed.author;
-                    console.log("Parsed from filename:", parsed);
                 }
-            }
-
-            // AUTO COVER STRATEGY
-            let finalCover = metadata.cover_url;
-
-            if (!finalCover) {
-                // 1. Try Remote Search (Google -> OpenLibrary)
-                try {
-                    const cleanName = smartClean(finalTitle);
-                    const cleanAuth = smartClean(finalAuthor);
-
-                    // Truncate title for better search results
-                    const shortTitle = cleanName.split(' ').slice(0, 3).join(' ');
-
-                    finalCover = await findCoverImage(shortTitle, cleanAuth);
-
-                    if (!finalCover) {
-                        console.log("Remote search failed. Trying fallback (shorter title)...");
-                        const veryShortTitle = cleanName.split(' ').slice(0, 2).join(' ');
-                        finalCover = await findCoverImage(veryShortTitle, undefined);
-                    }
-                } catch (e) {
-                    console.error("Remote cover fetch failed", e);
-                }
-
-                // 2. Try Local Extraction if Remote Failed
-                if (!finalCover) {
-                    console.log("Remote failed completely. Trying local extraction...");
-                    const localCover = await extractCoverLocally(file);
-                    if (localCover) {
-                        finalCover = localCover;
-                        console.log("Using Local Cover");
-                    }
-                }
-            }
-
-            // FALLBACK DEFAULT IMAGE (Unsplash) - If everything fails
-            if (!finalCover) {
-                console.log("All strategies failed. Using Unsplash fallback.");
-                finalCover = "https://images.unsplash.com/photo-1544947950-fa07a98d4679?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
             }
 
             const displayTitle = smartClean(finalTitle);
+
+            // PARALLEL METADATA & COVER STRATEGY
+            let finalCover = metadata.cover_url;
+
+            const [_, metadataResult] = await Promise.all([
+                saveFile(id, file),
+                (async () => {
+                    if (finalCover) return { cover: finalCover };
+
+                    // 1. TRY REMOTE SEARCH FIRST (Using CLEAN metadata)
+                    try {
+                        const remoteCover = await findCoverImage(finalTitle, finalAuthor);
+                        if (remoteCover && !remoteCover.includes('unsplash')) {
+                            console.log("Remote color cover found for clean title!");
+                            return { cover: remoteCover };
+                        }
+                    } catch (e) { console.error("Remote search failed early", e); }
+
+                    // 2. TRY LOCAL EXTRACTION AS FALLBACK
+                    const localCover = await extractCoverLocally(file);
+                    if (localCover) {
+                        console.log("Local cover found!");
+                        return { cover: localCover };
+                    }
+
+                    // 3. FINAL REMOTE FALLBACK (Placeholder)
+                    const lastResort = await findCoverImage(finalTitle, finalAuthor);
+                    return { cover: lastResort };
+                })()
+            ]);
+
+            finalCover = metadataResult.cover;
+
+            // FALLBACK DEFAULT IMAGE (High Quality Book Placeholder)
+            if (!finalCover) {
+                finalCover = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+            }
 
             const newBook: Book = {
                 id,
                 user_id: user?.id || 'anon',
                 title: displayTitle,
                 author: smartClean(finalAuthor),
-                file_url: null as any,
+                file_url: `local://${id}`,
                 cover_url: finalCover,
                 progress: { percentage: 0, page: 1 },
                 last_read: new Date().toISOString(),
@@ -257,9 +360,6 @@ export const MockAPI = {
                 created_at: new Date().toISOString(),
                 ...metadata
             };
-
-            await saveFile(id, file);
-            newBook.file_url = `local://${id}`;
 
             const books = await MockAPI.books.list();
             books.push(newBook);

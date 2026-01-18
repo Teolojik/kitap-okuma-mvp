@@ -64,7 +64,7 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                         ref={primaryRef}
                         url={primaryData}
                         pageNumber={primaryPageNumber}
-                        onPageChange={(p) => onPrimaryLocationChange(String(p), 0)}
+                        onLocationChange={(loc, pct) => onPrimaryLocationChange(loc, pct)}
                         onTotalPages={onTotalPages}
                         scale={activePanel === 'primary' ? scale : scale}
                         simpleMode
@@ -101,13 +101,15 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                             url={secondaryData}
                             simpleMode
                             pageNumber={secondaryPageNumber || 1}
-                            onPageChange={(p) => onSecondaryLocationChange?.(String(p), 0)}
+                            onLocationChange={(loc, pct) => onSecondaryLocationChange?.(loc, pct)}
                             scale={activePanel === 'secondary' ? scale : scale}
                         />
                     ) : (
                         <EpubReader
                             ref={secondaryRef}
                             url={secondaryData}
+                            initialLocation={secondaryBook.progress?.location as string}
+                            onLocationChange={onSecondaryLocationChange}
                             options={EPUB_OPTIONS}
                         />
                     )

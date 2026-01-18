@@ -15,7 +15,13 @@ interface DoubleStaticProps {
     annotations?: any[];
 }
 
-const EPUB_OPTIONS = { flow: 'paginated', manager: 'default', width: '100%', height: '100%' };
+const EPUB_OPTIONS = {
+    flow: 'paginated',
+    manager: 'default',
+    width: '100%',
+    height: '100%',
+    spread: 'always'
+};
 
 import { getFileType } from '@/lib/file-utils';
 
@@ -27,7 +33,7 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
             ref={ref}
             url={data}
             pageNumber={pageNumber}
-            onPageChange={(p) => onLocationChange(String(p), 0)}
+            onLocationChange={onLocationChange}
             onTotalPages={onTotalPages}
             scale={scale}
             onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
@@ -36,13 +42,14 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
     }
 
     return (
-        <div className="h-full w-full relative group">
+        <div className="h-full w-full relative overflow-hidden">
             <EpubReader
                 ref={ref}
                 url={data}
                 initialLocation={book.progress?.location as string}
                 onLocationChange={onLocationChange}
                 onTextSelected={onTextSelected}
+                onTotalPages={onTotalPages}
                 annotations={annotations}
                 options={EPUB_OPTIONS}
             />
