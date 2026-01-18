@@ -30,6 +30,7 @@ export interface PdfReaderRef {
     next: () => void;
     prev: () => void;
     getCurrentText: () => Promise<string>;
+    search: (query: string) => Promise<any[]>;
 }
 
 const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
@@ -95,6 +96,53 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                 console.error("PDF Text extraction failed", e);
                 return '';
             }
+        },
+        search: async (query: string, isRegex: boolean = false) => {
+            if (!pdfDoc) return [];
+            const results: any[] = [];
+
+            let searchRegex: RegExp;
+            try {
+                searchRegex = isRegex ? new RegExp(query, 'gi') : new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            } catch (e) {
+                console.error("Invalid Regex", e);
+                return [];
+            }
+
+            for (let i = 1; i <= numPages; i++) {
+                try {
+                    const pageObj = await pdfDoc.getPage(i);
+                    const textContent = await pageObj.getTextContent();
+                    const text = textContent.items.map((item: any) => item.str).join(' ');
+
+                    // Fast check
+                    if (searchRegex.test(text)) {
+                        searchRegex.lastIndex = 0; // Reset for multiple matches if needed
+                        const match = searchRegex.exec(text);
+                        if (match) {
+                            const index = match.index;
+                            const matchedText = match[0];
+                            const excerpt = "..." +
+                                text.substring(Math.max(0, index - 40), index) +
+                                matchedText +
+                                text.substring(index + matchedText.length, Math.min(text.length, index + matchedText.length + 40)) +
+                                "...";
+
+                            results.push({
+                                cfi: String(i),
+                                page: i,
+                                excerpt: excerpt,
+                                match: matchedText
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Search error on page ${i}`, e);
+                }
+
+                if (results.length >= 50) break;
+            }
+            return results;
         }
     }));
     const [wrapperWidth, setWrapperWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 800);
@@ -176,7 +224,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
         // Margins to account for UI elements + User margins
         const hPadding = (isDoubleMode ? 80 : 40) + (settings.margin * 2);
-        const vPadding = (simpleMode ? 40 : 120) + settings.margin;
+        const vPadding = (simpleMode ? 40 : 120) + settings.paddingTop + settings.paddingBottom;
 
         const availableW = Math.max(0, (wrapperWidth - hPadding) / (isDoubleMode ? 2 : 1));
         const availableH = Math.max(0, wrapperHeight - vPadding);
@@ -232,11 +280,30 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                             pageNumber={page}
                             width={calculatedWidth}
                             onLoadSuccess={(p) => setPageRatio(p.width / p.height)}
-                            className={`${pageBgClass} relative z-[1]`}
+                            className={`${pageBgClass} relative z-[1] select-none`}
                             renderTextLayer={true}
                             renderAnnotationLayer={false}
                             loading=""
                         />
+                        <style>{`
+                            .react-pdf__Page {
+                                user-select: none !important;
+                            }
+                            .react-pdf__Page__textContent {
+                                user-select: text !important;
+                                z-index: 20 !important;
+                                pointer-events: auto !important;
+                            }
+                            .react-pdf__Page__annotations {
+                                pointer-events: none !important;
+                                z-index: 5 !important;
+                            }
+                            .react-pdf__Page__canvas {
+                                pointer-events: none !important;
+                                user-select: none !important;
+                                z-index: 1 !important;
+                            }
+                        `}</style>
                         {/* Paper Grain/Texture Overlay */}
                         <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-[3] bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] mix-blend-multiply" />
 

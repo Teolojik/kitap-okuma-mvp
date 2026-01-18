@@ -10,6 +10,7 @@ import { useBookStore } from '@/stores/useStore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/lib/translations';
+import { BookCover } from '@/components/ui/BookCover';
 
 export default function DiscoverPage() {
     const { uploadBook, settings } = useBookStore();
@@ -21,16 +22,25 @@ export default function DiscoverPage() {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const categories = [
+        { name: "Classics", query: "subject:classics", icon: "🏛️" },
+        { name: "Philosophy", query: "subject:philosophy", icon: "🧠" },
+        { name: "Sci-Fi", query: "subject:science fiction", icon: "🚀" },
+        { name: "History", query: "subject:history", icon: "📜" },
+        { name: "Art", query: "subject:art", icon: "🎨" },
+        { name: "Self-Help", query: "subject:self-help", icon: "✨" }
+    ];
 
-        if (!query.trim()) return;
+    const handleCategoryClick = (catQuery: string) => {
+        setQuery(catQuery.replace('subject:', ''));
+        performSearch(catQuery);
+    };
 
-        console.log("Discover Search Started:", query);
+    const performSearch = async (searchQuery: string) => {
+        console.log("Discover Search Started:", searchQuery);
         setLoading(true);
         try {
-            const data = await searchBooks(query);
+            const data = await searchBooks(searchQuery);
             console.log("Discover Results Received:", data.length);
             setResults(data);
             if (data.length === 0) toast(t('noResultsFound'));
@@ -40,6 +50,14 @@ export default function DiscoverPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!query.trim()) return;
+        performSearch(query);
     };
 
     const startDownload = async (book: SearchResult) => {
@@ -125,70 +143,100 @@ export default function DiscoverPage() {
             </form>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-                {results.map((book) => (
-                    <motion.div
-                        key={book.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        whileHover={{ y: -5 }}
-                        className="group relative bg-card/40 backdrop-blur-sm border border-border/30 rounded-[2.5rem] p-6 hover:bg-card/60 transition-all duration-500 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-primary/5"
-                    >
-                        <div className="flex gap-6 items-start">
-                            <div className="h-40 w-28 bg-secondary/50 shrink-0 rounded-2xl overflow-hidden shadow-lg group-hover:shadow-primary/10 transition-shadow bg-muted">
-                                {book.cover_url ? (
-                                    <img src={book.cover_url} alt={book.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                ) : (
-                                    <div className="h-full w-full flex items-center justify-center text-muted-foreground/30">
-                                        <div className="text-center p-2">
-                                            <div className="text-[10px] uppercase font-bold mb-1 opacity-50">{t('noCover')}</div>
-                                        </div>
+                {loading ? (
+                    // Skeleton Loaders
+                    Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="bg-card/40 backdrop-blur-sm border border-border/10 rounded-[2.5rem] p-6 animate-pulse">
+                            <div className="flex gap-6 items-start">
+                                <div className="h-40 w-28 bg-secondary rounded-2xl shrink-0" />
+                                <div className="flex-1 space-y-4">
+                                    <div className="h-6 bg-secondary rounded-full w-3/4" />
+                                    <div className="h-4 bg-secondary rounded-full w-1/2" />
+                                    <div className="space-y-2 pt-4">
+                                        <div className="h-8 bg-secondary rounded-xl w-full" />
+                                        <div className="h-8 bg-secondary rounded-xl w-1/2" />
                                     </div>
-                                )}
-                            </div>
-                            <div className="flex-1 flex flex-col gap-2 min-w-0">
-                                <h3 className="font-serif font-bold text-xl leading-tight text-foreground/90 group-hover:text-primary transition-colors line-clamp-2">{book.title}</h3>
-                                <p className="text-sm font-medium text-muted-foreground/80 truncate">{book.author}</p>
-
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {book.publisher && <span className="bg-primary/5 text-primary/70 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg truncate max-w-[150px]">{book.publisher}</span>}
-                                    {book.isbn && <span className="bg-secondary text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg">{t('isbn')}: {book.isbn}</span>}
-                                </div>
-
-                                <div className="flex gap-2 mt-4 pt-4 border-t border-border/20 flex-wrap">
-                                    <Button size="sm" className="rounded-xl flex-1 h-9 font-bold tracking-tight text-xs shadow-md shadow-primary/10" onClick={() => startDownload(book)}>
-                                        <Download className="h-3.5 w-3.5 mr-2" />
-                                        {t('addDemo')}
-                                    </Button>
-
-                                    {book.externalLinks && (
-                                        <>
-                                            <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
-                                                <a href={book.externalLinks.annasArchive} target="_blank" rel="noreferrer" title={t('searchAnnasArchive')}>
-                                                    Anna's
-                                                    <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
-                                                </a>
-                                            </Button>
-                                            <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
-                                                <a href={book.externalLinks.libgen} target="_blank" rel="noreferrer" title={t('searchLibgen')}>
-                                                    Libgen
-                                                    <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
-                                                </a>
-                                            </Button>
-                                        </>
-                                    )}
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
-                ))}
-            </div>
+                    ))
+                ) : results.length > 0 ? (
+                    results.map((book) => (
+                        <motion.div
+                            key={book.id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            whileHover={{ y: -5 }}
+                            className="group relative bg-card/40 backdrop-blur-sm border border-border/30 rounded-[2.5rem] p-6 hover:bg-card/60 transition-all duration-500 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-primary/5"
+                        >
+                            <div className="flex gap-6 items-start">
+                                <div className="h-40 w-28 shrink-0 shadow-lg group-hover:shadow-primary/10 transition-shadow">
+                                    <BookCover
+                                        url={book.cover_url}
+                                        title={book.title}
+                                        aspectRatio="aspect-[2/3]"
+                                    />
+                                </div>
+                                <div className="flex-1 flex flex-col gap-2 min-w-0">
+                                    <h3 className="font-serif font-bold text-xl leading-tight text-foreground/90 group-hover:text-primary transition-colors line-clamp-2">{book.title}</h3>
+                                    <p className="text-sm font-medium text-muted-foreground/80 truncate">{book.author}</p>
 
-            {results.length === 0 && !loading && query && (
-                <div className="text-center py-20 bg-secondary/20 rounded-[3rem] border-2 border-dashed border-border/50">
-                    <Search className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                    <p className="text-muted-foreground font-medium">{t('noBooksFound')}</p>
-                </div>
-            )}
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {book.publisher && <span className="bg-primary/5 text-primary/70 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg truncate max-w-[150px]">{book.publisher}</span>}
+                                        {book.isbn && <span className="bg-secondary text-muted-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg">{t('isbn')}: {book.isbn}</span>}
+                                    </div>
+
+                                    <div className="flex gap-2 mt-4 pt-4 border-t border-border/20 flex-wrap">
+                                        <Button size="sm" className="rounded-xl flex-1 h-9 font-bold tracking-tight text-xs shadow-md shadow-primary/10" onClick={() => startDownload(book)}>
+                                            <Download className="h-3.5 w-3.5 mr-2" />
+                                            {t('addDemo')}
+                                        </Button>
+
+                                        {book.externalLinks && (
+                                            <>
+                                                <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
+                                                    <a href={book.externalLinks.annasArchive} target="_blank" rel="noreferrer" title={t('searchAnnasArchive')}>
+                                                        Anna's
+                                                        <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
+                                                    </a>
+                                                </Button>
+                                                <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
+                                                    <a href={book.externalLinks.libgen} target="_blank" rel="noreferrer" title={t('searchLibgen')}>
+                                                        Libgen
+                                                        <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
+                                                    </a>
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))
+                ) : (
+                    <div className="col-span-full py-20 text-center space-y-12">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                            {categories.map((cat) => (
+                                <button
+                                    key={cat.name}
+                                    onClick={() => handleCategoryClick(cat.query)}
+                                    className="group p-6 rounded-[2rem] bg-card/40 border border-border/30 hover:border-primary/50 hover:bg-card/80 transition-all hover:scale-105"
+                                >
+                                    <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">{cat.icon}</div>
+                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">{cat.name}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {!query && (
+                            <div className="bg-secondary/20 p-12 rounded-[3.5rem] border border-dashed border-border/50">
+                                <Search className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                                <p className="text-muted-foreground text-sm font-medium">{t('discoverSub')}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
 
             <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
                 <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8 max-w-md bg-background/95 backdrop-blur-xl">

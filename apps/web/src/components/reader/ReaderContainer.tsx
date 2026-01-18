@@ -34,6 +34,7 @@ export interface ReaderContainerRef {
     prev: () => void;
     goToPercentage?: (pct: number) => void;
     getCurrentText: () => Promise<string>;
+    search: (query: string, isRegex?: boolean) => Promise<any[]>;
 }
 
 const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProps>(({
@@ -55,6 +56,9 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
         },
         getCurrentText: async () => {
             return contentRef.current?.getCurrentText ? await contentRef.current.getCurrentText() : '';
+        },
+        search: async (query: string, isRegex: boolean = false) => {
+            return contentRef.current?.search ? await contentRef.current.search(query, isRegex) : [];
         }
     }));
 

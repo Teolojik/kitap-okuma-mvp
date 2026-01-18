@@ -1,9 +1,10 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import EpubReader, { EpubReaderRef } from '../EpubReader';
-import PdfReader from '../PdfReader';
 import { Book } from '@/lib/mock-api';
+
+const EpubReader = lazy(() => import('../EpubReader'));
+const PdfReader = lazy(() => import('../PdfReader'));
 
 interface DoubleAnimatedProps {
     book: Book;
@@ -53,32 +54,38 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
     }));
 
     if (book.format === 'pdf') {
-        return <PdfReader
-            ref={innerReaderRef}
-            url={data}
-            pageNumber={pageNumber}
-            onLocationChange={onLocationChange}
-            onTotalPages={onTotalPages}
-            scale={scale}
-            onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
-            annotations={annotations}
-        />;
+        return (
+            <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">PDF Motoru Hazırlanıyor...</div>}>
+                <PdfReader
+                    ref={innerReaderRef}
+                    url={data}
+                    pageNumber={pageNumber}
+                    onLocationChange={onLocationChange}
+                    onTotalPages={onTotalPages}
+                    scale={scale}
+                    onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
+                    annotations={annotations}
+                />
+            </Suspense>
+        );
     }
 
     return (
         <div className="h-full w-full relative overflow-hidden">
             <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-10 shadow-lg" />
 
-            <EpubReader
-                ref={innerReaderRef}
-                url={data}
-                initialLocation={book.progress?.location as string}
-                onLocationChange={onLocationChange}
-                onTextSelected={onTextSelected}
-                onTotalPages={onTotalPages}
-                annotations={annotations}
-                options={EPUB_OPTIONS}
-            />
+            <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">EPUB Motoru Hazırlanıyor...</div>}>
+                <EpubReader
+                    ref={innerReaderRef}
+                    url={data}
+                    initialLocation={book.progress?.location as string}
+                    onLocationChange={onLocationChange}
+                    onTextSelected={onTextSelected}
+                    onTotalPages={onTotalPages}
+                    annotations={annotations}
+                    options={EPUB_OPTIONS}
+                />
+            </Suspense>
 
             {/* Flip Animation Overlay */}
             <AnimatePresence mode="wait">

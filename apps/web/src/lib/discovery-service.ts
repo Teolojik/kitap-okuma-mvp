@@ -1,4 +1,8 @@
-// Google Books API & OpenLibrary API Service
+export interface DiscoveryResult {
+    url: string;
+    author?: string;
+}
+
 export interface SearchResult {
     id: string;
     title: string;
@@ -72,9 +76,9 @@ const calculateStrictRelevance = (itemTitle: string, itemAuthors: string[], sear
 };
 
 // OpenLibrary Cover Search
-const searchOpenLibrary = async (title: string, author?: string): Promise<string | undefined> => {
+const searchOpenLibrary = async (title: string, author?: string): Promise<{ url: string; author?: string } | undefined> => {
     let query = `title=${encodeURIComponent(title)}`;
-    if (author && !author.includes('Bilinmiyor') && !author.includes('LIBRARY')) {
+    if (author && author.length > 2 && !author.toLowerCase().includes('bilinimiyor') && !author.toLowerCase().includes('unknown')) {
         query += `&author=${encodeURIComponent(author)}`;
     }
 
@@ -83,14 +87,13 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
     try {
         const response = await fetch(`https://openlibrary.org/search.json?${query}&limit=10`);
         const data = await response.json();
-        console.log("Open Library sonucu:", data);
 
         if (data.docs && data.docs.length > 0) {
             let bestMatch = null;
             let maxScore = 0;
 
-            data.docs.forEach((doc: any) => {
-                if (!doc.cover_i) return;
+            for (const doc of data.docs) {
+                if (!doc.cover_i) continue;
 
                 const score = calculateStrictRelevance(
                     doc.title,
@@ -99,19 +102,18 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
                     author
                 );
 
-                console.log(`OL Candidate: ${doc.title} (${doc.author_name}) - Score: ${score}`);
-
                 if (score > maxScore) {
                     maxScore = score;
                     bestMatch = doc;
                 }
-            });
+            }
 
-            // Must be exact match (Title + Author = 100) or at least Title (50) match
             if (bestMatch && maxScore >= 50) {
                 const coverUrl = `https://covers.openlibrary.org/b/id/${(bestMatch as any).cover_i}-L.jpg`;
-                console.log("Open Library Winner:", coverUrl, "Score:", maxScore);
-                return coverUrl;
+                return {
+                    url: coverUrl,
+                    author: (bestMatch as any).author_name?.[0]
+                };
             }
         }
     } catch (e) {
@@ -120,116 +122,94 @@ const searchOpenLibrary = async (title: string, author?: string): Promise<string
     return undefined;
 };
 
-// CORS Proxy ile Kitapyurdu'ndan Kapak Çekme
-const searchKitapyurdu = async (title: string, author: string): Promise<string | undefined> => {
-    const query = `${title} ${author}`;
-    // Using a more stable CORS proxy
+const searchKitapyurdu = async (title: string, author: string): Promise<{ url: string; author?: string } | undefined> => {
+    const query = `${title} ${author}`.trim();
     const targetUrl = `https://www.kitapyurdu.com/index.php?route=product/search&filter_name=${encodeURIComponent(query)}`;
-    console.log("Kitapyurdu Searching via CORSProxy.io:", targetUrl);
 
-    try {
-        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
-        const htmlText = await response.text();
+    // Primary: AllOrigins Raw (Usually most stable)
+    // Secondary: CORSProxy.io (Fallback)
+    const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+    ];
 
-        if (htmlText) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, "text/html");
+    for (const proxyUrl of proxies) {
+        try {
+            const response = await fetch(proxyUrl);
+            if (!response.ok) continue;
 
-            const imgElement = doc.querySelector('.product-cr .cover .image img');
-            if (imgElement) {
-                let src = imgElement.getAttribute('src');
-                if (src) {
-                    src = src.replace(/wi:\d+/, 'wi:600');
-                    const isValid = await isImageValid(src);
-                    if (isValid) {
-                        console.log("Kitapyurdu cover found & verified:", src);
-                        return src;
+            const htmlText = await response.text();
+            if (htmlText && htmlText.includes('product-cr')) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, "text/html");
+
+                const imgElement = doc.querySelector('.product-cr .cover .image img');
+                const authorElement = doc.querySelector('.product-cr .author');
+
+                if (imgElement) {
+                    let src = imgElement.getAttribute('src');
+                    let foundAuthor = authorElement?.textContent?.trim();
+
+                    if (src) {
+                        src = src.replace(/wi:\d+/, 'wi:600');
+                        // Trust Kitapyurdu images directly to avoid CORS HEAD check failure
+                        return { url: src, author: foundAuthor };
                     }
                 }
             }
+        } catch (e) {
+            console.warn("Proxy attempt failed:", e);
         }
-    } catch (e) {
-        console.error("Kitapyurdu search failed:", e);
     }
     return undefined;
 };
 
 // Geliştirilmiş Kapak Bulma (Türkçe Öncelikli -> Google -> OpenLibrary -> Default)
-export const findCoverImage = async (title: string, author: string = ''): Promise<string | undefined> => {
+export const findCoverImage = async (title: string, author: string = ''): Promise<DiscoveryResult> => {
     console.log("Cover Search Started for:", title, "Author:", author);
+    const defaultPlaceholder = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
 
-    // 0. STRATEJİ: Hardcoded Fallback (Popüler / Sorunlu Yazarlar İçin)
-    // Acil durumlar için manuel tanımlamalar
+    // 0. STRATEJİ: Hardcoded Fallback
     const normalizedAuthor = normalizeSimple(author);
-    if (normalizedAuthor.includes('dogancuceloghu') || normalizedAuthor.includes('cuceloghu') ||
-        normalizedAuthor.includes('dogan cuceloglu') || normalizedAuthor.includes('cuceloglu')) {
-        const fallback = "https://i.dr.com.tr/cache/600x600-0/originals/0000000676440-1.jpg"; // Var Mısın kapağı
-        console.log("Hardcoded fallback triggered for Doğan Cüceloğlu:", fallback);
-        return fallback;
+    if (normalizedAuthor.includes('dogancuceloghu') || normalizedAuthor.includes('cuceloghu')) {
+        return { url: "https://i.dr.com.tr/cache/600x600-0/originals/0000000676440-1.jpg", author: "Doğan Cüceloğlu" };
     }
 
-    let foundCover: string | undefined = undefined;
-
-    // 1. STRATEJİ: Kitapyurdu / D&R (Türkçe Kitaplar İçin En İyisi)
-    // Eğer yazar ismi Türkçe karakter içeriyorsa veya bilindiksse önce burayı dene
-    try {
-        foundCover = await searchKitapyurdu(title, author);
-        if (foundCover) return foundCover;
-    } catch (e) {
-        console.log("Turkish source search failed, moving to global...", e);
-    }
-
-    // 2. STRATEJİ: Google Books (Strict Query)
-    if (!foundCover) {
-        try {
-            let q = `intitle:"${title}"`;
-            if (author && author.length > 2 && !author.toUpperCase().includes('BILINMIYOR')) {
-                q += `+inauthor:"${author}"`;
-            }
-
-            const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=10&printType=books`);
-            const data = await response.json();
-
-            if (data.items && data.items.length > 0) {
-                for (const item of data.items) {
-                    if (!item.volumeInfo?.imageLinks?.thumbnail) continue;
-
-                    const score = calculateStrictRelevance(
-                        item.volumeInfo.title,
-                        item.volumeInfo.authors || [],
-                        title,
-                        author
-                    );
-
-                    if (score >= 40) { // Slightly lower threshold for Google
-                        const url = getHighResCoverGoogle(item.volumeInfo);
-                        if (url && await isImageValid(url)) {
-                            foundCover = url;
-                            console.log("Google Books winner verified:", url);
-                            break;
+    // RUN STRATEGIES IN PARALLEL FOR MAXIMUM SPEED
+    const strategies = [
+        searchKitapyurdu(title, author),
+        (async () => {
+            try {
+                let q = `intitle:"${title}"`;
+                if (author && author.length > 2 && !author.toLowerCase().includes('bilinmiyor')) {
+                    q += `+inauthor:"${author}"`;
+                }
+                const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=10&printType=books`);
+                const data = await response.json();
+                if (data.items && data.items.length > 0) {
+                    for (const item of data.items) {
+                        const info = item.volumeInfo;
+                        if (!info?.imageLinks?.thumbnail) continue;
+                        const score = calculateStrictRelevance(info.title, info.authors || [], title, author);
+                        if (score >= 40) {
+                            const url = getHighResCoverGoogle(info);
+                            if (url && await isImageValid(url)) return { url, author: info.authors?.[0] };
                         }
                     }
                 }
-            }
-        } catch (e) {
-            console.error("Google Books error:", e);
-        }
-    }
+            } catch (e) { }
+            return undefined;
+        })(),
+        searchOpenLibrary(title, author)
+    ];
 
-    // 3. STRATEJİ: OpenLibrary (Fallback)
-    if (!foundCover) {
-        console.log("Trying OpenLibrary fallback...");
-        const url = await searchOpenLibrary(title, author);
-        if (url && await isImageValid(url)) {
-            foundCover = url;
-        }
-    }
+    const results = await Promise.all(strategies);
+    const bestResult = results.find(r => r && r.url);
 
-    if (foundCover) return foundCover;
+    if (bestResult) return bestResult;
 
-    // 4. SON ÇARE: Default Unsplash Image (High Quality)
     console.log("All strategies failed. Returning Default Placeholder Cover.");
-    return "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+    return { url: defaultPlaceholder };
 };
 
 export const searchBooks = async (query: string): Promise<SearchResult[]> => {
@@ -274,4 +254,22 @@ export const searchBooks = async (query: string): Promise<SearchResult[]> => {
         console.error("Discovery Error:", e);
         return [];
     }
+};
+
+// Helper to migrate legacy/broken proxy URLs on the fly
+export const getCleanCoverUrl = (url?: string): string => {
+    if (!url) return "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+
+    // Migrate broken legacy corsproxy.io links
+    if (url.includes('corsproxy.io')) {
+        const match = url.match(/\?(.*)/);
+        if (match && match[1]) {
+            try {
+                const decoded = decodeURIComponent(match[1]);
+                return `https://api.allorigins.win/raw?url=${encodeURIComponent(decoded)}`;
+            } catch (e) { return url; }
+        }
+    }
+
+    return url;
 };

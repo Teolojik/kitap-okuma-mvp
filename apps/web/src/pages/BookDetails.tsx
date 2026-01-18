@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { generateDynamicSummary } from '@/lib/metadata-utils';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/translations';
+import { BookCover } from '@/components/ui/BookCover';
 
 export default function BookDetails() {
     const { id } = useParams();
@@ -39,14 +40,12 @@ export default function BookDetails() {
                         animate={{ y: 0, opacity: 1 }}
                         className="relative group"
                     >
-                        <div className="w-[300px] aspect-[2/3] rounded-[2rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] group-hover:shadow-[0_60px_120px_-20px_rgba(0,0,0,0.4)] transition-all duration-700 bg-secondary">
-                            {book.cover_url ? (
-                                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center p-8 bg-gradient-to-br from-secondary to-muted">
-                                    <span className="text-4xl font-serif text-muted-foreground/30">{book.title[0]}</span>
-                                </div>
-                            )}
+                        <div className="w-[300px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] group-hover:shadow-[0_60px_120px_-20px_rgba(0,0,0,0.4)] transition-all duration-700">
+                            <BookCover
+                                url={book.cover_url}
+                                title={book.title}
+                                aspectRatio="aspect-[2/3]"
+                            />
                         </div>
                     </motion.div>
                 </div>
@@ -61,7 +60,7 @@ export default function BookDetails() {
                         >
                             {book.title}
                         </motion.h1>
-                        <p className="text-2xl text-muted-foreground font-serif italic">{book.author}</p>
+                        <p className="text-2xl text-muted-foreground font-serif italic">{book.author || t('unknownAuthor')}</p>
                     </div>
 
                     <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
@@ -78,11 +77,11 @@ export default function BookDetails() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className={`h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-all ${book.isFavorite ? 'text-red-500 border-red-500/20 bg-red-500/5' : ''}`}
-                                title={book.isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+                                className={`h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-all ${book.is_favorite ? 'text-red-500 border-red-500/20 bg-red-500/5' : ''}`}
+                                title={book.is_favorite ? t('removeFromFavorites') : t('addToFavorites')}
                                 onClick={() => toggleFavorite(book.id)}
                             >
-                                <Bookmark className={`h-5 w-5 ${book.isFavorite ? 'fill-current' : ''}`} />
+                                <Bookmark className={`h-5 w-5 ${book.is_favorite ? 'fill-current' : ''}`} />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl border border-border/50 hover:bg-card transition-colors" title={t('share')} onClick={handleShare}>
                                 <Share2 className="h-5 w-5" />
@@ -104,7 +103,7 @@ export default function BookDetails() {
                         <div className="space-y-4 text-muted-foreground leading-relaxed">
                             <p>{summary}</p>
                             <p>
-                                {book.author !== t('unknownAuthor') ? t('authorWorksPrefix', { author: book.author }) : t('genericWorksPrefix')}
+                                {book.author && book.author !== 'Bilinmiyor' ? t('authorWorksPrefix', { author: book.author }) : t('genericWorksPrefix')}
                                 {t('worksDesc')}
                             </p>
                         </div>
@@ -134,7 +133,7 @@ export default function BookDetails() {
                     <div className="space-y-6">
                         <div>
                             <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-1">{t('authorInfo')}</p>
-                            <p className="text-foreground font-medium">{book.author}</p>
+                            <p className="text-foreground font-medium">{book.author || t('unknownAuthor')}</p>
                         </div>
                         {book.publisher && (
                             <div>

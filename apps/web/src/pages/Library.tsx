@@ -16,6 +16,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { parseBookFilename, cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
+import { getCleanCoverUrl } from '@/lib/discovery-service';
 import {
     Dialog,
     DialogContent,
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BookCover } from '@/components/ui/BookCover';
 
 // Preload transparent pixel once to avoid first-drag "ghost" bug
 const transparentPixel = new Image();
@@ -88,21 +90,35 @@ export default function LibraryPage() {
             book.author.toLowerCase().includes(searchQuery.toLowerCase());
 
         let matchesCollection = true;
-        if (selectedCollection === 'favorites') matchesCollection = !!book.isFavorite;
+        if (selectedCollection === 'favorites') matchesCollection = !!book.is_favorite;
         else if (selectedCollection === 'reading') matchesCollection = (book.progress?.percentage || 0) > 0 && (book.progress?.percentage || 0) < 100;
         else if (selectedCollection === 'finished') matchesCollection = (book.progress?.percentage || 0) >= 100;
-        else if (selectedCollection !== 'all') matchesCollection = book.collectionId === selectedCollection;
+        else if (selectedCollection !== 'all') matchesCollection = book.collection_id === selectedCollection;
 
         return matchesSearch && matchesCollection;
     });
 
-    // Sort books by last read timestamp (if available) or fallback to created_at
+    // Sort books by activity (progress.lastActive) or fallback to creation date
     const sortedBooks = [...filteredBooks].sort((a, b) => {
-        const dateA = a.last_read ? new Date(a.last_read).getTime() : new Date(a.created_at).getTime();
-        const dateB = b.last_read ? new Date(b.last_read).getTime() : new Date(b.created_at).getTime();
-        return dateB - dateA;
+        const dateA = a.progress?.lastActive ? new Date(a.progress.lastActive).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
+        const dateB = b.progress?.lastActive ? new Date(b.progress.lastActive).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
+
+        const timeA = isNaN(dateA) ? 0 : dateA;
+        const timeB = isNaN(dateB) ? 0 : dateB;
+
+        return timeB - timeA;
     });
-    const latestBook = sortedBooks.length > 0 ? sortedBooks[0] : null;
+
+    // The highlight card should ALWAYS show the absolute latest active book
+    const latestBook = books.length > 0 ? [...books].sort((a, b) => {
+        const dateA = a.progress?.lastActive ? new Date(a.progress.lastActive).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
+        const dateB = b.progress?.lastActive ? new Date(b.progress.lastActive).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
+
+        const timeA = isNaN(dateA) ? 0 : dateA;
+        const timeB = isNaN(dateB) ? 0 : dateB;
+
+        return timeB - timeA;
+    })[0] : null;
 
     const handleCreateCollection = async () => {
         if (!newCollectionName.trim()) return;
@@ -229,8 +245,8 @@ export default function LibraryPage() {
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[10px] font-black opacity-30 ${selectedCollection === c.id ? 'opacity-100' : ''}`}>
                                                 {c.id === 'all' ? books.length :
-                                                    c.id === 'favorites' ? books.filter(b => b.isFavorite).length :
-                                                        books.filter(b => b.collectionId === c.id).length}
+                                                    c.id === 'favorites' ? books.filter(b => b.is_favorite).length :
+                                                        books.filter(b => b.collection_id === c.id).length}
                                             </span>
                                         </div>
                                     </button>
@@ -298,7 +314,7 @@ export default function LibraryPage() {
                             animate={{ opacity: 1, x: 0 }}
                             className="text-3xl font-serif font-medium text-foreground/90 tracking-tight"
                         >
-                            {t('happyReading')}, <span className="text-primary italic">{user?.name || t('guest')}</span>
+                            {t('happyReading')}, <span className="text-primary italic">{user?.user_metadata?.name || user?.email?.split('@')[0] || t('guest')}</span>
                         </motion.h1>
                         <p className="text-muted-foreground text-sm mt-1">
                             {t('libraryWelcomeCount', { count: books.length })}
@@ -322,19 +338,16 @@ export default function LibraryPage() {
                     <div className="bg-gradient-to-r from-secondary/50 to-card border border-border/50 rounded-3xl p-6 flex flex-col sm:flex-row gap-6 items-center shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/10 transition-colors" />
 
-                        <div className="w-24 shrink-0 aspect-[2/3] rounded-lg shadow-md overflow-hidden relative bg-muted">
-                            {latestBook.cover_url ? (
-                                <img src={latestBook.cover_url} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-primary/20 text-primary">
-                                    <BookOpen className="h-8 w-8" />
-                                </div>
-                            )}
+                        <div className="w-24 shrink-0 shadow-md">
+                            <BookCover
+                                url={latestBook.cover_url}
+                                title={latestBook.title}
+                            />
                         </div>
 
                         <div className="flex-1 text-center sm:text-left z-10">
                             <h3 className="text-lg font-bold font-serif mb-1 line-clamp-1">{cleanTitle(latestBook.title)}</h3>
-                            <p className="text-sm text-muted-foreground mb-4">{cleanAuthor(latestBook.author)}</p>
+                            <p className="text-sm text-muted-foreground mb-4">{cleanAuthor(latestBook.author) || t('unknownAuthor')}</p>
                             <div className="flex items-center justify-center sm:justify-start gap-4">
                                 <Link to={`/read/${latestBook.id}`}>
                                     <Button size="sm" className="rounded-full px-6 shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
@@ -367,100 +380,79 @@ export default function LibraryPage() {
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-10">
-                        <AnimatePresence>
-                            {sortedBooks.length > 0 ? sortedBooks.map((book) => (
-                                <motion.div
-                                    layout
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    key={book.id}
-                                    draggable
-                                    onDragStart={(e: any) => {
-                                        setDraggedBookId(book.id);
-                                        e.dataTransfer.setData('bookId', book.id);
-                                        // Use the preloaded transparent pixel to hide default ghost
-                                        e.dataTransfer.setDragImage(transparentPixel, 0, 0);
-                                    }}
-                                    onDragEnd={() => {
-                                        setDraggedBookId(null);
-                                        setDragOverId(null);
-                                    }}
-                                    className={`group relative flex flex-col items-center sm:items-start transition-opacity ${draggedBookId === book.id ? 'opacity-10' : 'opacity-100'}`}
-                                >
-                                    {/* Isolated Action Menu (Outside Link) */}
-                                    <div className="absolute top-2 right-2 z-30">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-40 rounded-xl bg-background/95 backdrop-blur-xl border-border/50">
-                                                <DropdownMenuItem
-                                                    onClick={() => toggleFavorite(book.id)}
-                                                    className="gap-2 cursor-pointer font-bold text-xs"
-                                                >
-                                                    <Star className={`h-4 w-4 ${book.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-                                                    {book.isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => {
-                                                        if (window.confirm(t('confirmDeleteBook'))) {
-                                                            deleteBook(book.id);
-                                                            toast.success(t('bookDeleted'));
-                                                        }
-                                                    }}
-                                                    className="gap-2 cursor-pointer font-bold text-xs text-red-500 focus:text-red-500 focus:bg-red-500/10"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                    {t('deleteBook')}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-
-                                    {/* Cover Image */}
-                                    <div
-                                        onClick={() => navigate(`/details/${book.id}`)}
-                                        className="w-full relative block group/cover cursor-pointer"
+                        <AnimatePresence mode="popLayout">
+                            {sortedBooks.length > 0 ? (
+                                sortedBooks.map((book) => (
+                                    <motion.div
+                                        layout
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        key={book.id}
+                                        draggable
+                                        onDragStart={(e: any) => {
+                                            setDraggedBookId(book.id);
+                                            e.dataTransfer.setData('bookId', book.id);
+                                            e.dataTransfer.setDragImage(transparentPixel, 0, 0);
+                                        }}
+                                        onDragEnd={() => {
+                                            setDraggedBookId(null);
+                                            setDragOverId(null);
+                                        }}
+                                        className={`group relative flex flex-col items-center sm:items-start transition-opacity ${draggedBookId === book.id ? 'opacity-10' : 'opacity-100'}`}
                                     >
-                                        <div className="w-full aspect-[2/3.2] rounded-xl overflow-hidden shadow-md group-hover/cover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)] transition-all duration-500 bg-secondary relative transform group-hover/cover:-translate-y-2">
-                                            {book.cover_url ? (
-                                                <img
-                                                    src={book.cover_url}
-                                                    alt={book.title}
-                                                    referrerPolicy="no-referrer"
-                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover/cover:scale-105"
-                                                    onError={(e) => {
-                                                        const target = e.currentTarget;
-                                                        const fallback = "https://images.unsplash.com/photo-1544947950-fa07a98d4679?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
-                                                        if (target.src !== fallback) target.src = fallback;
-                                                    }}
+                                        <div className="absolute top-2 right-2 z-30">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-40 rounded-xl bg-background/95 backdrop-blur-xl border-border/50">
+                                                    <DropdownMenuItem
+                                                        onClick={() => toggleFavorite(book.id)}
+                                                        className="gap-2 cursor-pointer font-bold text-xs"
+                                                    >
+                                                        <Star className={`h-4 w-4 ${book.is_favorite ? 'fill-red-500 text-red-500' : ''}`} />
+                                                        {book.is_favorite ? t('removeFromFavorites') : t('addToFavorites')}
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            if (window.confirm(t('confirmDeleteBook'))) {
+                                                                deleteBook(book.id);
+                                                                toast.success(t('bookDeleted'));
+                                                            }
+                                                        }}
+                                                        className="gap-2 cursor-pointer font-bold text-xs text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        {t('deleteBook')}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+
+                                        <div
+                                            onClick={() => navigate(`/details/${book.id}`)}
+                                            className="w-full relative block group/cover cursor-pointer"
+                                        >
+                                            <div className="transform group-hover/cover:-translate-y-2 transition-transform duration-500">
+                                                <BookCover
+                                                    url={book.cover_url}
+                                                    title={book.title}
                                                 />
-                                            ) : (
-                                                <div className="w-full h-full flex flex-col justify-between p-3 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-white/20">
-                                                    <div className="w-full h-1 bg-primary/20 rounded-full" />
-                                                    <div className="text-center">
-                                                        <h3 className="font-serif font-bold text-xs leading-tight text-foreground/80 line-clamp-3 mb-1">{cleanTitle(book.title)}</h3>
-                                                    </div>
-                                                    <div className="flex justify-center">
-                                                        <BookOpen className="h-6 w-6 text-primary/30" />
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {/* Reading Progress Overlay (If started) */}
+                                            </div>
+
                                             {book.progress && book.progress.percentage > 0 && (
                                                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-secondary/50">
                                                     <div className="h-full bg-primary" style={{ width: `${book.progress.percentage}%` }} />
                                                 </div>
                                             )}
 
-                                            {/* Quick Read Overlay */}
                                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px] z-10">
                                                 <Button
                                                     size="sm"
@@ -475,18 +467,17 @@ export default function LibraryPage() {
                                                 </Button>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Book Info below cover */}
-                                    <div className="mt-3 w-full text-center sm:text-left space-y-0.5 px-0.5">
-                                        <h3 className="font-bold text-[13px] leading-tight line-clamp-2 text-foreground/90 group-hover:text-primary transition-colors cursor-pointer" title={book.title}>
-                                            <Link to={`/read/${book.id}`}>{cleanTitle(book.title)}</Link>
-                                        </h3>
-                                        <p className="text-[11px] font-medium text-muted-foreground truncate">{cleanAuthor(book.author)}</p>
-                                    </div>
-                                </motion.div>
-                            )) : (
-                                <div className="col-span-full py-24 text-center">
+                                        <div className="mt-3 w-full text-center sm:text-left space-y-0.5 px-0.5">
+                                            <h3 className="font-bold text-[13px] leading-tight line-clamp-2 text-foreground/90 group-hover:text-primary transition-colors cursor-pointer" title={book.title}>
+                                                <Link to={`/read/${book.id}`}>{cleanTitle(book.title)}</Link>
+                                            </h3>
+                                            <p className="text-[11px] font-medium text-muted-foreground truncate">{cleanAuthor(book.author) || t('unknownAuthor')}</p>
+                                        </div>
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div key="empty-library" className="col-span-full py-24 text-center">
                                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-secondary/30 mb-6">
                                         <Library className="h-10 w-10 text-muted-foreground/30" />
                                     </div>
@@ -537,27 +528,27 @@ export default function LibraryPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </div >
 
             {/* Right Section: Sidebar (User & Stats) */}
-            <div className="hidden lg:block w-[300px] space-y-10 animate-in fade-in slide-in-from-right-4 duration-1000">
+            < div className="hidden lg:block w-[300px] space-y-10 animate-in fade-in slide-in-from-right-4 duration-1000" >
                 {/* Profile Card */}
-                <div className="flex items-center gap-4 bg-card/40 p-5 rounded-3xl border border-border/40 shadow-sm backdrop-blur-sm">
+                < div className="flex items-center gap-4 bg-card/40 p-5 rounded-3xl border border-border/40 shadow-sm backdrop-blur-sm" >
                     <Avatar className="h-14 w-14 border-2 border-primary/10 shadow-sm">
                         <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user?.id || 'd1'}&backgroundColor=e5e7eb`} />
                         <AvatarFallback>{user?.name?.[0] || t('userInitial')}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate text-foreground/90">{user?.name || t('guestReader')}</p>
+                        <p className="text-sm font-bold truncate text-foreground/90">{user?.user_metadata?.name || user?.email?.split('@')[0] || t('guestReader')}</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                             <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{t('online')}</span>
                         </div>
                     </div>
-                </div>
+                </div >
 
                 {/* Simplified Calendar */}
-                <div className="space-y-4">
+                < div className="space-y-4" >
                     <div className="flex justify-between items-center px-1">
                         <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                             <Calendar className="h-4 w-4" /> {t('calendar')}
@@ -594,22 +585,22 @@ export default function LibraryPage() {
                             })}
                         </div>
                     </Card>
-                </div>
+                </div >
 
                 {/* Reading Stats Mini */}
-                <div className="bg-primary/5 rounded-[2.5rem] p-6 border border-primary/10 relative overflow-hidden">
+                < div className="bg-primary/5 rounded-[2.5rem] p-6 border border-primary/10 relative overflow-hidden" >
                     <div className="absolute top-0 right-0 p-8 opacity-5">
                         <Star className="w-32 h-32" />
                     </div>
                     <h3 className="text-lg font-serif font-bold text-primary mb-1">{t('weeklyGoal')}</h3>
                     <p className="text-xs text-muted-foreground mb-4">{t('maintainingStreak')}</p>
                     <div className="flex items-end gap-2 mb-2">
-                        <span className="text-4xl font-bold tabular-nums text-foreground/90">3</span>
+                        <span className="text-4xl font-bold tabular-nums text-foreground/90">{books.length}</span>
                         <span className="text-sm font-medium text-muted-foreground mb-1.5">{t('booksGoal')}</span>
                     </div>
-                    <Progress value={60} className="h-2 bg-primary/10" />
-                </div>
-            </div>
-        </div>
+                    <Progress value={(books.length / 5) * 100} className="h-2 bg-primary/10" />
+                </div >
+            </div >
+        </div >
     );
 };

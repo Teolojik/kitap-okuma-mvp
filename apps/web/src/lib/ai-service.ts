@@ -1,8 +1,13 @@
 
 /**
  * AI & Dictionary Service
- * Provides word definitions and text summarization.
+ * Provides word definitions and text summarization using Google Gemini.
  */
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null;
 
 export interface DictionaryEntry {
     word: string;
@@ -17,6 +22,13 @@ export interface DictionaryEntry {
 }
 
 export const AIDiscoveryService = {
+    /**
+     * Check if AI key is available
+     */
+    hasKey(): boolean {
+        return !!API_KEY;
+    },
+
     /**
      * Fetch word definition from Free Dictionary API
      */
@@ -37,31 +49,42 @@ export const AIDiscoveryService = {
      * Simulate AI Summarization
      */
     async summarizeText(text: string): Promise<string> {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Since we don't have a real backend, we use a simulation logic
-        const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 10);
-
-        if (sentences.length <= 1) {
-            return "Metin çok kısa olduğu için özetlenemedi. Lütfen daha uzun bir paragraf seçin.";
+        if (!model) {
+            // Fallback to simulation if no API key
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 10);
+            if (sentences.length <= 1) return text;
+            return `[SIMÜLE ÖZET]: ${sentences[0]}... ${sentences[sentences.length - 1]}`;
         }
 
-        // HEURISTIC: Take first and last sentence + a middle one if exists
-        const summary = [
-            sentences[0].trim(),
-            sentences.length > 2 ? sentences[Math.floor(sentences.length / 2)].trim() : null,
-            sentences[sentences.length - 1].trim()
-        ].filter(Boolean).join('. ') + '.';
-
-        return `[AI ÖZETİ]: ${summary}`;
+        try {
+            const prompt = `Lütfen aşağıdaki metni kısa ve öz bir şekilde (maksimum 3 cümle) özetle. Yanıtın sadece özet metni olsun:\n\n${text}`;
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            return response.text();
+        } catch (error) {
+            console.error("Gemini Summarize Error:", error);
+            return "Özet oluşturulurken bir hata oluştu.";
+        }
     },
 
     /**
-     * In a real app, this would call an LLM (Gemini, GPT, etc.)
+     * Real Gemini AI QA integration
      */
     async askAI(question: string, context: string): Promise<string> {
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        return `"${context.slice(0, 50)}..." bağlamında sorduğunuz "${question}" sorusuna bir yanıt simüle ediliyor. Gerçek bir API entegrasyonu ile burada Gemini'den gelen cevap yer alacaktır.`;
+        if (!model) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return `[SIMÜLASYON]: "${question}" sorunuza gerçek bir API anahtarı olmadan yanıt veremiyorum. Lütfen ayarlar kısmından Gemini API anahtarını tanımlayın.`;
+        }
+
+        try {
+            const prompt = `Aşağıdaki metin bağlamında şu soruyu cevapla. Eğer cevap metinde yoksa, genel bilgilerini kullanarak ama bağlamdan kopmadan cevap ver. Yanıtın samimi ve yardımcı bir okuma asistanı gibi olsun.\n\nBAĞLAM:\n${context}\n\nSORU:\n${question}`;
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            return response.text();
+        } catch (error) {
+            console.error("Gemini QA Error:", error);
+            return "Yapay zeka yanıt verirken bir hata oluştu.";
+        }
     }
 };

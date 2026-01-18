@@ -9,6 +9,7 @@ export interface EpubReaderRef {
     goTo: (loc: string) => void;
     goToPercentage: (pct: number) => void;
     getCurrentText: () => Promise<string>;
+    search: (query: string) => Promise<any[]>;
 }
 
 interface EpubReaderProps {
@@ -34,13 +35,75 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
     useImperativeHandle(ref, () => ({
         prev: () => renditionRef.current?.prev(),
         next: () => renditionRef.current?.next(),
-        goTo: (loc: string) => renditionRef.current?.display(loc),
+        goTo: (location: string) => {
+            if (renditionRef.current) {
+                renditionRef.current.display(location);
+            }
+        },
         goToPercentage: (pct: number) => {
             if (bookRef.current && bookRef.current.locations.length() > 0) {
                 // pct is 0-100, cfiFromPercentage expects 0-1
                 const cfi = bookRef.current.locations.cfiFromPercentage(pct / 100);
                 renditionRef.current?.display(cfi);
             }
+        },
+        search: async (query: string, isRegex: boolean = false) => {
+            if (!bookRef.current || !query) return [];
+
+            const results: any[] = [];
+            let searchRegex: RegExp;
+            try {
+                searchRegex = isRegex ? new RegExp(query, 'gi') : new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            } catch (e) {
+                console.error("Invalid regex query", e);
+                return [];
+            }
+
+            // Iterate through spine items
+            const spine = bookRef.current.spine;
+            const spineItems = (spine as any).items || [];
+
+            for (const item of spineItems) {
+                try {
+                    await item.load(bookRef.current.load.bind(bookRef.current));
+                    const doc = item.document;
+                    const text = doc.body.innerText || doc.body.textContent || '';
+
+                    searchRegex.lastIndex = 0;
+                    let match;
+                    while ((match = searchRegex.exec(text)) !== null) {
+                        const index = match.index;
+                        const matchedText = match[0];
+                        const excerpt = "..." +
+                            text.substring(Math.max(0, index - 40), index) +
+                            matchedText +
+                            text.substring(index + matchedText.length, Math.min(text.length, index + matchedText.length + 40)) +
+                            "...";
+
+                        // Get CFI for the match (EpubJS specific)
+                        // This is a bit complex, but item.cfiFromElement or range logic can work
+                        // For MVP: Simple cfi for the start of the section
+                        // A more precise CFI would require finding the element containing the match
+                        // For now, we'll use the CFI of the body of the item.
+                        // A better approach would be to use book.find(query) if it supported regex and returned CFIs.
+                        // Or, to manually construct CFI from text offset, which is non-trivial.
+                        const cfi = item.cfiFromElement(doc.body);
+
+                        results.push({
+                            cfi: cfi,
+                            excerpt: excerpt,
+                            match: matchedText
+                        });
+
+                        if (results.length >= 50) break; // Limit results for performance
+                    }
+                    item.unload();
+                } catch (e) {
+                    console.error("Search error in spine item", e);
+                }
+                if (results.length >= 50) break; // Limit results for performance
+            }
+            return results;
         },
         getCurrentText: async () => {
             if (!renditionRef.current) return '';
@@ -116,20 +179,40 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             renditionRef.current = rendition;
 
             // Display initial page and handle errors
-            book.ready.then(() => {
+            book.ready.then(async () => {
                 setIsReady(true);
                 applySettings(rendition);
 
-                // Display content IMMEDIATELY without waiting for location generation
-                if (initialLocation) {
-                    return rendition.display(initialLocation);
-                } else {
-                    return rendition.display();
+                // Display content with enhanced restoration logic
+                try {
+                    if (initialLocation) {
+                        console.log('EPUB Restore: Attempting to restore location:', initialLocation);
+
+                        // If it's a number string (legacy or PDF-like), check if it's usable as index
+                        if (!isNaN(Number(initialLocation)) && !initialLocation.startsWith('epubcfi')) {
+                            const index = parseInt(initialLocation, 10);
+                            // If index is 1, just start from beginning, otherwise try to find section
+                            if (index > 1) {
+                                console.log('EPUB Restore: Location is a number, attempting index-based display');
+                                await rendition.display(index - 1); // 0-based for spine
+                            } else {
+                                await rendition.display();
+                            }
+                        } else {
+                            // Standard CFI restoration
+                            await rendition.display(initialLocation);
+                        }
+                    } else {
+                        await rendition.display();
+                    }
+                } catch (displayError) {
+                    console.warn("EPUB Restore failed, falling back to start:", displayError);
+                    await rendition.display(); // Fallback to start
                 }
             }).then(() => {
                 // Background task: Generate locations for progress calculation
-                // This doesn't block the initial render anymore
-                return book.locations.generate(1000);
+                // Increased chunk size for faster generation if needed
+                return book.locations.generate(1024);
             }).then(() => {
                 // Report total pages (approximate screens) once locations are ready
                 if (onTotalPages) {
@@ -146,22 +229,57 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             // Event listeners
             rendition.on('relocated', (location: any) => {
                 if (onLocationChange) {
-                    // Start CFI
                     const startCfi = location.start.cfi;
-                    // Calculate percentage using generated locations
-                    // location.start.percentage is often reliable if generate() was called
+
+                    // Get percentage from location object (0-1 range)
                     let percentage = location.start.percentage;
 
-                    // Fallback to locations object calculation if needed
-                    if (percentage === undefined && book.locations.length() > 0) {
+                    // Fallback: Calculate from locations if available
+                    if ((percentage === undefined || percentage === 0) && book.locations.length() > 0) {
                         percentage = book.locations.percentageFromCfi(startCfi);
                     }
 
-                    // Estimate "Page Number" for display (1-based index of location)
-                    // This is 'fake' but useful for "Page X of Y" display
-                    // const pageIndex = book.locations.locationFromCfi(startCfi);
+                    // Fallback: Estimate from spine index if locations not ready
+                    if ((percentage === undefined || percentage === 0) && location.start.index !== undefined) {
+                        const spine = book.spine as any;
+                        const spineLength = spine?.length || spine?.items?.length || 1;
+                        percentage = (location.start.index / spineLength);
+                    }
 
-                    onLocationChange(startCfi, (percentage || 0) * 100);
+                    // Ensure percentage is valid number in 0-1 range
+                    if (percentage === undefined || isNaN(percentage)) {
+                        percentage = 0;
+                    }
+
+                    // Convert to 0-100 range for consistency with PDF reader
+                    const percentageValue = Math.min(100, Math.max(0, percentage * 100));
+
+                    // Calculate page number
+                    let pageNumber = 1;
+                    const totalLocations = book.locations.length();
+
+                    if (totalLocations > 0) {
+                        // Use locations API for accurate page number
+                        const locationIndex = book.locations.locationFromCfi(startCfi) as unknown as number;
+                        if (typeof locationIndex === 'number' && locationIndex >= 0) {
+                            pageNumber = locationIndex + 1;
+                        } else {
+                            pageNumber = Math.max(1, Math.round((percentageValue / 100) * totalLocations));
+                        }
+                    } else if (location.start.index !== undefined) {
+                        // Locations not ready, use spine index as page estimate
+                        pageNumber = (location.start.index || 0) + 1;
+                    }
+
+                    console.log('EPUB Progress:', {
+                        cfi: startCfi.substring(0, 50) + '...',
+                        percentage: percentageValue.toFixed(2),
+                        page: pageNumber,
+                        locationsReady: totalLocations > 0
+                    });
+
+                    // Only report progress if we have meaningful data
+                    onLocationChange(startCfi, percentageValue);
                 }
             });
 
@@ -250,7 +368,7 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
         // Base layout styles that should be applied to all themes
         const layoutStyles = {
             'body': {
-                'padding': `40px ${marginPx}px !important`,
+                'padding': `${settings.paddingTop}px ${marginPx}px ${settings.paddingBottom}px !important`,
                 'height': '100% !important',
                 'font-size': '1.15em !important',
                 'background': 'transparent !important'
@@ -328,7 +446,10 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             </div>
             {/* Styles for highlights */}
             <style>{`
-                ::selection { background: yellow; color: black; }
+                ::selection { 
+                    background: rgba(249, 115, 22, 0.3) !important; 
+                    color: inherit !important; 
+                }
             `}</style>
         </div>
     );

@@ -41,7 +41,7 @@ import { useTranslation } from '@/lib/translations';
 
 export default function Layout() {
     const { user, signOut } = useAuthStore();
-    const { settings, setSettings } = useBookStore();
+    const { settings, setSettings, guestLimitTrigger } = useBookStore();
     const t = useTranslation(settings.language);
     const location = useLocation();
     const [isExpanded, setIsExpanded] = useState(false);
@@ -354,68 +354,115 @@ export default function Layout() {
                             )}
                         </Tooltip>
 
-                        {/* User Profile */}
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="flex items-center gap-4 p-2 rounded-[2rem] bg-secondary/20 hover:bg-secondary/40 transition-all duration-500 cursor-pointer group overflow-hidden">
-                                    <Avatar className="h-10 w-10 shrink-0 ring-2 ring-transparent group-hover:ring-primary/20 transition-all shadow-xl">
-                                        <AvatarImage src={user?.avatar} />
-                                        <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">
-                                            {user?.name?.[0] || 'U'}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <AnimatePresence mode="wait">
-                                        {isExpanded && (
-                                            <motion.div
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -10 }}
-                                                className="flex flex-col min-w-0"
-                                            >
-                                                <span className="text-[10px] font-black uppercase tracking-widest truncate">{user?.name || t('userLabel')}</span>
-                                                <span className="text-[8px] text-muted-foreground font-bold truncate opacity-50 uppercase tracking-tighter">{t('premiumMember')}</span>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            </TooltipTrigger>
-                            {!isExpanded && (
-                                <TooltipContent side="right" className="bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest py-1.5 px-3 rounded-xl border-none shadow-2xl">
-                                    {t('profile')}
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
+                        {/* User Profile / Login Section */}
+                        {!user ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <motion.div
+                                        animate={guestLimitTrigger > 0 ? {
+                                            x: [0, -10, 10, -10, 10, 0],
+                                            scale: [1, 1.15, 1],
+                                            backgroundColor: ["rgba(var(--primary), 0.1)", "rgba(var(--primary), 0.3)", "rgba(var(--primary), 0.1)"]
+                                        } : {}}
+                                        transition={{
+                                            duration: 1.2,
+                                            ease: "easeInOut",
+                                            times: [0, 0.2, 0.4, 0.6, 0.8, 1],
+                                            repeat: 2
+                                        } as any}
+                                        key={`guest-limit-${guestLimitTrigger}`}
+                                        className="w-full"
+                                    >
+                                        <Link to="/login" className="w-full flex items-center gap-4 p-3 rounded-[1.5rem] bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all duration-500 overflow-hidden group border border-primary/20 shadow-lg shadow-primary/5">
+                                            <div className="h-10 w-10 shrink-0 flex items-center justify-center">
+                                                <LogOut className="h-5 w-5 rotate-180 stroke-[2]" />
+                                            </div>
+                                            <AnimatePresence mode="wait">
+                                                {isExpanded && (
+                                                    <motion.span
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        exit={{ opacity: 0, x: -10 }}
+                                                        className="font-black text-[11px] uppercase tracking-[0.2em] whitespace-nowrap"
+                                                    >
+                                                        {t('login')}
+                                                    </motion.span>
+                                                )}
+                                            </AnimatePresence>
+                                        </Link>
+                                    </motion.div>
+                                </TooltipTrigger>
+                                {!isExpanded && (
+                                    <TooltipContent side="right" className="bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest py-1.5 px-3 rounded-xl border-none shadow-2xl">
+                                        {t('login')}
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        ) : (
+                            <>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-4 p-2 rounded-[2rem] bg-secondary/20 hover:bg-secondary/40 transition-all duration-500 cursor-pointer group overflow-hidden">
+                                            <Avatar className="h-10 w-10 shrink-0 ring-2 ring-transparent group-hover:ring-primary/20 transition-all shadow-xl">
+                                                <AvatarImage src={user?.avatar_url} />
+                                                <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">
+                                                    {(user?.user_metadata?.name || user?.email)?.[0]?.toUpperCase() || 'U'}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <AnimatePresence mode="wait">
+                                                {isExpanded && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        exit={{ opacity: 0, x: -10 }}
+                                                        className="flex flex-col min-w-0"
+                                                    >
+                                                        <span className="text-[10px] font-black uppercase tracking-widest truncate">{user?.user_metadata?.name || user?.email?.split('@')[0]}</span>
+                                                        <span className="text-[8px] text-muted-foreground font-bold truncate opacity-50 uppercase tracking-tighter">{t('premiumMember')}</span>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {!isExpanded && (
+                                        <TooltipContent side="right" className="bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest py-1.5 px-3 rounded-xl border-none shadow-2xl">
+                                            {t('profile')}
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
 
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    className="w-full justify-start gap-4 rounded-[1.5rem] h-auto p-3 text-muted-foreground hover:text-red-500 hover:bg-red-500/5 group overflow-hidden"
-                                    onClick={() => signOut()}
-                                >
-                                    <div className="h-10 w-10 shrink-0 flex items-center justify-center border border-transparent group-hover:border-red-500/20 rounded-full transition-all">
-                                        <LogOut className="h-5 w-5 stroke-[1.5]" />
-                                    </div>
-                                    <AnimatePresence mode="wait">
-                                        {isExpanded && (
-                                            <motion.span
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -10 }}
-                                                className="font-black text-[11px] uppercase tracking-[0.2em] whitespace-nowrap"
-                                            >
-                                                {t('logout')}
-                                            </motion.span>
-                                        )}
-                                    </AnimatePresence>
-                                </Button>
-                            </TooltipTrigger>
-                            {!isExpanded && (
-                                <TooltipContent side="right" className="bg-red-500 text-white font-black text-[10px] uppercase tracking-widest py-1.5 px-3 rounded-xl border-none shadow-2xl shadow-red-500/20">
-                                    {t('logout')}
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full justify-start gap-4 rounded-[1.5rem] h-auto p-3 text-muted-foreground hover:text-red-500 hover:bg-red-500/5 group overflow-hidden"
+                                            onClick={() => signOut()}
+                                        >
+                                            <div className="h-10 w-10 shrink-0 flex items-center justify-center border border-transparent group-hover:border-red-500/20 rounded-full transition-all">
+                                                <LogOut className="h-5 w-5 stroke-[1.5]" />
+                                            </div>
+                                            <AnimatePresence mode="wait">
+                                                {isExpanded && (
+                                                    <motion.span
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        exit={{ opacity: 0, x: -10 }}
+                                                        className="font-black text-[11px] uppercase tracking-[0.2em] whitespace-nowrap"
+                                                    >
+                                                        {t('logout')}
+                                                    </motion.span>
+                                                )}
+                                            </AnimatePresence>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    {!isExpanded && (
+                                        <TooltipContent side="right" className="bg-red-500 text-white font-black text-[10px] uppercase tracking-widest py-1.5 px-3 rounded-xl border-none shadow-2xl shadow-red-500/20">
+                                            {t('logout')}
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </>
+                        )}
                     </div>
 
                     {/* Expand Toggle Button */}

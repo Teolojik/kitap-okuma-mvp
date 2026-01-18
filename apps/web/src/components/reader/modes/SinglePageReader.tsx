@@ -1,8 +1,9 @@
 
-import React, { useRef } from 'react';
-import EpubReader, { EpubReaderRef } from '../EpubReader';
-import PdfReader from '../PdfReader';
+import React, { useRef, Suspense, lazy } from 'react';
 import { Book } from '@/lib/mock-api';
+
+const EpubReader = lazy(() => import('../EpubReader'));
+const PdfReader = lazy(() => import('../PdfReader'));
 
 interface SinglePageReaderProps {
     book: Book;
@@ -24,29 +25,36 @@ const SinglePageReader = React.forwardRef<any, SinglePageReaderProps>(({
     book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
 }, ref) => {
     if (book.format === 'pdf') {
-        return <PdfReader
-            ref={ref}
-            url={data}
-            pageNumber={pageNumber}
-            onLocationChange={onLocationChange}
-            onTotalPages={onTotalPages}
-            scale={scale}
-            onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
-            annotations={annotations}
-        />;
+        return (
+            <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">PDF Motoru Hazırlanıyor...</div>}>
+                <PdfReader
+                    ref={ref}
+                    url={data}
+                    pageNumber={pageNumber}
+                    onLocationChange={onLocationChange}
+                    onTotalPages={onTotalPages}
+                    scale={scale}
+                    onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
+                    annotations={annotations}
+                />
+            </Suspense>
+        );
     }
 
     return (
         <div className="h-full w-full relative">
-            <EpubReader
-                ref={ref}
-                url={data}
-                initialLocation={book.progress?.location as string}
-                onLocationChange={onLocationChange}
-                onTextSelected={onTextSelected}
-                annotations={annotations}
-                options={EPUB_OPTIONS}
-            />
+            <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">Okuyucu Hazırlanıyor...</div>}>
+                <EpubReader
+                    ref={ref}
+                    url={data}
+                    initialLocation={book.progress?.location as string}
+                    onLocationChange={onLocationChange}
+                    onTotalPages={onTotalPages}
+                    onTextSelected={onTextSelected}
+                    annotations={annotations}
+                    options={EPUB_OPTIONS}
+                />
+            </Suspense>
         </div>
     );
 });

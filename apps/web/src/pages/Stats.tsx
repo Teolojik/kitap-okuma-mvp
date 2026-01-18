@@ -17,6 +17,7 @@ import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';
 
 import { useTranslation } from '@/lib/translations';
+import { BookCover } from '@/components/ui/BookCover';
 
 const ALL_ACHIEVEMENTS = (t: any) => [
     { id: 'kitap-kurdu', title: t('achievementKitapKurduTitle'), desc: t('achievementKitapKurduDesc'), icon: BookOpen, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
@@ -178,10 +179,10 @@ const StatsPage = () => {
                 <h2 className="text-2xl font-serif font-bold italic tracking-tight px-2">{t('bookDistribution')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {books.slice(0, 3).map((book) => (
-                        <Card key={book.id} className="border-border/40 bg-card/20 backdrop-blur-sm hover:bg-card/40 transition-all rounded-[2rem]">
+                        <Card key={book.id} className="border-border/40 bg-card/20 backdrop-blur-sm hover:bg-card/40 transition-all rounded-[2rem] overflow-hidden">
                             <CardContent className="p-6 flex items-center gap-6">
-                                <div className="w-16 h-24 rounded-lg bg-secondary overflow-hidden shadow-lg shrink-0">
-                                    <img src={book.cover_url || ''} className="w-full h-full object-cover" alt={book.title} />
+                                <div className="w-16 shrink-0 shadow-lg">
+                                    <BookCover url={book.cover_url} title={book.title} aspectRatio="aspect-[2/3]" className="rounded-lg" />
                                 </div>
                                 <div className="flex-1 space-y-3">
                                     <div>

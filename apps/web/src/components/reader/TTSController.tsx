@@ -2,9 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBookStore } from '@/stores/useStore';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Square, SkipForward, SkipBack, Volume2, Settings2, Sliders } from 'lucide-react';
+import { Play, Pause, Square, SkipForward, SkipBack, Sliders } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/translations';
+import { Slider } from '@/components/ui/slider';
 
 interface TTSControllerProps {
     onGetText: () => Promise<string>;
@@ -14,13 +16,16 @@ interface TTSControllerProps {
 
 export default function TTSController({ onGetText, onNext, onPrev }: TTSControllerProps) {
     const { settings, setSettings } = useBookStore();
+    const t = useTranslation(settings.language);
     const [isPlaying, setIsPlaying] = useState(false);
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
     const [showControls, setShowControls] = useState(false);
-    const synth = window.speechSynthesis;
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     useEffect(() => {
+        if (!synth) return;
+
         const loadVoices = () => {
             const v = synth.getVoices();
             setVoices(v);
@@ -30,11 +35,12 @@ export default function TTSController({ onGetText, onNext, onPrev }: TTSControll
         return () => {
             synth.cancel();
         };
-    }, []);
+    }, [synth]);
 
     const speak = async (text: string) => {
+        if (!synth) return;
         if (!text) {
-            toast.error("Okunacak metin bulunamadı.");
+            toast.error(t('noTextFound'));
             return;
         }
 
@@ -42,9 +48,11 @@ export default function TTSController({ onGetText, onNext, onPrev }: TTSControll
 
         const utterance = new SpeechSynthesisUtterance(text);
 
-        // Find selected voice or fallback to Turkish
+        // Find selected voice or fallback to preferred language
         const voice = voices.find(v => v.name === settings.ttsVoice) ||
+            voices.find(v => v.lang.startsWith(settings.language)) ||
             voices.find(v => v.lang.startsWith('tr')) ||
+            voices.find(v => v.lang.startsWith('en')) ||
             voices[0];
 
         if (voice) {
@@ -53,12 +61,10 @@ export default function TTSController({ onGetText, onNext, onPrev }: TTSControll
         }
 
         utterance.rate = settings.ttsSpeed;
-        utterance.pitch = 1;
+        utterance.pitch = settings.ttsPitch;
 
         utterance.onend = () => {
             setIsPlaying(false);
-            // Optionally auto-next?
-            // onNext();
         };
 
         utterance.onerror = (e) => {
@@ -72,6 +78,7 @@ export default function TTSController({ onGetText, onNext, onPrev }: TTSControll
     };
 
     const handlePlayPause = async () => {
+        if (!synth) return;
         if (isPlaying) {
             synth.pause();
             setIsPlaying(false);
@@ -87,6 +94,7 @@ export default function TTSController({ onGetText, onNext, onPrev }: TTSControll
     };
 
     const handleStop = () => {
+        if (!synth) return;
         synth.cancel();
         setIsPlaying(false);
     };
@@ -99,76 +107,91 @@ export default function TTSController({ onGetText, onNext, onPrev }: TTSControll
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="bg-background/80 backdrop-blur-2xl border border-border/20 p-4 rounded-[2rem] shadow-2xl flex flex-col gap-4 min-w-[200px]"
+                        className="bg-card/95 backdrop-blur-2xl border border-primary/10 p-5 rounded-[2.5rem] shadow-2xl flex flex-col gap-5 min-w-[260px] border-2"
                     >
                         <div className="flex items-center justify-between gap-4">
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Sesli Okuma</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">{t('ttsSettings')}</span>
                             <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onPrev}><SkipBack className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onNext}><SkipForward className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10" onClick={onPrev}><SkipBack className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10" onClick={onNext}><SkipForward className="h-4 w-4" /></Button>
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                <span>HIZ</span>
-                                <span>{settings.ttsSpeed}x</span>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tighter">
+                                    <span>{t('speed')}</span>
+                                    <span className="text-primary">{settings.ttsSpeed}x</span>
+                                </div>
+                                <Slider
+                                    value={[settings.ttsSpeed]}
+                                    onValueChange={([val]) => setSettings({ ttsSpeed: val })}
+                                    min={0.5}
+                                    max={2}
+                                    step={0.1}
+                                />
                             </div>
-                            <div className="flex gap-2">
-                                {[0.5, 1, 1.5, 2].map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => setSettings({ ttsSpeed: s })}
-                                        className={`flex-1 py-1 rounded-lg text-[10px] font-black transition-all ${settings.ttsSpeed === s ? 'bg-primary text-white' : 'bg-secondary/50 hover:bg-secondary'}`}
-                                    >
-                                        {s}
-                                    </button>
-                                ))}
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tighter">
+                                    <span>{t('pitch')}</span>
+                                    <span className="text-primary">{settings.ttsPitch}x</span>
+                                </div>
+                                <Slider
+                                    value={[settings.ttsPitch]}
+                                    onValueChange={([val]) => setSettings({ ttsPitch: val })}
+                                    min={0.5}
+                                    max={2}
+                                    step={0.1}
+                                />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <span className="text-[10px] font-bold">SES SEÇİMİ</span>
+                            <span className="text-[10px] font-black uppercase tracking-tighter opacity-70">{t('voiceSelection')}</span>
                             <select
                                 value={settings.ttsVoice}
                                 onChange={(e) => setSettings({ ttsVoice: e.target.value })}
-                                className="w-full bg-secondary/50 border-none rounded-xl p-2 text-[10px] font-medium outline-none"
+                                className="w-full bg-secondary/50 border-none rounded-2xl p-3 text-[11px] font-bold outline-none ring-2 ring-transparent focus:ring-primary/20 transition-all appearance-none"
                             >
-                                {voices.filter(v => v.lang.startsWith('tr') || v.lang.startsWith('en')).map(v => (
-                                    <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
-                                ))}
+                                {voices
+                                    .filter(v => v.lang.startsWith('tr') || v.lang.startsWith('en'))
+                                    .sort((a, b) => b.lang.startsWith('tr') ? 1 : -1)
+                                    .map(v => (
+                                        <option key={v.name} value={v.name}>{v.name.split('-')[0]} ({v.lang})</option>
+                                    ))}
                             </select>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            <div className="flex items-center gap-2 bg-background/80 backdrop-blur-xl p-2 rounded-full border border-border/20 shadow-2xl">
+            <div className="flex items-center gap-2 bg-background/80 backdrop-blur-xl p-2 rounded-full border-2 border-primary/10 shadow-2xl">
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full h-12 w-12 hover:bg-primary/10"
+                    className="rounded-full h-12 w-12 hover:bg-primary/10 group transition-all"
                     onClick={() => setShowControls(!showControls)}
                 >
-                    <Sliders className={`h-5 w-5 ${showControls ? 'text-primary' : ''}`} />
+                    <Sliders className={`h-5 w-5 transition-transform ${showControls ? 'text-primary rotate-180 scale-110' : 'group-hover:scale-110'}`} />
                 </Button>
 
-                <div className="h-8 w-px bg-border/20 mx-1" />
+                <div className="h-8 w-px bg-primary/10 mx-1" />
 
                 <Button
                     variant={isPlaying ? 'default' : 'ghost'}
                     size="icon"
-                    className={`rounded-full h-12 w-12 transition-all ${isPlaying ? 'bg-primary shadow-lg scale-110' : 'hover:bg-primary/10'}`}
+                    className={`rounded-full h-12 w-12 transition-all ${isPlaying ? 'bg-primary shadow-lg shadow-primary/20 scale-110' : 'hover:bg-primary/10 hover:scale-105'}`}
                     onClick={handlePlayPause}
                 >
-                    {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                    {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-1" />}
                 </Button>
 
                 {isPlaying && (
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full h-12 w-12 hover:bg-red-500/10 text-red-500"
+                        className="rounded-full h-12 w-12 hover:bg-red-500/10 text-red-500 hover:scale-110 transition-all"
                         onClick={handleStop}
                     >
                         <Square className="h-5 w-5 fill-current" />

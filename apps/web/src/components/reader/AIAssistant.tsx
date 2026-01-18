@@ -150,6 +150,19 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, selection })
                         </div>
                     </div>
 
+                    {/* AI Key Notice */}
+                    {!AIDiscoveryService.hasKey() && (
+                        <div className="px-8 py-3 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center gap-3">
+                            <div className="h-6 w-6 rounded-lg bg-yellow-500/20 flex items-center justify-center shrink-0">
+                                <Brain className="h-3 w-3 text-yellow-500" />
+                            </div>
+                            <p className="text-[10px] font-bold text-yellow-600/80 leading-tight">
+                                <span className="font-black mr-1 uppercase">{t('aiApiKeyMissing')}:</span>
+                                {t('aiSimulationNotice')}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Content Panel */}
                     <div className="flex-1 overflow-y-auto p-8 no-scrollbar scroll-smooth">
                         <AnimatePresence mode="wait">

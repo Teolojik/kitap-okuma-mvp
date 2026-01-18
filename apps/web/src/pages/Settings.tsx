@@ -41,7 +41,7 @@ const SettingsPage = () => {
 
     // Form States
     const [isUpdating, setIsUpdating] = useState(false);
-    const [name, setName] = useState(user?.name || '');
+    const [name, setName] = useState(user?.user_metadata?.name || '');
     const [email, setEmail] = useState(user?.email || '');
 
     // Password States
@@ -101,13 +101,13 @@ const SettingsPage = () => {
                             <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent pb-8">
                                 <div className="flex items-center gap-4">
                                     <Avatar className="h-20 w-20 border-4 border-background shadow-xl">
-                                        <AvatarImage src={user?.avatar} />
+                                        <AvatarImage src={user?.user_metadata?.avatar_url} />
                                         <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                                            {user?.name?.[0] || 'U'}
+                                            {(user?.user_metadata?.name || user?.email || 'U')[0].toUpperCase()}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="space-y-1">
-                                        <CardTitle className="text-2xl">{user?.name || t('profile')}</CardTitle>
+                                        <CardTitle className="text-2xl">{user?.user_metadata?.name || user?.email?.split('@')[0] || t('profile')}</CardTitle>
                                         <CardDescription className="text-muted-foreground">{user?.email || t('email')}</CardDescription>
                                     </div>
                                 </div>
@@ -352,7 +352,12 @@ const SettingsPage = () => {
                                         <Label className="text-base font-bold">{item.title}</Label>
                                         <CardDescription>{item.desc}</CardDescription>
                                     </div>
-                                    <Switch defaultChecked={idx === 0} />
+                                    <Switch
+                                        defaultChecked={idx === 0}
+                                        onCheckedChange={(checked) => {
+                                            toast.info(`${item.title}: ${checked ? 'Açıldı' : 'Kapatıldı'}`);
+                                        }}
+                                    />
                                 </div>
                             ))}
                         </CardContent>
@@ -391,7 +396,10 @@ const SettingsPage = () => {
                                 <p className="font-black text-2xl tracking-tight">{t('anyProblem')}</p>
                                 <p className="text-primary/70 font-semibold">{t('reportProblem')}</p>
                             </div>
-                            <Button className="rounded-full h-14 px-10 bg-primary text-primary-foreground shadow-2xl shadow-primary/20 hover:scale-105 transition-transform relative z-10 font-bold">
+                            <Button
+                                onClick={() => window.location.href = 'mailto:destek@kitapoku.com?subject=Destek Talebi'}
+                                className="rounded-full h-14 px-10 bg-primary text-primary-foreground shadow-2xl shadow-primary/20 hover:scale-105 transition-transform relative z-10 font-bold"
+                            >
                                 {t('openSupportTicket')}
                             </Button>
                         </div>

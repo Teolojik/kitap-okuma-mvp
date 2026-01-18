@@ -1,21 +1,22 @@
 
 import React from 'react';
 import { useBookStore, useAuthStore } from '@/stores/useStore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Star, BookOpen, Clock, Award, ChevronRight, Settings, Heart, Library } from 'lucide-react';
+import { BookOpen, Award, Settings, Heart, Library } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
 import { useTranslation } from '@/lib/translations';
+import ReadingHeatmap from '@/components/stats/ReadingHeatmap';
 
 const ProfilePage = () => {
     const { user } = useAuthStore();
     const { books, stats, settings } = useBookStore();
     const t = useTranslation(settings.language);
 
-    const favoriteBooks = books.filter(b => b.isFavorite);
+    const favoriteBooks = books.filter(b => b.is_favorite);
 
     return (
         <div className="space-y-10 pb-20 animate-in fade-in duration-700">
@@ -101,54 +102,60 @@ const ProfilePage = () => {
                     </Card>
                 </div>
 
-                {/* Favorites Column */}
-                <div className="md:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between px-2">
-                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('favoriteBooks')}</h2>
-                        <Link to="/" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline transition-all">Tümünü Gör</Link>
-                    </div>
+                {/* Heatmap and Favorites Column */}
+                <div className="md:col-span-2 space-y-10">
+                    <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden p-8 px-10">
+                        <ReadingHeatmap data={stats.dailyPages} language={settings.language} />
+                    </Card>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                        {favoriteBooks.length > 0 ? (
-                            favoriteBooks.map((book) => (
-                                <motion.div
-                                    key={book.id}
-                                    whileHover={{ y: -5 }}
-                                    className="group relative"
-                                >
-                                    <Link to={`/read/${book.id}`}>
-                                        <div className="aspect-[2/3.2] rounded-2xl overflow-hidden shadow-lg border border-border/50 bg-secondary relative">
-                                            {book.cover_url ? (
-                                                <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="absolute inset-0 flex items-center justify-center p-4 text-center">
-                                                    <span className="font-serif text-[10px] font-bold line-clamp-2">{cleanTitle(book.title)}</span>
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between px-2">
+                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('favoriteBooks')}</h2>
+                            <Link to="/" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline transition-all">Tümünü Gör</Link>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                            {favoriteBooks.length > 0 ? (
+                                favoriteBooks.map((book) => (
+                                    <motion.div
+                                        key={book.id}
+                                        whileHover={{ y: -5 }}
+                                        className="group relative"
+                                    >
+                                        <Link to={`/read/${book.id}`}>
+                                            <div className="aspect-[2/3.2] rounded-2xl overflow-hidden shadow-lg border border-border/50 bg-secondary relative">
+                                                {book.cover_url ? (
+                                                    <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="absolute inset-0 flex items-center justify-center p-4 text-center">
+                                                        <span className="font-serif text-[10px] font-bold line-clamp-2">{cleanTitle(book.title)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                                                    <Button size="icon" className="h-8 w-8 rounded-full shadow-2xl">
+                                                        <BookOpen className="h-4 w-4" />
+                                                    </Button>
                                                 </div>
-                                            )}
-                                            <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                                                <Button size="icon" className="h-8 w-8 rounded-full shadow-2xl">
-                                                    <BookOpen className="h-4 w-4" />
-                                                </Button>
                                             </div>
-                                        </div>
-                                        <div className="mt-3">
-                                            <h3 className="text-xs font-bold line-clamp-1">{cleanTitle(book.title)}</h3>
-                                            <p className="text-[10px] text-muted-foreground font-medium">{cleanAuthor(book.author)}</p>
-                                        </div>
+                                            <div className="mt-3">
+                                                <h3 className="text-xs font-bold line-clamp-1">{cleanTitle(book.title)}</h3>
+                                                <p className="text-[10px] text-muted-foreground font-medium">{cleanAuthor(book.author)}</p>
+                                            </div>
+                                        </Link>
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div className="col-span-full py-20 bg-secondary/20 rounded-[2.5rem] border border-dashed border-border flex flex-col items-center justify-center text-center px-6">
+                                    <Library className="h-10 w-10 text-muted-foreground/30 mb-4" />
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">{t('noFavoritesYet')}</p>
+                                    <p className="text-[10px] text-muted-foreground/60 max-w-[200px]">{t('addFavoritesHint')}</p>
+                                    <Link to="/" className="mt-6">
+                                        <Button variant="outline" size="sm" className="rounded-full px-6 text-[10px] font-black uppercase tracking-widest">{t('goToLibrary')}</Button>
                                     </Link>
-                                </motion.div>
-                            ))
-                        ) : (
-                            <div className="col-span-full py-20 bg-secondary/20 rounded-[2.5rem] border border-dashed border-border flex flex-col items-center justify-center text-center px-6">
-                                <Library className="h-10 w-10 text-muted-foreground/30 mb-4" />
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">{t('noFavoritesYet')}</p>
-                                <p className="text-[10px] text-muted-foreground/60 max-w-[200px]">{t('addFavoritesHint')}</p>
-                                <Link to="/" className="mt-6">
-                                    <Button variant="outline" size="sm" className="rounded-full px-6 text-[10px] font-black uppercase tracking-widest">{t('goToLibrary')}</Button>
-                                </Link>
-                            </div>
-                        )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

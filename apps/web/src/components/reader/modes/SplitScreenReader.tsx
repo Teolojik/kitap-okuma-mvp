@@ -1,8 +1,9 @@
-import React, { useRef, useImperativeHandle } from 'react';
-import EpubReader from '../EpubReader';
-import PdfReader from '../PdfReader';
+import React, { useRef, useImperativeHandle, Suspense, lazy } from 'react';
 import { Book } from '@/lib/mock-api';
-import { BookOpen } from 'lucide-react';
+
+const EpubReader = lazy(() => import('../EpubReader'));
+const PdfReader = lazy(() => import('../PdfReader'));
+import { BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cleanTitle } from '@/lib/metadata-utils';
 
@@ -44,74 +45,111 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
     useImperativeHandle(ref, () => ({
         next: () => {
             if (activePanel === 'primary') primaryRef.current?.next();
-            else secondaryRef.current?.next();
+            else if (activePanel === 'secondary') secondaryRef.current?.next();
         },
         prev: () => {
             if (activePanel === 'primary') primaryRef.current?.prev();
-            else secondaryRef.current?.prev();
+            else if (activePanel === 'secondary') secondaryRef.current?.prev();
+        },
+        goToPercentage: (pct: number) => {
+            if (activePanel === 'primary') primaryRef.current?.goToPercentage?.(pct);
+            else if (activePanel === 'secondary') secondaryRef.current?.goToPercentage?.(pct);
         }
-    }));
+    }), [activePanel, primaryRef, secondaryRef]);
 
     return (
         <div className="grid grid-cols-2 h-full w-full divide-x-4 divide-border/20">
             {/* Left Side (Primary) */}
             <div
-                className={`relative h-full w-full overflow-hidden transition-all duration-300 ${activePanel === 'primary' ? 'ring-inset ring-4 ring-primary/20 bg-background' : 'bg-background/50 hover:bg-background/80'}`}
+                className={`relative h-full w-full overflow-hidden transition-all duration-300 group ${activePanel === 'primary' ? 'ring-inset ring-4 ring-primary/20 bg-background' : 'bg-background/50 hover:bg-background/80'}`}
                 onClick={() => onPanelActivate?.('primary')}
             >
                 {primaryType === 'pdf' ? (
-                    <PdfReader
-                        ref={primaryRef}
-                        url={primaryData}
-                        pageNumber={primaryPageNumber}
-                        onLocationChange={(loc, pct) => onPrimaryLocationChange(loc, pct)}
-                        onTotalPages={onTotalPages}
-                        scale={activePanel === 'primary' ? scale : scale}
-                        simpleMode
-                        onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
-                        annotations={annotations}
-                    />
-                ) : (
-                    <div className="h-full w-full relative">
-                        <EpubReader
+                    <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">PDF Hazırlanıyor...</div>}>
+                        <PdfReader
                             ref={primaryRef}
                             url={primaryData}
-                            initialLocation={primaryBook.progress?.location as string}
-                            onLocationChange={onPrimaryLocationChange}
-                            onTextSelected={onTextSelected}
+                            pageNumber={primaryPageNumber}
+                            onLocationChange={(loc, pct) => onPrimaryLocationChange(loc, pct)}
+                            onTotalPages={onTotalPages}
+                            scale={activePanel === 'primary' ? scale : scale}
+                            simpleMode
+                            onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
                             annotations={annotations}
-                            options={EPUB_OPTIONS}
                         />
+                    </Suspense>
+                ) : (
+                    <div className="h-full w-full relative">
+                        <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">EPUB Hazırlanıyor...</div>}>
+                            <EpubReader
+                                ref={primaryRef}
+                                url={primaryData}
+                                initialLocation={primaryBook.progress?.location as string}
+                                onLocationChange={onPrimaryLocationChange}
+                                onTextSelected={onTextSelected}
+                                annotations={annotations}
+                                options={EPUB_OPTIONS}
+                            />
+                        </Suspense>
                     </div>
                 )}
-                <div className={`absolute top-4 left-4 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border z-30 pointer-events-none shadow-2xl transition-colors duration-300 ${activePanel === 'primary' ? 'bg-primary text-primary-foreground border-primary/20' : 'bg-background/80 border-border/20'}`}>
+                <div className={`absolute top-4 left-4 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border z-30 pointer-events-none shadow-2xl transition-all duration-300 ${activePanel === 'primary' ? 'bg-primary text-primary-foreground border-primary/20 scale-110 shadow-primary/20' : 'bg-background/80 border-border/20 opacity-60'}`}>
+                    {activePanel === 'primary' && <span className="mr-2 px-1.5 py-0.5 bg-white/20 rounded-md animate-pulse">AKTİF</span>}
                     {cleanTitle(primaryBook.title).length > 30 ? cleanTitle(primaryBook.title).substring(0, 30) + '...' : cleanTitle(primaryBook.title)}
+                </div>
+
+                {/* Independent Controls for Primary */}
+                <div className="absolute inset-y-0 left-0 w-16 flex items-center justify-start z-40 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <Button
+                        id="nav-btn-1"
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); primaryRef.current?.prev(); onPanelActivate?.('primary'); }}
+                        className="h-20 w-10 rounded-r-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-primary/20 hover:text-primary transition-all shadow-xl"
+                    >
+                        <ChevronLeft className="h-6 w-6" />
+                    </Button>
+                </div>
+                <div className="absolute inset-y-0 right-0 w-16 flex items-center justify-end z-40 opacity-0 group-hover:opacity-100 transition-all duration-300 pr-2">
+                    <Button
+                        id="nav-btn-2"
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); primaryRef.current?.next(); onPanelActivate?.('primary'); }}
+                        className="h-20 w-10 rounded-l-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-primary/20 hover:text-primary transition-all shadow-xl"
+                    >
+                        <ChevronRight className="h-6 w-6" />
+                    </Button>
                 </div>
             </div>
 
             {/* Right Side (Secondary) */}
             <div
-                className={`relative h-full w-full overflow-hidden transition-all duration-300 ${activePanel === 'secondary' ? 'ring-inset ring-4 ring-primary/20 bg-background' : 'bg-background/50 hover:bg-background/80'}`}
+                className={`relative h-full w-full overflow-hidden transition-all duration-300 group ${activePanel === 'secondary' ? 'ring-inset ring-4 ring-primary/20 bg-background' : 'bg-background/50 hover:bg-background/80'}`}
                 onClick={() => onPanelActivate?.('secondary')}
             >
                 {secondaryBook && secondaryData ? (
                     secondaryType === 'pdf' ? (
-                        <PdfReader
-                            ref={secondaryRef}
-                            url={secondaryData}
-                            simpleMode
-                            pageNumber={secondaryPageNumber || 1}
-                            onLocationChange={(loc, pct) => onSecondaryLocationChange?.(loc, pct)}
-                            scale={activePanel === 'secondary' ? scale : scale}
-                        />
+                        <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">PDF Hazırlanıyor...</div>}>
+                            <PdfReader
+                                ref={secondaryRef}
+                                url={secondaryData}
+                                simpleMode
+                                pageNumber={secondaryPageNumber || 1}
+                                onLocationChange={(loc, pct) => onSecondaryLocationChange?.(loc, pct)}
+                                scale={activePanel === 'secondary' ? scale : scale}
+                            />
+                        </Suspense>
                     ) : (
-                        <EpubReader
-                            ref={secondaryRef}
-                            url={secondaryData}
-                            initialLocation={secondaryBook.progress?.location as string}
-                            onLocationChange={onSecondaryLocationChange}
-                            options={EPUB_OPTIONS}
-                        />
+                        <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">EPUB Hazırlanıyor...</div>}>
+                            <EpubReader
+                                ref={secondaryRef}
+                                url={secondaryData}
+                                initialLocation={secondaryBook.progress?.location as string}
+                                onLocationChange={onSecondaryLocationChange}
+                                options={EPUB_OPTIONS}
+                            />
+                        </Suspense>
                     )
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
@@ -132,9 +170,38 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                     </div>
                 )}
                 {secondaryBook && (
-                    <div className={`absolute top-4 right-4 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border z-30 pointer-events-none shadow-2xl transition-colors duration-300 ${activePanel === 'secondary' ? 'bg-primary text-primary-foreground border-primary/20' : 'bg-background/80 border-border/20'}`}>
+                    <div className={`absolute top-4 right-4 backdrop-blur-xl px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border z-30 pointer-events-none shadow-2xl transition-all duration-300 ${activePanel === 'secondary' ? 'bg-primary text-primary-foreground border-primary/20 scale-110 shadow-primary/20' : 'bg-background/80 border-border/20 opacity-60'}`}>
+                        {activePanel === 'secondary' && <span className="mr-2 px-1.5 py-0.5 bg-white/20 rounded-md animate-pulse">AKTİF</span>}
                         {cleanTitle(secondaryBook.title).length > 30 ? cleanTitle(secondaryBook.title).substring(0, 30) + '...' : cleanTitle(secondaryBook.title)}
                     </div>
+                )}
+
+                {/* Independent Controls for Secondary */}
+                {secondaryBook && (
+                    <>
+                        <div className="absolute inset-y-0 left-0 w-16 flex items-center justify-start z-40 opacity-0 group-hover:opacity-100 transition-all duration-300 pl-2">
+                            <Button
+                                id="nav-btn-3"
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); secondaryRef.current?.prev(); onPanelActivate?.('secondary'); }}
+                                className="h-20 w-10 rounded-r-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-orange-500/20 hover:text-orange-500 transition-all shadow-xl"
+                            >
+                                <ChevronLeft className="h-6 w-6" />
+                            </Button>
+                        </div>
+                        <div className="absolute inset-y-0 right-0 w-16 flex items-center justify-end z-40 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <Button
+                                id="nav-btn-4"
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); secondaryRef.current?.next(); onPanelActivate?.('secondary'); }}
+                                className="h-20 w-10 rounded-l-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-orange-500/20 hover:text-orange-500 transition-all shadow-xl"
+                            >
+                                <ChevronRight className="h-6 w-6" />
+                            </Button>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

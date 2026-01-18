@@ -1,4 +1,4 @@
-
+import { supabase } from './supabase';
 import { findCoverImage } from './discovery-service';
 import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
 
@@ -16,13 +16,13 @@ export interface Book {
         percentage: number;
         location?: string | number;
         page: number;
+        lastActive?: string; // Embedded timestamp to bypass schema limitations
     };
-    last_read: string;
     mode_pref: 'single' | 'double' | 'split';
     format: 'epub' | 'pdf';
-    isFavorite?: boolean;
+    is_favorite?: boolean;
     tags?: string[];
-    collectionId?: string;
+    collection_id?: string;
     created_at: string;
 }
 
@@ -36,14 +36,18 @@ export interface Collection {
 
 const DB_NAME = 'EpigrafDB';
 const STORE_NAME = 'books_files';
+const DRAWINGS_STORE = 'drawings';
 
 const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1);
+        const request = indexedDB.open(DB_NAME, 2);
         request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME);
+            }
+            if (!db.objectStoreNames.contains(DRAWINGS_STORE)) {
+                db.createObjectStore(DRAWINGS_STORE);
             }
         };
         request.onsuccess = () => resolve(request.result);
@@ -84,7 +88,7 @@ const deleteFile = async (id: string): Promise<void> => {
     });
 };
 
-const smartClean = (text: string) => {
+export const smartClean = (text: string) => {
     if (!text) return '';
     return text
         .replace(/\.(pdf|epub|mobi)$/i, '')
@@ -95,7 +99,7 @@ const smartClean = (text: string) => {
         .trim();
 };
 
-function parseFileName(name: string) {
+export function parseFileName(name: string) {
     // 1. Extreme cleaning (Subtitle, Metadata, Hex, ISBN removal)
     let clean = name.replace(/\.(epub|pdf)$/i, '')
         .split(/\s*--\s*/)[0]
@@ -112,44 +116,131 @@ function parseFileName(name: string) {
     if (clean.includes(' - ')) {
         const parts = clean.split(' - ').map(p => p.trim());
         if (parts.length >= 2) {
+            // If parts[0] is short, it's probably the author
             if (parts[0].split(' ').length <= 4 && !parts[0].toLowerCase().includes('library')) {
-                return { author: parts[0], title: parts[1] };
+                return { author: cleanAuthor(parts[0]), title: cleanTitle(parts[1]) };
             }
-            return { title: parts[0], author: parts[1] };
+            return { title: cleanTitle(parts[0]), author: cleanAuthor(parts[1]) };
         }
     }
 
-    return { title: clean, author: 'Bilinmiyor' };
+    return { title: clean, author: '' };
 };
 
-// --- LOCAL EXTRACTOR ---
-const extractCoverLocally = async (file: File): Promise<string | undefined> => {
+// --- LOCAL METADATA EXTRACTOR ---
+export const extractMetadataLocally = async (file: File): Promise<{ title?: string; author?: string } | undefined> => {
     try {
         if (file.type === 'application/epub+zip' || file.name.endsWith('.epub')) {
-            console.log("EPUB Local Extraction attempting...");
             const ePub = (await import('epubjs')).default;
-            const reader = new FileReader();
-            return new Promise((resolve) => {
-                reader.onload = async (e) => {
-                    try {
-                        const book = ePub(e.target?.result as ArrayBuffer);
-                        const coverUrl = await book.coverUrl();
-                        if (coverUrl) {
-                            const res = await fetch(coverUrl);
-                            const blob = await res.blob();
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result as string);
-                            reader.readAsDataURL(blob);
-                        } else {
-                            resolve(undefined);
-                        }
-                    } catch (err) {
-                        console.error("EPUB extract error", err);
-                        resolve(undefined);
-                    }
+            const book = ePub(await file.arrayBuffer());
+            const metadata = await book.loaded.metadata;
+            console.log("EPUB Local Metadata Found:", metadata);
+            return {
+                title: metadata.title,
+                author: metadata.creator
+            };
+        }
+        else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+            try {
+                const pdfjsLib = await import('pdfjs-dist');
+                pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+                const pdf = await loadingTask.promise;
+                const metadata = await pdf.getMetadata();
+
+                console.log("PDF Local Metadata Found:", metadata);
+
+                return {
+                    title: (metadata.info as any)?.Title,
+                    author: (metadata.info as any)?.Author
                 };
-                reader.readAsArrayBuffer(file);
-            });
+            } catch (err) {
+                console.error("PDF metadata extraction failed", err);
+            }
+        }
+    } catch (e) {
+        console.error("Local metadata extraction failed", e);
+    }
+    return undefined;
+};
+
+export const extractCoverLocally = async (file: File): Promise<string | undefined> => {
+    try {
+        if (file.type === 'application/epub+zip' || file.name.endsWith('.epub')) {
+            console.log("EPUB Cover Extraction: Starting...");
+            const ePub = (await import('epubjs')).default;
+            const book = ePub(await file.arrayBuffer());
+
+            try {
+                // Wait for book to be ready
+                await book.ready;
+
+                // Strategy 1: Use epubjs built-in coverUrl (most reliable)
+                const coverUrl = await book.coverUrl();
+
+                if (coverUrl) {
+                    console.log("EPUB Cover: Found via coverUrl()");
+                    // Fetch and convert to base64 to avoid CORS issues
+                    try {
+                        const response = await fetch(coverUrl);
+                        const blob = await response.blob();
+
+                        return new Promise<string>((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const base64 = reader.result as string;
+                                console.log("EPUB Cover: Successfully converted to base64");
+                                resolve(base64);
+                            };
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        });
+                    } catch (fetchError) {
+                        console.warn("EPUB Cover: Fetch failed, trying archive extraction", fetchError);
+                    }
+                }
+
+                // Strategy 2: Direct archive extraction (bypasses CORS)
+                const archive = (book as any).archive;
+                if (archive) {
+                    // Try to find cover in manifest
+                    const manifest = (book as any).packaging?.manifest;
+                    if (manifest) {
+                        // Look for cover-image property
+                        let coverHref = null;
+                        for (const [id, item] of Object.entries(manifest)) {
+                            const manifestItem = item as any;
+                            if (manifestItem.properties?.includes('cover-image') ||
+                                id.toLowerCase().includes('cover') ||
+                                manifestItem.href?.toLowerCase().includes('cover')) {
+                                coverHref = manifestItem.href;
+                                break;
+                            }
+                        }
+
+                        if (coverHref) {
+                            console.log("EPUB Cover: Found in manifest:", coverHref);
+                            const imageData = await archive.request(coverHref, 'blob');
+
+                            return new Promise<string>((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    console.log("EPUB Cover: Extracted from archive");
+                                    resolve(reader.result as string);
+                                };
+                                reader.onerror = reject;
+                                reader.readAsDataURL(imageData);
+                            });
+                        }
+                    }
+                }
+
+                console.log("EPUB Cover: Not found, using fallback");
+            } catch (epubError) {
+                console.error("EPUB Cover Extraction Error:", epubError);
+            }
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
             try {
@@ -173,12 +264,12 @@ const extractCoverLocally = async (file: File): Promise<string | undefined> => {
                 let bestDataUrl = undefined;
                 let highestScore = -1;
 
-                // Scan first 5 pages to find the actual high-quality color cover
-                const pagesToScan = Math.min(pdf.numPages, 5);
+                // Scan first 2 pages (even faster)
+                const pagesToScan = Math.min(pdf.numPages, 2);
 
                 for (let i = 1; i <= pagesToScan; i++) {
                     const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 0.5 });
+                    const viewport = page.getViewport({ scale: 0.4 }); // Balanced scale
                     const canvas = document.createElement('canvas');
                     const context = canvas.getContext('2d', { willReadFrequently: true });
                     if (!context) continue;
@@ -188,13 +279,12 @@ const extractCoverLocally = async (file: File): Promise<string | undefined> => {
 
                     await page.render({ canvasContext: context, viewport, canvas }).promise;
 
-                    // Simple visual scoring based on color variation and density
                     const imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
                     let colorScore = 0;
                     let nonWhitePixels = 0;
 
-                    // Sample pixels (every 10th for performance)
-                    for (let p = 0; p < imageData.length; p += 40) {
+                    // Balanced sampling (every 60th pixel)
+                    for (let p = 0; p < imageData.length; p += 60) {
                         const r = imageData[p];
                         const g = imageData[p + 1];
                         const b = imageData[p + 2];
@@ -269,22 +359,46 @@ export const MockAPI = {
             }
             return { data: null, error: 'User not found' };
         },
-        changePassword: async (oldPass: string, newPass: string) => {
-            await new Promise(r => setTimeout(r, 800));
-            // Simulate success
-            return { error: null };
+        changePassword: async (_oldPass: string, newPass: string) => {
+            try {
+                const { error } = await supabase.auth.updateUser({
+                    password: newPass
+                });
+                if (error) throw error;
+                return { error: null };
+            } catch (error: any) {
+                console.error("Password change error:", error);
+                return { error: error.message || 'Şifre değiştirilemedi' };
+            }
         }
     },
 
     books: {
         list: async (): Promise<Book[]> => {
             const stored = localStorage.getItem('mock_books');
-            return stored ? JSON.parse(stored) : [];
+            const books: Book[] = stored ? JSON.parse(stored) : [];
+
+            // Return processed copies for the UI, but keep raw identifiers internally
+            const processed = await Promise.all(books.map(async b => {
+                const book = { ...b };
+                if (book.file_url?.startsWith('local://')) {
+                    const blob = await getFile(book.id);
+                    if (blob) book.file_url = URL.createObjectURL(blob);
+                }
+                if (book.cover_url?.startsWith('local://cover_')) {
+                    const covId = book.cover_url.replace('local://cover_', '');
+                    const blob = await getFile(covId);
+                    if (blob) book.cover_url = URL.createObjectURL(blob);
+                }
+                return book;
+            }));
+            return processed;
         },
 
         delete: async (bookId: string) => {
             await deleteFile(bookId);
-            const books = await MockAPI.books.list();
+            const stored = localStorage.getItem('mock_books');
+            const books: Book[] = stored ? JSON.parse(stored) : [];
             const newBooks = books.filter(b => b.id !== bookId);
             localStorage.setItem('mock_books', JSON.stringify(newBooks));
         },
@@ -296,7 +410,17 @@ export const MockAPI = {
 
             // Metadata refinement
             let finalTitle = metadata.title || file.name;
-            let finalAuthor = metadata.author || 'Bilinmiyor';
+            let finalAuthor = metadata.author || '';
+
+            // 1. Try local extraction first
+            if (!finalAuthor || finalAuthor === '' || finalTitle === file.name) {
+                const localMeta = await extractMetadataLocally(file);
+                if (localMeta) {
+                    if (!finalAuthor && localMeta.author) finalAuthor = localMeta.author;
+                    if (finalTitle === file.name && localMeta.title) finalTitle = localMeta.title;
+                    console.log("Local metadata applied for mock upload:", { finalTitle, finalAuthor });
+                }
+            }
 
             const badAuthors = ['LIBRARY', 'UNKNOWN', 'ADMIN', 'BILINMIYOR', 'ANONIM', ''];
             if (badAuthors.some(bad => finalAuthor.toUpperCase().includes(bad))) {
@@ -317,25 +441,22 @@ export const MockAPI = {
                 (async () => {
                     if (finalCover) return { cover: finalCover };
 
-                    // 1. TRY REMOTE SEARCH FIRST (Using CLEAN metadata)
-                    try {
-                        const remoteCover = await findCoverImage(finalTitle, finalAuthor);
-                        if (remoteCover && !remoteCover.includes('unsplash')) {
-                            console.log("Remote color cover found for clean title!");
-                            return { cover: remoteCover };
-                        }
-                    } catch (e) { console.error("Remote search failed early", e); }
+                    // RUN REMOTE AND LOCAL SEARCH IN PARALLEL
+                    const [discovery, localCover] = await Promise.all([
+                        findCoverImage(displayTitle, finalAuthor).catch(() => null),
+                        extractCoverLocally(file).catch(() => null)
+                    ]);
 
-                    // 2. TRY LOCAL EXTRACTION AS FALLBACK
-                    const localCover = await extractCoverLocally(file);
-                    if (localCover) {
-                        console.log("Local cover found!");
-                        return { cover: localCover };
+                    if (discovery && discovery.url && !discovery.url.includes('unsplash')) {
+                        if (!finalAuthor || finalAuthor === '') {
+                            finalAuthor = discovery.author || '';
+                        }
+                        return { cover: discovery.url };
                     }
 
-                    // 3. FINAL REMOTE FALLBACK (Placeholder)
-                    const lastResort = await findCoverImage(finalTitle, finalAuthor);
-                    return { cover: lastResort };
+                    if (localCover) return { cover: localCover };
+
+                    return { cover: undefined };
                 })()
             ]);
 
@@ -350,11 +471,10 @@ export const MockAPI = {
                 id,
                 user_id: user?.id || 'anon',
                 title: displayTitle,
-                author: smartClean(finalAuthor),
+                author: cleanAuthor(finalAuthor),
                 file_url: `local://${id}`,
                 cover_url: finalCover,
-                progress: { percentage: 0, page: 1 },
-                last_read: new Date().toISOString(),
+                progress: { percentage: 0, page: 1, lastActive: new Date().toISOString() },
                 mode_pref: 'single',
                 format,
                 created_at: new Date().toISOString(),
@@ -369,13 +489,49 @@ export const MockAPI = {
         },
 
         updateProgress: async (bookId: string, progress: any) => {
-            const books = await MockAPI.books.list();
+            const stored = localStorage.getItem('mock_books');
+            const books: Book[] = stored ? JSON.parse(stored) : [];
             const idx = books.findIndex(b => b.id === bookId);
             if (idx !== -1) {
                 books[idx].progress = progress;
-                books[idx].last_read = new Date().toISOString();
                 localStorage.setItem('mock_books', JSON.stringify(books));
             }
+        }
+    },
+
+    drawings: {
+        save: async (pageKey: string, dataUrl: string) => {
+            const db = await openDB();
+            return new Promise<void>((resolve, reject) => {
+                const tx = db.transaction(DRAWINGS_STORE, 'readwrite');
+                const store = tx.objectStore(DRAWINGS_STORE);
+                store.put(dataUrl, pageKey);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        },
+        listForBook: async (bookId: string) => {
+            const db = await openDB();
+            return new Promise<Record<string, string>>((resolve, reject) => {
+                const tx = db.transaction(DRAWINGS_STORE, 'readonly');
+                const store = tx.objectStore(DRAWINGS_STORE);
+                const request = store.openCursor();
+                const results: Record<string, string> = {};
+
+                request.onsuccess = (event) => {
+                    const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+                    if (cursor) {
+                        const key = cursor.key as string;
+                        if (key.startsWith(bookId)) {
+                            results[key] = cursor.value;
+                        }
+                        cursor.continue();
+                    } else {
+                        resolve(results);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
         }
     }
 };
@@ -384,21 +540,44 @@ export const getBooks = () => MockAPI.books.list();
 export const deleteBook = (id: string) => MockAPI.books.delete(id);
 export const updateProgress = (bookId: string, progress: any) => MockAPI.books.updateProgress(bookId, progress);
 export const getBook = async (id: string): Promise<Book | null> => {
-    const books = await getBooks();
-    const book = books.find(b => b.id === id);
-    if (!book) return null;
+    // 1. First check local storage
+    const localBooks = await getBooks();
+    const localBook = localBooks.find(b => b.id === id);
+    if (localBook) {
+        if (!localBook.format) {
+            const isPdf = localBook.file_url.toLowerCase().endsWith('.pdf') ||
+                localBook.title.toLowerCase().endsWith('.pdf');
+            localBook.format = isPdf ? 'pdf' : 'epub';
+        }
 
-    if (!book.format) {
-        const isPdf = book.file_url.toLowerCase().endsWith('.pdf') ||
-            book.title.toLowerCase().endsWith('.pdf');
-        book.format = isPdf ? 'pdf' : 'epub';
+        if (localBook.file_url.startsWith('local://')) {
+            const blob = await getFile(localBook.id);
+            if (blob) {
+                localBook.file_url = URL.createObjectURL(blob);
+            }
+        }
+        return localBook;
     }
 
-    if (book.file_url.startsWith('local://')) {
-        const blob = await getFile(book.id);
-        if (blob) {
-            book.file_url = URL.createObjectURL(blob);
+    // 2. Then check Supabase if session exists
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        const { data, error } = await supabase
+            .from('books')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (data && !error) {
+            const book = data as Book;
+            if (!book.format) {
+                const isPdf = book.file_url.toLowerCase().endsWith('.pdf') ||
+                    book.title.toLowerCase().endsWith('.pdf');
+                book.format = isPdf ? 'pdf' : 'epub';
+            }
+            return book;
         }
     }
-    return book;
+
+    return null;
 };
