@@ -1,6 +1,10 @@
 import { supabase } from './supabase';
 import { findCoverImage } from './discovery-service';
 import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
+import { pdfjs } from 'react-pdf';
+
+// Configure PDF.js worker - same as PdfReader.tsx
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export interface Book {
     id: string;
@@ -174,10 +178,22 @@ export const extractMetadataLocally = async (file: File): Promise<{ title?: stri
             };
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            // PDF metadata extraction disabled due to worker issues in production
-            // Metadata will be parsed from filename instead
-            console.log("PDF metadata: Using filename-based extraction (worker disabled)");
-            return undefined;
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+                const pdf = await loadingTask.promise;
+                const metadata = await pdf.getMetadata();
+
+                console.log("PDF Local Metadata Found:", metadata);
+
+                return {
+                    title: (metadata.info as any)?.Title,
+                    author: (metadata.info as any)?.Author
+                };
+            } catch (err) {
+                console.error("PDF metadata extraction failed", err);
+                return undefined;
+            }
         }
     } catch (e) {
         console.error("Local metadata extraction failed", e);
@@ -262,10 +278,36 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
             }
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            // PDF cover extraction disabled due to worker issues in production
-            // Will use external API cover search instead
-            console.log("PDF cover: Using external API search (local extraction disabled)");
-            return undefined;
+            try {
+                console.log("PDF cover: Extracting first page...");
+
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+                const pdf = await loadingTask.promise;
+
+                // Render the first page as cover
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 0.5 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+
+                if (!context) {
+                    console.error("PDF Cover: Could not get canvas context");
+                    return undefined;
+                }
+
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: context, viewport, canvas }).promise;
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                console.log("PDF Cover: Successfully extracted first page");
+                return dataUrl;
+            } catch (err: any) {
+                console.error("PDF cover extraction failed:", err?.message || err);
+                return undefined;
+            }
         }
     } catch (e) {
         console.error("Local extraction failed", e);
