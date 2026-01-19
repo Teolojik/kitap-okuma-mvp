@@ -88,6 +88,39 @@ const deleteFile = async (id: string): Promise<void> => {
     });
 };
 
+// --- SUPABASE STORAGE FUNCTIONS ---
+const uploadCoverToSupabase = async (bookId: string, coverDataUrl: string): Promise<string | null> => {
+    try {
+        // Convert data URL to blob
+        const response = await fetch(coverDataUrl);
+        const blob = await response.blob();
+
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+            .from('covers')
+            .upload(`covers/${bookId}.jpg`, blob, {
+                contentType: 'image/jpeg',
+                upsert: true
+            });
+
+        if (error) {
+            console.error("Supabase cover upload error:", error);
+            return null;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+            .from('covers')
+            .getPublicUrl(`covers/${bookId}.jpg`);
+
+        console.log("Cover uploaded to Supabase:", urlData.publicUrl);
+        return urlData.publicUrl;
+    } catch (err) {
+        console.error("Cover upload failed:", err);
+        return null;
+    }
+};
+
 export const smartClean = (text: string) => {
     if (!text) return '';
     return text
@@ -350,19 +383,27 @@ export const MockAPI = {
                 (async () => {
                     if (finalCover) return { cover: finalCover };
 
-                    // Try local cover first (prioritized)
+                    // Try local cover first (prioritized) - works for EPUB
                     const localCover = await extractCoverLocally(file).catch(() => null);
-                    if (localCover) {
-                        console.log("Local cover extracted successfully");
+                    if (localCover && localCover.startsWith('data:')) {
+                        console.log("Local cover extracted, uploading to Supabase...");
+                        // Upload to Supabase Storage to avoid CORS issues
+                        const supabaseUrl = await uploadCoverToSupabase(id, localCover);
+                        if (supabaseUrl) {
+                            return { cover: supabaseUrl };
+                        }
+                        // Fallback: use data URL directly (works but large)
                         return { cover: localCover };
                     }
 
-                    // Then try remote search
+                    // Then try remote search (for PDFs since local extraction is disabled)
                     const discovery = await findCoverImage(displayTitle, finalAuthor).catch(() => null);
                     if (discovery && discovery.url && !discovery.url.includes('unsplash')) {
                         if (!finalAuthor || finalAuthor === '') {
                             finalAuthor = discovery.author || '';
                         }
+                        // Note: External URLs may still have CORS issues when displayed
+                        // But at least they're cached and mostly work
                         return { cover: discovery.url };
                     }
 
