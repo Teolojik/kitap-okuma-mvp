@@ -15,6 +15,7 @@ import StatsPage from '@/pages/Stats';
 import AdminPage from '@/pages/Admin';
 import ReloadPrompt from '@/components/ReloadPrompt';
 import { Toaster } from 'sonner';
+import { Analytics } from "@vercel/analytics/react";
 
 // Placeholders
 import ProfilePage from '@/pages/Profile';
@@ -102,24 +103,27 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<Layout />}>
-          <Route path="/" element={<LibraryPage />} />
-          <Route path="/book/:id" element={<BookDetails />} />
-          <Route path="/discover" element={<DiscoverPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/stats" element={<StatsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/read/:id" element={<ReaderPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-      <Toaster position="top-right" />
-      <ReloadPrompt />
-    </BrowserRouter>
+    <>
+      <Analytics />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<Layout />}>
+            <Route path="/" element={<LibraryPage />} />
+            <Route path="/book/:id" element={<BookDetails />} />
+            <Route path="/discover" element={<DiscoverPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/stats" element={<StatsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/read/:id" element={<ReaderPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+        <Toaster position="top-right" />
+        <ReloadPrompt />
+      </BrowserRouter>
+    </>
   );
 }
 
