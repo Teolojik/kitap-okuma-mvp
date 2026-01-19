@@ -467,6 +467,21 @@ export const translations = {
         actions: "İŞLEMLER",
         commandsCount: "{count} komut bulundu",
         resultsCount: "{count} sonuç bulundu",
+        // Command Palette & System
+        navigation: "Navigasyon",
+        searchInBooks: "Kitaplarımda Ara",
+        closeSession: "Oturumu Kapat",
+        switchToLightMode: "Aydınlık Moda Geç",
+        switchToDarkMode: "Karanlık Moda Geç",
+        switchToSepiaMode: "Sepya Moduna Geç",
+        continueReadingBook: "Okumaya Devam Et",
+        recentReads: "Son Okunanlar",
+        searchCommandPlaceholder: "Komut arayın...",
+        commandNotFound: "Komut bulunamadı.",
+        tryDifferentKeyword: "Farklı bir anahtar kelime deneyin.",
+        speedReading: "Hızlı Okuma",
+        newVersionAvailable: "Yeni bir güncelleme mevcut.",
+        refresh: "Yenile",
     },
     en: {
         loading: "Loading",
@@ -936,6 +951,21 @@ export const translations = {
         actions: "ACTIONS",
         commandsCount: "{count} commands found",
         resultsCount: "{count} results found",
+        // Command Palette & System
+        navigation: "Navigation",
+        searchInBooks: "Search in Books",
+        closeSession: "Sign Out",
+        switchToLightMode: "Switch to Light Mode",
+        switchToDarkMode: "Switch to Dark Mode",
+        switchToSepiaMode: "Switch to Sepia Mode",
+        continueReadingBook: "Continue Reading",
+        recentReads: "Recent Reads",
+        searchCommandPlaceholder: "Search commands...",
+        commandNotFound: "Command not found.",
+        tryDifferentKeyword: "Try a different keyword.",
+        speedReading: "Speed Reading",
+        newVersionAvailable: "New version available.",
+        refresh: "Refresh",
     }
 };
 
