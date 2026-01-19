@@ -245,84 +245,34 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
             try {
                 const pdfjsLib = await import('pdfjs-dist');
-                // MATCH VERSION EXACTLY by using CDN for the worker temporarily 
-                // This bypasses the local version mismatch (v5.4.530 vs v5.4.296)
                 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
                 const arrayBuffer = await file.arrayBuffer();
-                const loadingOptions: any = {
-                    data: new Uint8Array(arrayBuffer),
-                    standardFontDataUrl: `${window.location.origin}/standard_fonts/`,
-                    cMapUrl: `${window.location.origin}/cmaps/`,
-                    cMapPacked: true,
-                    wasmUrl: `${window.location.origin}/wasm/`,
-                    imageResourcesPath: `${window.location.origin}/image_decoders/`,
-                };
-                const loadingTask = pdfjsLib.getDocument(loadingOptions);
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
                 const pdf = await loadingTask.promise;
 
-                let bestDataUrl = undefined;
-                let highestScore = -1;
+                // Simply render the first page as cover (most reliable approach)
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 0.5 }); // Good quality for cover
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
 
-                // Scan first 2 pages (even faster)
-                const pagesToScan = Math.min(pdf.numPages, 2);
-
-                for (let i = 1; i <= pagesToScan; i++) {
-                    const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 0.4 }); // Balanced scale
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d', { willReadFrequently: true });
-                    if (!context) continue;
-
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    await page.render({ canvasContext: context, viewport, canvas }).promise;
-
-                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
-                    let colorScore = 0;
-                    let nonWhitePixels = 0;
-
-                    // Balanced sampling (every 60th pixel)
-                    for (let p = 0; p < imageData.length; p += 60) {
-                        const r = imageData[p];
-                        const g = imageData[p + 1];
-                        const b = imageData[p + 2];
-
-                        // Check if not white/grey (background)
-                        if (r < 245 || g < 245 || b < 245) {
-                            nonWhitePixels++;
-                            // Check for color variation (R-G-B difference)
-                            const diff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(b - r));
-                            if (diff > 20) colorScore += 2; // Real color
-                            else colorScore += 1; // Grey/Black text
-                        }
-                    }
-
-                    const fillRatio = nonWhitePixels / (imageData.length / 4);
-                    // Penalize extremely white or extremely dark/empty pages
-                    const pageScore = colorScore * fillRatio;
-
-                    if (fillRatio < 0.05) { // Very empty page
-                        console.log(`Page ${i} is too empty, ignoring.`);
-                        continue;
-                    }
-
-                    console.log(`PDF Page ${i} Visual Score:`, pageScore);
-
-                    // High threshold to distinguish real covers from interior pages
-                    if (pageScore > highestScore) {
-                        highestScore = pageScore;
-                        bestDataUrl = canvas.toDataURL('image/jpeg', 0.85); // Slightly higher quality
-                    }
+                if (!context) {
+                    console.error("PDF Cover: Could not get canvas context");
+                    return undefined;
                 }
 
-                if (highestScore > 8) {
-                    console.log("PDF Smart Cover Found with Score:", highestScore);
-                    return bestDataUrl;
-                }
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: context, viewport, canvas }).promise;
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                console.log("PDF Cover: Successfully extracted first page");
+                return dataUrl;
             } catch (err: any) {
-                console.error("PDF extraction failed", err);
+                console.error("PDF cover extraction failed:", err?.message || err);
+                return undefined;
             }
         }
     } catch (e) {
