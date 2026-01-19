@@ -143,15 +143,10 @@ export const extractMetadataLocally = async (file: File): Promise<{ title?: stri
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
             try {
                 const pdfjsLib = await import('pdfjs-dist');
-                pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+                pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
                 const arrayBuffer = await file.arrayBuffer();
-                const loadingTask = pdfjsLib.getDocument({
-                    data: new Uint8Array(arrayBuffer),
-                    useWorkerFetch: false,
-                    isEvalSupported: false,
-                    useSystemFonts: true
-                });
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
                 const pdf = await loadingTask.promise;
                 const metadata = await pdf.getMetadata();
 
@@ -252,15 +247,10 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
                 const pdfjsLib = await import('pdfjs-dist');
 
                 // Disable worker to avoid version mismatch issues - runs in main thread
-                pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+                pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
                 const arrayBuffer = await file.arrayBuffer();
-                const loadingTask = pdfjsLib.getDocument({
-                    data: new Uint8Array(arrayBuffer),
-                    useWorkerFetch: false,
-                    isEvalSupported: false,
-                    useSystemFonts: true
-                });
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
                 const pdf = await loadingTask.promise;
 
                 // Simply render the first page as cover (most reliable approach)
