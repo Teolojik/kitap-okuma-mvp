@@ -59,16 +59,16 @@ export default function LibraryPage() {
         };
 
         // Listen for background metadata updates (lazy loading)
-        const handleStorageUpdate = () => {
+        const handleBooksUpdated = () => {
             fetchBooks(); // Refresh books when background processing completes
         };
 
         window.addEventListener('dragover', handleGlobalDrag);
-        window.addEventListener('storage', handleStorageUpdate);
+        window.addEventListener('books-updated', handleBooksUpdated);
 
         return () => {
             window.removeEventListener('dragover', handleGlobalDrag);
-            window.removeEventListener('storage', handleStorageUpdate);
+            window.removeEventListener('books-updated', handleBooksUpdated);
         };
     }, [draggedBookId]);
 

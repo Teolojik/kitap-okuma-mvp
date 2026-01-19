@@ -494,8 +494,8 @@ export const MockAPI = {
                         currentBooks[bookIndex].author = updatedAuthor;
                         localStorage.setItem('mock_books', JSON.stringify(currentBooks));
 
-                        // Trigger a storage event so UI can refresh
-                        window.dispatchEvent(new Event('storage'));
+                        // Trigger a custom event so UI can refresh (storage event doesn't work in same tab)
+                        window.dispatchEvent(new CustomEvent('books-updated'));
                     }
                 } catch (err) {
                     console.error("Background metadata extraction failed:", err);
