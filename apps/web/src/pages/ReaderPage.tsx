@@ -568,8 +568,131 @@ const ReaderPage: React.FC = () => {
         <div {...swipeHandlers} className={`flex flex-col w-full h-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-background text-foreground relative group/ui overscroll-none`}>
 
             {/* Premium Header - Zen Mode Controlled */}
-            <div className={`absolute top-0 left-0 right-0 h-24 z-[90] flex justify-center pt-6 pointer-events-none transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-                <header className="h-14 px-6 rounded-full bg-background/60 backdrop-blur-2xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex items-center justify-between gap-6 pointer-events-auto transition-all duration-500 hover:scale-[1.01] hover:bg-background/80 max-w-[95vw]">
+            <div className={`absolute top-0 left-0 right-0 z-[90] flex justify-center pt-3 sm:pt-6 pointer-events-none transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+                {/* Mobile Header - Simplified */}
+                <header className="sm:hidden h-12 px-4 mx-3 rounded-full bg-background/80 backdrop-blur-2xl border border-white/20 shadow-lg flex items-center justify-between gap-2 pointer-events-auto w-full max-w-[95vw]">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/library')} className="rounded-full h-9 w-9 text-primary">
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div className="flex-1 text-center overflow-hidden px-2">
+                        <h1 className="font-sans font-bold text-sm truncate">{cleanTitle(book?.title || '')}</h1>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)} className="rounded-full h-9 w-9 text-primary">
+                            <Search className="h-4 w-4" />
+                        </Button>
+                        <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 bg-primary/10">
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="bottom" className="h-[80vh] rounded-t-[2rem] bg-background/95 backdrop-blur-3xl">
+                                <SheetHeader className="mb-6 pt-4 px-4">
+                                    <div className="h-1 w-12 bg-primary/20 rounded-full mb-4 mx-auto" />
+                                    <SheetTitle className="text-xl font-bold">{t('settings')}</SheetTitle>
+                                </SheetHeader>
+                                <div className="space-y-6 px-4 pb-20 overflow-y-auto max-h-[60vh]">
+                                    {/* Reading Mode for Mobile */}
+                                    <div className="space-y-3">
+                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('readingMode')}</span>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[
+                                                { id: 'single', label: t('singlePage') },
+                                                { id: 'double-animated', label: t('doubleAnimated') },
+                                            ].map(mode => (
+                                                <button
+                                                    key={mode.id}
+                                                    onClick={() => setSettings({ readingMode: mode.id as any })}
+                                                    className={`p-3 rounded-xl text-xs font-bold transition-all ${settings.readingMode === mode.id ? 'bg-primary text-white' : 'bg-secondary'}`}
+                                                >
+                                                    {mode.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Drawing Tools for Mobile */}
+                                    <div className="space-y-3">
+                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('drawingTools')}</span>
+                                        <div className="flex gap-2">
+                                            {[
+                                                { id: 'cursor', icon: MousePointer2, label: t('cursor') },
+                                                { id: 'marker', icon: Highlighter, label: t('highlight') },
+                                                { id: 'pen', icon: PenTool, label: t('pen') },
+                                                { id: 'eraser', icon: Eraser, label: t('eraser') }
+                                            ].map((tool) => (
+                                                <Button
+                                                    key={tool.id}
+                                                    variant={activeTool === tool.id ? 'default' : 'outline'}
+                                                    size="icon"
+                                                    onClick={() => setActiveTool(tool.id as any)}
+                                                    className="rounded-full h-10 w-10"
+                                                >
+                                                    <tool.icon className="h-4 w-4" />
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Zoom for Mobile */}
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('zoom')}</span>
+                                            <span className="text-sm font-bold">{Math.round(scale * 100)}%</span>
+                                        </div>
+                                        <Slider
+                                            value={[scale]}
+                                            min={0.5}
+                                            max={2}
+                                            step={0.1}
+                                            onValueChange={([v]) => setScale(v)}
+                                        />
+                                    </div>
+
+                                    {/* Theme */}
+                                    <div className="space-y-3">
+                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('theme')}</span>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { id: 'light', label: t('light'), color: 'bg-white' },
+                                                { id: 'sepia', label: t('sepia'), color: 'bg-[#f4ecd8]' },
+                                                { id: 'dark', label: t('dark'), color: 'bg-slate-900' }
+                                            ].map(theme => (
+                                                <button
+                                                    key={theme.id}
+                                                    onClick={() => setSettings({ theme: theme.id as any })}
+                                                    className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${settings.theme === theme.id ? 'ring-2 ring-primary' : 'bg-secondary/50'}`}
+                                                >
+                                                    <div className={`h-8 w-8 rounded-full ${theme.color} border`} />
+                                                    <span className="text-xs font-bold">{theme.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Font Size */}
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('fontSize')}</span>
+                                            <span className="text-sm font-bold">{settings.fontSize}%</span>
+                                        </div>
+                                        <Slider
+                                            value={[settings.fontSize]}
+                                            min={50}
+                                            max={200}
+                                            step={10}
+                                            onValueChange={([v]) => setSettings({ fontSize: v })}
+                                        />
+                                    </div>
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+                </header>
+
+                {/* Desktop Header - Full Featured */}
+                <header className="hidden sm:flex h-14 px-6 rounded-full bg-background/60 backdrop-blur-2xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.15)] items-center justify-between gap-6 pointer-events-auto transition-all duration-500 hover:scale-[1.01] hover:bg-background/80 max-w-[95vw]">
                     <div className="flex items-center gap-4 border-r border-border/10 pr-6">
                         <Button variant="ghost" size="icon" onClick={() => setIsNotesOpen(true)} className="rounded-full h-9 w-9 hover:bg-orange-500/10 transition-all text-orange-500" title={t('notesAndHighlights')}>
                             <StickyNote className="h-4 w-4" />
@@ -694,7 +817,7 @@ const ReaderPage: React.FC = () => {
                             }
                             .react-pdf__Page__textContent {
                                 user-select: text !important;
-                                z-index: 30 !important; /* Increased z-index to be on top */
+                                z-index: 30 !important;
                                 pointer-events: auto !important;
                                 opacity: 1 !important;
                             }
@@ -707,7 +830,6 @@ const ReaderPage: React.FC = () => {
                                 user-select: none !important;
                                 z-index: 1 !important;
                             }
-                            /* Selection color refinement */
                             .react-pdf__Page__textContent ::selection {
                                 background: rgba(249, 115, 22, 0.3) !important;
                                 color: inherit !important;
