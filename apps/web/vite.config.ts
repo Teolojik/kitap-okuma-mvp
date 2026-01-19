@@ -40,9 +40,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'Epigraf - Dijital Kütüphanen',
-        short_name: 'Epigraf',
-        description: 'Premium e-kitap ve PDF okuma deneyimi',
+        name: 'Epigraph - Your Digital Library',
+        short_name: 'Epigraph',
+        description: 'Premium e-book and PDF reading experience',
         theme_color: '#f97316',
         background_color: '#ffffff',
         display: 'standalone',
@@ -88,4 +88,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Production build optimizations
+  esbuild: {
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+  },
 })
+

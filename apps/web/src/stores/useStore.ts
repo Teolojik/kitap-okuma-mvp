@@ -59,6 +59,31 @@ export const useAuthStore = create<AuthState>((set) => ({
     },
     signOut: async () => {
         await supabase.auth.signOut();
+
+        // Clear user-specific local data to prevent data leakage between accounts
+        localStorage.removeItem('mock_books');
+        localStorage.removeItem('epigraph_collections');
+        localStorage.removeItem('reader_settings');
+
+        // Clear IndexedDB (book files and drawings)
+        try {
+            const dbRequest = indexedDB.open('EpigrafDB', 2);
+            dbRequest.onsuccess = () => {
+                const db = dbRequest.result;
+                if (db.objectStoreNames.contains('books_files')) {
+                    const tx = db.transaction('books_files', 'readwrite');
+                    tx.objectStore('books_files').clear();
+                }
+                if (db.objectStoreNames.contains('drawings')) {
+                    const tx = db.transaction('drawings', 'readwrite');
+                    tx.objectStore('drawings').clear();
+                }
+                db.close();
+            };
+        } catch (e) {
+            console.error('Failed to clear IndexedDB:', e);
+        }
+
         set({ user: null });
     },
     updateProfile: async (updates: any) => {

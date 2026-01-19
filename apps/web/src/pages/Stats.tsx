@@ -101,12 +101,12 @@ const StatsPage = () => {
                         <div>
                             <CardTitle className="text-lg flex items-center gap-2">
                                 <Calendar className="h-5 w-5 text-primary" />
-                                Haftalık Aktivite
+                                {t('weeklyActivity')}
                             </CardTitle>
-                            <CardDescription>Son 7 gündeki okuma grafiğiniz.</CardDescription>
+                            <CardDescription>{t('weeklyActivityDesc')}</CardDescription>
                         </div>
                         <div className="h-8 px-4 rounded-full bg-primary/10 border border-primary/20 flex items-center">
-                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Aktif</span>
+                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">{t('active')}</span>
                         </div>
                     </CardHeader>
                     <CardContent className="pt-10">
@@ -117,7 +117,7 @@ const StatsPage = () => {
                                     <div key={data.day} className="flex-1 flex flex-col items-center gap-4 group">
                                         <div className="relative w-full flex justify-center items-end h-full">
                                             <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-all -translate-y-2 group-hover:translate-y-0 bg-primary text-primary-foreground text-[10px] font-black px-3 py-1.5 rounded-full shadow-xl pointer-events-none z-20">
-                                                {data.pages} Sayfa
+                                                {data.pages} {t('page')}
                                             </div>
                                             <motion.div
                                                 initial={{ height: 0 }}

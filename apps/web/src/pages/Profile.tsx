@@ -111,7 +111,7 @@ const ProfilePage = () => {
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
                             <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('favoriteBooks')}</h2>
-                            <Link to="/" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline transition-all">Tümünü Gör</Link>
+                            <Link to="/" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline transition-all">{t('viewAll')}</Link>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">

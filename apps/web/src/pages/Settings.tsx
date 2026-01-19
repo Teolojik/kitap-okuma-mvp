@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore, useBookStore } from '@/stores/useStore';
 import {
     User,
@@ -17,7 +18,8 @@ import {
     Info,
     Lock,
     Save,
-    Loader2
+    Loader2,
+    MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,6 +51,46 @@ const SettingsPage = () => {
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
+    // Support Ticket States
+    const [ticketSubject, setTicketSubject] = useState('');
+    const [ticketMessage, setTicketMessage] = useState('');
+    const [ticketCategory, setTicketCategory] = useState('general');
+    const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+
+    const handleSubmitTicket = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!ticketSubject || !ticketMessage) {
+            toast.error(t('errorOccurred'));
+            return;
+        }
+
+        setIsSubmittingTicket(true);
+        try {
+            const { error } = await supabase
+                .from('support_tickets')
+                .insert({
+                    user_id: user?.id,
+                    user_email: user?.email,
+                    subject: ticketSubject,
+                    message: ticketMessage,
+                    category: ticketCategory,
+                    status: 'open'
+                });
+
+            if (error) throw error;
+
+            toast.success("Success! Message received.");
+            setTicketSubject('');
+            setTicketMessage('');
+            setTicketCategory('general');
+        } catch (error) {
+            console.error(error);
+            toast.error(t('errorOccurred'));
+        } finally {
+            setIsSubmittingTicket(false);
+        }
+    };
+
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsUpdating(true);
@@ -68,15 +110,23 @@ const SettingsPage = () => {
             toast.error(t('errorOccurred'));
             return;
         }
+        if (newPassword.length < 6) {
+            toast.error(t('passwordTooShort') || 'Şifre en az 6 karakter olmalı');
+            return;
+        }
         setIsChangingPass(true);
         try {
-            const { error } = await MockAPI.auth.changePassword(oldPassword, newPassword);
-            if (error) throw new Error(error);
+            // Use Supabase directly for password change
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+            if (error) throw error;
             toast.success(t('passwordChanged'));
             setOldPassword('');
             setNewPassword('');
-        } catch (error) {
-            toast.error(t('errorOccurred'));
+        } catch (error: any) {
+            console.error("Password change error:", error);
+            toast.error(error?.message || t('errorOccurred'));
         } finally {
             setIsChangingPass(false);
         }
@@ -390,19 +440,60 @@ const SettingsPage = () => {
                                 </CardContent>
                             </Card>
                         </div>
-                        <div className="p-10 rounded-[2.5rem] bg-primary/5 border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group">
-                            <div className="absolute top-0 right-0 h-full w-1/2 bg-gradient-to-l from-primary/5 to-transparent -z-1" />
-                            <div className="space-y-2 relative z-10 text-center md:text-left">
-                                <p className="font-black text-2xl tracking-tight">{t('anyProblem')}</p>
-                                <p className="text-primary/70 font-semibold">{t('reportProblem')}</p>
-                            </div>
-                            <Button
-                                onClick={() => window.location.href = 'mailto:destek@kitapoku.com?subject=Destek Talebi'}
-                                className="rounded-full h-14 px-10 bg-primary text-primary-foreground shadow-2xl shadow-primary/20 hover:scale-105 transition-transform relative z-10 font-bold"
-                            >
-                                {t('openSupportTicket')}
-                            </Button>
-                        </div>
+                        <Card className="border-border/50 bg-card/50 overflow-hidden rounded-[2.5rem]">
+                            <CardHeader className="bg-primary/5">
+                                <CardTitle className="flex items-center gap-2">
+                                    <MessageSquare className="h-5 w-5 text-primary" />
+                                    {t('sendUsMessage')}
+                                </CardTitle>
+                                <CardDescription>{t('supportMessageDesc')}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <form onSubmit={handleSubmitTicket} className="space-y-4">
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="space-y-2 text-left">
+                                            <Label>{t('category')}</Label>
+                                            <select
+                                                className="w-full h-10 px-3 rounded-xl bg-background/50 border border-border/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                value={ticketCategory}
+                                                onChange={(e) => setTicketCategory(e.target.value)}
+                                            >
+                                                <option value="general">{t('generalInquiry')}</option>
+                                                <option value="bug">{t('bugReport')}</option>
+                                                <option value="content_report">{t('contentComplaint')}</option>
+                                                <option value="feature">{t('featureRequest')}</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label>{t('subject')}</Label>
+                                            <Input
+                                                placeholder={t('subject')}
+                                                value={ticketSubject}
+                                                onChange={(e) => setTicketSubject(e.target.value)}
+                                                className="bg-background/50 border-border/50 rounded-xl"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 text-left">
+                                        <Label>{t('message')}</Label>
+                                        <textarea
+                                            placeholder={t('message')}
+                                            className="w-full min-h-[150px] p-4 rounded-2xl bg-background/50 border border-border/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            value={ticketMessage}
+                                            onChange={(e) => setTicketMessage(e.target.value)}
+                                        />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        disabled={isSubmittingTicket}
+                                        className="w-full rounded-2xl h-12 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 gap-2 font-bold"
+                                    >
+                                        {isSubmittingTicket ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        {t('submitTicket')}
+                                    </Button>
+                                </form>
+                            </CardContent>
+                        </Card>
                     </div>
                 );
         }

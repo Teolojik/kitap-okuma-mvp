@@ -85,9 +85,11 @@ Bu aşama, uygulamanın yerel bir araçtan (offline-first) gerçek bir hizmet po
     *   [x] Çapraz cihaz desteği (İlk adımlar: Giriş ve Kitap Senkronu).
 
 3.  **Yönetim ve Admin Paneli (Admin Console):**
-    *   [ ] Platform sahibi (Siz) için özel yönetim paneli.
-    *   [ ] Kullanıcı istatistiklerinin (anonimleştirilmiş genel veriler) izlenmesi.
-    *   [ ] Platform genelindeki bakım ve güncelleme duyurularının yönetimi.
+    *   [x] Platform yönetimi için premium UI'lı `/admin` sayfası.
+    *   [x] Kullanıcı yönetimi (Banlama, Rol Değiştirme - Premium/Admin).
+    *   [x] İçerik yönetimi (Küresel kitap listesi ve silme yetkisi).
+    *   [x] Çok dilli destek (TR/EN) ve güvenli erişim kontrolü.
+    *   [ ] Gerçek zamanlı büyüme grafikleri ve sistem ayarları (Bakım modu vb.).
 
 4.  **Veri Güvenliği ve Performans:**
     *   [ ] Büyük boyutlu PDF/EPUB dosyaları için optimize edilmiş yükleme (Streaming/Buffering).
@@ -213,4 +215,102 @@ Bu bölüm, uygulamanın tam kaynak kod analizinden elde edilen bulguları içer
 ```
 
 ---
-*Son Güncelleme: 19 Ocak 2026, 00:42*
+*Son Güncelleme: 19 Ocak 2026, 11:30 (Admin Panel Localization & Layout Stability Fixes)*
+
+### 🔵 TAMAMLANAN GLOBALLEŞME & MARKA GÖREVLERİ
+
+- [x] **Global Rebranding:** "Epigraf" ismi global versiyonu olan "Epigraph" ile tüm sistemde (PWA, SEO, Kod, Layout) güncellendi.
+- [x] **Universal Support:** Destek e-posta adresi `support@epigraph.app` olarak globalleştirildi.
+- [x] **Digital Library Slogan:** SEO ve başlık sloganları "Your Digital Library" olarak güncellendi.
+- [x] **AI Simulation Warning:** API anahtarı olmayan kullanıcılar için asistan penceresine bilgilendirme banner'ı eklendi.
+
+### 🛡️ ADMİN PANELİ & YÖNETİM (YÜKSEK ÖNCELİK)
+
+- [x] **Admin Route & UI:** `/admin` rotası ve premium tasarımlı yönetim paneli arayüzü oluşturuldu.
+- [x] **Admin Access Check:** Sidebar ve Rota bazlı yetkisiz erişim kontrolleri tamamlandı.
+- [x] **Admin i18n:** Panel tamamen Türkçe ve İngilizce dil desteğine kavuşturuldu.
+- [x] **Real-time Stats Base:** Supabase üzerinden gerçek kullanıcı ve kitap sayıları çekildi.
+- [x] **User & Content Control:** Kullanıcı banlama, rol değiştirme ve kitap silme özellikleri aktif edildi.
+- [x] **Real-time Analytics:** Büyüme grafiklerini ve aktif seans verilerini gerçek veriye bağla.
+- [x] **System State Sync:** Bakım modu ve kayıt izinlerini global uygulama durumuna entegre et.
+- [x] **DB Export:** Yönetici için tüm verilerin JSON/CSV olarak dışa aktarılmasını sağla.
+- [x] **Activity Logs:** Kritik işlemlerin (silme, banlama vb.) geçmişini ve kimin yaptığını takip et.
+- [x] **Global Announcements:** Tüm kullanıcılara anlık duyuru ve bildirim gönderme sistemi.
+- [x] **Support & Report Hub:** Kullanıcı şikayetlerini ve hata bildirimlerini yöneten merkez.
+- [x] **Content Insights:** En çok okunan kitaplar ve kullanıcı davranışı analizleri.
+- [x] **Storage Cleanup Tool:** Yetim dosyaları temizleyerek depolama alanı optimizasyonu.
+
+---
+
+### 🔴 ADMİN PANELİ KRİTİK HATALAR VE EKSİKLER (19 Ocak 2026 Analizi)
+
+| # | Sorun | Satır | Detay | Durum |
+|---|-------|-------|-------|-------|
+| 1 | **Simüle Edilmiş Aktif Okuma** | `Admin.tsx:110` | `activeReads` gerçek değil, kitap sayısının %40'ı olarak hesaplanıyor | [x] |
+| 2 | **Kullanıcı Arama Çalışmıyor** | `Admin.tsx:670-673` | Arama input'u var ama `onChange` veya filtreleme mantığı yok | [x] |
+| 3 | **Filtreleme Butonları Pasif** | `Admin.tsx:676-678` | "Tüm Kullanıcılar" ve "Sadece Adminler" butonları işlevsel değil | [x] |
+| 4 | **Profil-Auth Sync Eksik** | `Admin.tsx:79-84` | Kullanıcılar `profiles` tablosundan çekilirken e-posta boş kalabiliyor | [x] |
+| 5 | **Kullanıcı Silme Tehlikeli** | `Admin.tsx:309-327` | Edge Function ile auth.users'dan da silme eklendi. Profil + kitaplar + auth hesabı tamamen temizleniyor | [x] |
+| 6 | **Kitap Silme Eksik** | `Admin.tsx:430-450` | Kitap DB'den siliniyor ama Storage'daki dosya silinmiyor. Yetim dosya birikimine yol açar | [x] |
+| 7 | **Kullanılmayan Importlar** | `Admin.tsx:13,17,22,24` | `UserPlus`, `AlertCircle`, `Activity`, `Shield` ikonları import edilmiş ama kullanılmıyor | [x] |
+| 8 | **Insights Boş Liste Durumu** | `Admin.tsx:1103-1136` | `popularBooks` veya `topReadBooks` boşsa hiçbir mesaj gösterilmiyor | [x] |
+
+### 🟠 ADMİN PANELİ ORTA SEVİYE SORUNLAR
+
+| # | Sorun | Detay | Durum |
+|---|-------|-------|-------|
+| 9 | **Pagination Yok** | Kullanıcı ve kitap tabloları artık sayfalama destekliyor | [x] |
+| 10 | **Grafik Sadece 7 Gün** | Dashboard grafiği artık 7 gün, 30 gün veya tüm zamanları gösterebiliyor | [x] |
+| 11 | **Rol Değişikliği Auth'a Yansımıyor** | Edge Function ile auth metadata senkronizasyonu eklendi | [x] |
+| 12 | **Loading State Eksikliği** | Duyuru oluşturma gibi işlemlerde işlem bitene kadar buton yükleniyor moduna geçer | [x] |
+| 13 | **Mobil Uyumluluk** | Çok sayıdaki sekme mobilde artık yatayda kaydırılabiliyor | [x] |
+
+### 🟡 ADMİN PANELİ İYİLEŞTİRME ÖNERİLERİ
+
+| # | Öneri | Durum |
+|---|-------|-------|
+| 14 | Başlık altı açıklamaları her sekmeye özel hale getirildi | [x] |
+| 15 | Kitap tablosunda "Yükleyen" sütunu UUID yerine kullanıcı ismiyle eşleştirildi | [x] |
+| 16 | Destek biletlerinde "Yanıtla" özelliği eklendi. Adminler artık doğrudan sistem üzerinden cevap yazabiliyor | [x] |
+| 17 | Duyurularda "Bitiş Tarihi" özelliği eklendi. Süresi dolan duyurular listede belirtiliyor | [x] |
+
+---
+
+## 🚀 YAYIN ÖNCESİ DENETİM RAPORU (19 Ocak 2026)
+
+### 🔴 KRİTİK SORUNLAR (Yayın Öncesi Düzeltilmeli)
+
+| # | Sorun | Dosya | Detay | Durum |
+|---|-------|-------|-------|-------|
+| 1 | **Environment Variables Eksik** | `.env` | `.env.example` şablonu zaten mevcut | [x] |
+| 2 | **Admin Yetki Kontrolü Hardcoded** | `App.tsx:65-67` | Hardcoded e-postalar kaldırıldı, profiles tablosundan rol kontrolü eklendi | [x] |
+| 3 | **Şifre Değiştirme Mock API Kullanıyor** | `Settings.tsx:115` | Supabase `auth.updateUser` doğrudan kullanılacak şekilde güncellendi | [x] |
+| 4 | **favicon.ico Eksik** | `public/` | PWA ikonundan kopyalandı | [x] |
+
+### 🟠 ORTA SEVİYE SORUNLAR
+
+| # | Sorun | Dosya | Detay | Durum |
+|---|-------|-------|-------|-------|
+| 5 | **console.log Production'da Kalıyor** | `vite.config.ts` | esbuild.drop ile production build'de otomatik temizleniyor | [x] |
+| 6 | **TypeScript `any` Kullanımı** | Çeşitli | 30+ yerde `any` tipi kullanılmış. İleride refactor edilebilir | [/] |
+| 7 | **Admin Role Tutarsızlığı** | `App.tsx` | toLowerCase() ile case-insensitive kontrol eklendi | [x] |
+| 8 | **Supabase RLS Diğer Tablolar** | `supabase/rls-admin-policies.sql` | Tüm tablolar için admin politikaları uygulandı | [x] |
+
+### 🟢 İYİLEŞTİRME ÖNERİLERİ (Opsiyonel)
+
+| # | Öneri | Detay | Durum |
+|---|-------|-------|-------|
+| 9 | **PWA İkon Optimizasyonu** | Tüm ikonlar 309KB - WebP formatına çevrilerek %50+ küçültülebilir | [ ] |
+| 10 | **Error Boundary Kullanımı** | `react-error-boundary` kurulu ama aktif kullanılmıyor | [ ] |
+| 11 | **Edge Function Deployment** | `admin-operations` fonksiyonu Supabase'e deploy edilmeli | [ ] |
+
+### 🔐 GÜVENLİK DÜZELTMELERİ (Eklenen)
+
+| # | Sorun | Çözüm | Durum |
+|---|-------|-------|-------|
+| 12 | **Kullanıcılar Arası Veri Sızıntısı** | Çıkış yapıldığında localStorage ve IndexedDB temizleniyor | [x] |
+
+---
+*Son Güncelleme: 19 Ocak 2026, 14:22 (Kullanıcı Veri İzolasyonu Düzeltmesi)*
+
+

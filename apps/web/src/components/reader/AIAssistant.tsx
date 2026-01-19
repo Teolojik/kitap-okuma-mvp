@@ -19,7 +19,8 @@ import {
     Volume2,
     Languages,
     MessageSquare,
-    X
+    X,
+    AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -121,7 +122,20 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, selection })
                             {mode === 'dictionary' ? <Book className="text-primary h-8 w-8" /> : <Sparkles className="text-primary h-8 w-8" />}
                             AI {mode === 'dictionary' ? t('aiDictionary') : t('aiAssistant')}
                         </DialogTitle>
-                        <DialogDescription className="text-muted-foreground font-medium mt-1">
+                        {/* API Key Warning */}
+                        {!AIDiscoveryService.hasKey() && (
+                            <div className="mt-4 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex gap-3 animate-pulse">
+                                <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">{t('aiApiKeyMissing')}</p>
+                                    <p className="text-[10px] text-orange-500/70 leading-relaxed font-medium">
+                                        {t('aiSimulationNotice')}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <DialogDescription className="text-muted-foreground font-medium mt-4">
                             {selection?.text.slice(0, 40)}{selection?.text && selection.text.length > 40 ? '...' : ''}
                         </DialogDescription>
 
