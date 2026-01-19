@@ -98,7 +98,7 @@ const uploadCoverToSupabase = async (bookId: string, coverDataUrl: string): Prom
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
             .from('covers')
-            .upload(`covers/${bookId}.jpg`, blob, {
+            .upload(`${bookId}.jpg`, blob, {
                 contentType: 'image/jpeg',
                 upsert: true
             });
@@ -111,7 +111,7 @@ const uploadCoverToSupabase = async (bookId: string, coverDataUrl: string): Prom
         // Get public URL
         const { data: urlData } = supabase.storage
             .from('covers')
-            .getPublicUrl(`covers/${bookId}.jpg`);
+            .getPublicUrl(`${bookId}.jpg`);
 
         console.log("Cover uploaded to Supabase:", urlData.publicUrl);
         return urlData.publicUrl;
