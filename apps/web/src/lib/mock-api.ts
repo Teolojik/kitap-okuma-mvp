@@ -262,56 +262,77 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
             }
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            try {
-                console.log("PDF cover: Extracting first page...");
+            // Generate a beautiful placeholder cover for PDFs
+            // Client-side pdfjs extraction has worker issues in production
+            console.log("PDF: Generating styled placeholder cover");
 
-                // DYNAMIC IMPORT - only load pdfjs when needed
-                const pdfjs = await import('pdfjs-dist');
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
 
-                // Set worker - use the same one that's copied during build
-                pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+            if (ctx) {
+                // Beautiful gradient background
+                const gradient = ctx.createLinearGradient(0, 0, 400, 600);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(0.5, '#764ba2');
+                gradient.addColorStop(1, '#f093fb');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 400, 600);
 
-                const arrayBuffer = await file.arrayBuffer();
-                const loadingTask = pdfjs.getDocument({
-                    data: new Uint8Array(arrayBuffer),
-                    useSystemFonts: true,
-                    disableFontFace: false
-                });
-                const pdf = await loadingTask.promise;
-
-                // Render first page as cover
-                const page = await pdf.getPage(1);
-                const scale = 0.5; // Good quality for cover
-                const viewport = page.getViewport({ scale });
-
-                const canvas = document.createElement('canvas');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                const context = canvas.getContext('2d');
-
-                if (!context) {
-                    console.error("PDF Cover: Could not get canvas context");
-                    return undefined;
+                // Add subtle pattern overlay
+                ctx.fillStyle = 'rgba(255,255,255,0.03)';
+                for (let i = 0; i < 20; i++) {
+                    ctx.beginPath();
+                    ctx.arc(Math.random() * 400, Math.random() * 600, Math.random() * 50 + 20, 0, Math.PI * 2);
+                    ctx.fill();
                 }
 
-                await page.render({
-                    canvasContext: context,
-                    viewport: viewport,
-                    canvas: canvas
-                }).promise;
+                // White border frame
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(20, 20, 360, 560);
 
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                console.log("PDF Cover: Successfully extracted first page!");
+                // Book icon
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.font = 'bold 60px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('📖', 200, 200);
 
-                // Clean up
-                pdf.destroy();
+                // Title
+                const fileName = file.name.replace(/\.pdf$/i, '');
+                const words = fileName.split(/[\s_-]+/);
+                ctx.font = 'bold 28px Georgia';
+                ctx.fillStyle = '#ffffff';
 
-                return dataUrl;
-            } catch (err: any) {
-                console.error("PDF cover extraction failed:", err?.message || err);
-                // Return undefined - will fall back to external API or placeholder
-                return undefined;
+                let y = 300;
+                let line = '';
+                for (const word of words) {
+                    const testLine = line + word + ' ';
+                    if (ctx.measureText(testLine).width > 340) {
+                        ctx.fillText(line.trim(), 200, y);
+                        line = word + ' ';
+                        y += 36;
+                        if (y > 450) break;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                if (line && y <= 450) {
+                    ctx.fillText(line.trim(), 200, y);
+                }
+
+                // "PDF" badge
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.fillRect(150, 520, 100, 40);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('PDF', 200, 548);
+
+                return canvas.toDataURL('image/jpeg', 0.92);
             }
+
+            return undefined;
         }
     } catch (e) {
         console.error("Local extraction failed", e);
@@ -429,28 +450,17 @@ export const MockAPI = {
                 (async () => {
                     if (finalCover) return { cover: finalCover };
 
-                    // Try local cover first (prioritized) - works for EPUB
+                    // Extract cover locally - works for EPUB and generates placeholder for PDF
                     const localCover = await extractCoverLocally(file).catch(() => null);
                     if (localCover && localCover.startsWith('data:')) {
-                        console.log("Local cover extracted, uploading to Supabase...");
-                        // Upload to Supabase Storage to avoid CORS issues
+                        console.log("Cover extracted/generated, uploading to Supabase...");
+                        // Upload to Supabase Storage
                         const supabaseUrl = await uploadCoverToSupabase(id, localCover);
                         if (supabaseUrl) {
                             return { cover: supabaseUrl };
                         }
-                        // Fallback: use data URL directly (works but large)
+                        // Fallback: use data URL directly
                         return { cover: localCover };
-                    }
-
-                    // Then try remote search (for PDFs since local extraction is disabled)
-                    const discovery = await findCoverImage(displayTitle, finalAuthor).catch(() => null);
-                    if (discovery && discovery.url && !discovery.url.includes('unsplash')) {
-                        if (!finalAuthor || finalAuthor === '') {
-                            finalAuthor = discovery.author || '';
-                        }
-                        // Note: External URLs may still have CORS issues when displayed
-                        // But at least they're cached and mostly work
-                        return { cover: discovery.url };
                     }
 
                     return { cover: undefined };
