@@ -1,10 +1,6 @@
 import { supabase } from './supabase';
 import { findCoverImage } from './discovery-service';
 import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
-import { pdfjs } from 'react-pdf';
-
-// Configure PDF.js worker - same as PdfReader.tsx
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export interface Book {
     id: string;
@@ -178,22 +174,10 @@ export const extractMetadataLocally = async (file: File): Promise<{ title?: stri
             };
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
-                const pdf = await loadingTask.promise;
-                const metadata = await pdf.getMetadata();
-
-                console.log("PDF Local Metadata Found:", metadata);
-
-                return {
-                    title: (metadata.info as any)?.Title,
-                    author: (metadata.info as any)?.Author
-                };
-            } catch (err) {
-                console.error("PDF metadata extraction failed", err);
-                return undefined;
-            }
+            // PDF metadata extraction disabled - using filename parsing instead
+            // pdfjs worker causes errors in Vercel production environment
+            console.log("PDF: Using filename for metadata");
+            return undefined;
         }
     } catch (e) {
         console.error("Local metadata extraction failed", e);
@@ -278,36 +262,52 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
             }
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            try {
-                console.log("PDF cover: Extracting first page...");
+            // Generate a nice placeholder cover for PDFs
+            // pdfjs worker causes errors in Vercel production environment
+            console.log("PDF: Generating placeholder cover");
 
-                const arrayBuffer = await file.arrayBuffer();
-                const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
-                const pdf = await loadingTask.promise;
+            // Create a canvas-based placeholder with the file name
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 450;
+            const ctx = canvas.getContext('2d');
 
-                // Render the first page as cover
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({ scale: 0.5 });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
+            if (ctx) {
+                // Background gradient
+                const gradient = ctx.createLinearGradient(0, 0, 0, 450);
+                gradient.addColorStop(0, '#1a1a2e');
+                gradient.addColorStop(1, '#16213e');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 300, 450);
 
-                if (!context) {
-                    console.error("PDF Cover: Could not get canvas context");
-                    return undefined;
-                }
+                // Decorative line
+                ctx.strokeStyle = '#e94560';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(30, 380);
+                ctx.lineTo(270, 380);
+                ctx.stroke();
 
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+                // PDF icon
+                ctx.fillStyle = '#e94560';
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('PDF', 150, 200);
 
-                await page.render({ canvasContext: context, viewport, canvas }).promise;
+                // File name (truncated)
+                const fileName = file.name.replace(/\.pdf$/i, '');
+                const truncated = fileName.length > 25 ? fileName.substring(0, 25) + '...' : fileName;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 18px Arial';
+                ctx.fillText(truncated, 150, 320);
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#aaaaaa';
+                ctx.fillText('Kitap', 150, 350);
 
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                console.log("PDF Cover: Successfully extracted first page");
-                return dataUrl;
-            } catch (err: any) {
-                console.error("PDF cover extraction failed:", err?.message || err);
-                return undefined;
+                return canvas.toDataURL('image/jpeg', 0.9);
             }
+
+            return undefined;
         }
     } catch (e) {
         console.error("Local extraction failed", e);
