@@ -262,52 +262,56 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
             }
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            // Generate a nice placeholder cover for PDFs
-            // pdfjs worker causes errors in Vercel production environment
-            console.log("PDF: Generating placeholder cover");
+            try {
+                console.log("PDF cover: Extracting first page...");
 
-            // Create a canvas-based placeholder with the file name
-            const canvas = document.createElement('canvas');
-            canvas.width = 300;
-            canvas.height = 450;
-            const ctx = canvas.getContext('2d');
+                // DYNAMIC IMPORT - only load pdfjs when needed
+                const pdfjs = await import('pdfjs-dist');
 
-            if (ctx) {
-                // Background gradient
-                const gradient = ctx.createLinearGradient(0, 0, 0, 450);
-                gradient.addColorStop(0, '#1a1a2e');
-                gradient.addColorStop(1, '#16213e');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 300, 450);
+                // Set worker - use the same one that's copied during build
+                pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
-                // Decorative line
-                ctx.strokeStyle = '#e94560';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(30, 380);
-                ctx.lineTo(270, 380);
-                ctx.stroke();
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjs.getDocument({
+                    data: new Uint8Array(arrayBuffer),
+                    useSystemFonts: true,
+                    disableFontFace: false
+                });
+                const pdf = await loadingTask.promise;
 
-                // PDF icon
-                ctx.fillStyle = '#e94560';
-                ctx.font = 'bold 40px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('PDF', 150, 200);
+                // Render first page as cover
+                const page = await pdf.getPage(1);
+                const scale = 0.5; // Good quality for cover
+                const viewport = page.getViewport({ scale });
 
-                // File name (truncated)
-                const fileName = file.name.replace(/\.pdf$/i, '');
-                const truncated = fileName.length > 25 ? fileName.substring(0, 25) + '...' : fileName;
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 18px Arial';
-                ctx.fillText(truncated, 150, 320);
-                ctx.font = '14px Arial';
-                ctx.fillStyle = '#aaaaaa';
-                ctx.fillText('Kitap', 150, 350);
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const context = canvas.getContext('2d');
 
-                return canvas.toDataURL('image/jpeg', 0.9);
+                if (!context) {
+                    console.error("PDF Cover: Could not get canvas context");
+                    return undefined;
+                }
+
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport,
+                    canvas: canvas
+                }).promise;
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                console.log("PDF Cover: Successfully extracted first page!");
+
+                // Clean up
+                pdf.destroy();
+
+                return dataUrl;
+            } catch (err: any) {
+                console.error("PDF cover extraction failed:", err?.message || err);
+                // Return undefined - will fall back to external API or placeholder
+                return undefined;
             }
-
-            return undefined;
         }
     } catch (e) {
         console.error("Local extraction failed", e);
