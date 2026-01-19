@@ -58,8 +58,18 @@ export default function LibraryPage() {
             }
         };
 
+        // Listen for background metadata updates (lazy loading)
+        const handleStorageUpdate = () => {
+            fetchBooks(); // Refresh books when background processing completes
+        };
+
         window.addEventListener('dragover', handleGlobalDrag);
-        return () => window.removeEventListener('dragover', handleGlobalDrag);
+        window.addEventListener('storage', handleStorageUpdate);
+
+        return () => {
+            window.removeEventListener('dragover', handleGlobalDrag);
+            window.removeEventListener('storage', handleStorageUpdate);
+        };
     }, [draggedBookId]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

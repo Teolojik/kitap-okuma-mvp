@@ -408,72 +408,29 @@ export const MockAPI = {
             const user = MockAPI.auth.getUser();
             const format = (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'epub';
 
-            // Metadata refinement
+            // Quick metadata from filename (instant)
             let finalTitle = metadata.title || file.name;
             let finalAuthor = metadata.author || '';
 
-            // 1. Try local extraction first
-            if (!finalAuthor || finalAuthor === '' || finalTitle === file.name) {
-                const localMeta = await extractMetadataLocally(file);
-                if (localMeta) {
-                    if (!finalAuthor && localMeta.author) finalAuthor = localMeta.author;
-                    if (finalTitle === file.name && localMeta.title) finalTitle = localMeta.title;
-                    console.log("Local metadata applied for mock upload:", { finalTitle, finalAuthor });
-                }
-            }
-
-            const badAuthors = ['LIBRARY', 'UNKNOWN', 'ADMIN', 'BILINMIYOR', 'ANONIM', ''];
-            if (badAuthors.some(bad => finalAuthor.toUpperCase().includes(bad))) {
-                const parsed = parseFileName(file.name);
-                if (parsed) {
-                    finalTitle = parsed.title;
-                    finalAuthor = parsed.author;
-                }
+            const parsed = parseFileName(file.name);
+            if (parsed && parsed.title) {
+                finalTitle = parsed.title;
+                if (parsed.author) finalAuthor = parsed.author;
             }
 
             const displayTitle = smartClean(finalTitle);
 
-            // PARALLEL METADATA & COVER STRATEGY
-            let finalCover = metadata.cover_url;
+            // PLACEHOLDER COVER (instant display)
+            const placeholderCover = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
 
-            const [_, metadataResult] = await Promise.all([
-                saveFile(id, file),
-                (async () => {
-                    if (finalCover) return { cover: finalCover };
-
-                    // RUN REMOTE AND LOCAL SEARCH IN PARALLEL
-                    const [discovery, localCover] = await Promise.all([
-                        findCoverImage(displayTitle, finalAuthor).catch(() => null),
-                        extractCoverLocally(file).catch(() => null)
-                    ]);
-
-                    if (discovery && discovery.url && !discovery.url.includes('unsplash')) {
-                        if (!finalAuthor || finalAuthor === '') {
-                            finalAuthor = discovery.author || '';
-                        }
-                        return { cover: discovery.url };
-                    }
-
-                    if (localCover) return { cover: localCover };
-
-                    return { cover: undefined };
-                })()
-            ]);
-
-            finalCover = metadataResult.cover;
-
-            // FALLBACK DEFAULT IMAGE (High Quality Book Placeholder)
-            if (!finalCover) {
-                finalCover = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-            }
-
+            // Create book immediately with placeholder (FAST - ~1 second)
             const newBook: Book = {
                 id,
                 user_id: user?.id || 'anon',
                 title: displayTitle,
                 author: cleanAuthor(finalAuthor),
                 file_url: `local://${id}`,
-                cover_url: finalCover,
+                cover_url: metadata.cover_url || placeholderCover,
                 progress: { percentage: 0, page: 1, lastActive: new Date().toISOString() },
                 mode_pref: 'single',
                 format,
@@ -481,12 +438,73 @@ export const MockAPI = {
                 ...metadata
             };
 
-            const books = await MockAPI.books.list();
+            // Save file to IndexedDB immediately
+            await saveFile(id, file);
+
+            // Save book to localStorage immediately (user sees "uploaded" now)
+            const stored = localStorage.getItem('mock_books');
+            const books: Book[] = stored ? JSON.parse(stored) : [];
             books.push(newBook);
             localStorage.setItem('mock_books', JSON.stringify(books));
 
+            // BACKGROUND PROCESSING: Extract cover and metadata asynchronously
+            // This runs AFTER returning to the user, so they don't wait
+            setTimeout(async () => {
+                try {
+                    let updatedCover = newBook.cover_url;
+                    let updatedTitle = newBook.title;
+                    let updatedAuthor = newBook.author;
+
+                    // 1. Try local metadata extraction first
+                    const localMeta = await extractMetadataLocally(file).catch(() => null);
+                    if (localMeta) {
+                        if (localMeta.title && localMeta.title !== file.name) {
+                            updatedTitle = smartClean(localMeta.title);
+                        }
+                        if (localMeta.author) {
+                            updatedAuthor = cleanAuthor(localMeta.author);
+                        }
+                    }
+
+                    // 2. Try local cover extraction (Option D: prioritize local)
+                    const localCover = await extractCoverLocally(file).catch(() => null);
+
+                    if (localCover) {
+                        // Local cover found - skip external API calls (faster!)
+                        updatedCover = localCover;
+                    } else {
+                        // 3. Only if no local cover, try external APIs
+                        const discovery = await findCoverImage(updatedTitle, updatedAuthor).catch(() => null);
+                        if (discovery?.url && !discovery.url.includes('unsplash')) {
+                            updatedCover = discovery.url;
+                            if (!updatedAuthor && discovery.author) {
+                                updatedAuthor = cleanAuthor(discovery.author);
+                            }
+                        }
+                    }
+
+                    // Update book in localStorage with real data
+                    const currentStored = localStorage.getItem('mock_books');
+                    const currentBooks: Book[] = currentStored ? JSON.parse(currentStored) : [];
+                    const bookIndex = currentBooks.findIndex(b => b.id === id);
+
+                    if (bookIndex !== -1) {
+                        currentBooks[bookIndex].cover_url = updatedCover;
+                        currentBooks[bookIndex].title = updatedTitle;
+                        currentBooks[bookIndex].author = updatedAuthor;
+                        localStorage.setItem('mock_books', JSON.stringify(currentBooks));
+
+                        // Trigger a storage event so UI can refresh
+                        window.dispatchEvent(new Event('storage'));
+                    }
+                } catch (err) {
+                    console.error("Background metadata extraction failed:", err);
+                }
+            }, 100); // Start background processing immediately after return
+
             return { data: newBook, error: null };
         },
+
 
         updateProgress: async (bookId: string, progress: any) => {
             const stored = localStorage.getItem('mock_books');
