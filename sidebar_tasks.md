@@ -304,13 +304,20 @@ Bu bölüm, uygulamanın tam kaynak kod analizinden elde edilen bulguları içer
 | 10 | **Error Boundary Kullanımı** | `react-error-boundary` kurulu ama aktif kullanılmıyor | [ ] |
 | 11 | **Edge Function Deployment** | `admin-operations` fonksiyonu Supabase'e deploy edilmeli | [ ] |
 
-### 🔐 GÜVENLİK DÜZELTMELERİ (Eklenen)
+### 🌐 DEPLOYMENT (Vercel)
 
-| # | Sorun | Çözüm | Durum |
+| # | Görev | Detay | Durum |
 |---|-------|-------|-------|
-| 12 | **Kullanıcılar Arası Veri Sızıntısı** | Çıkış yapıldığında localStorage ve IndexedDB temizleniyor | [x] |
+| 13 | **Initial Deployment** | Vercel üzerinden başarıyla yayına alındı | [x] |
+| 14 | **Custom Domain** | `epigraph.com` gibi bir alan adı henüz bağlanmadı | [ ] |
 
 ---
-*Son Güncelleme: 19 Ocak 2026, 14:22 (Kullanıcı Veri İzolasyonu Düzeltmesi)*
+
+## 🔗 CANLI UYGULAMA ADRESİ
+[https://epigraphreader.vercel.app/](https://epigraphreader.vercel.app/)
+
+---
+*Son Güncelleme: 19 Ocak 2026, 16:00 (Uygulama Adresi Güncellendi)*
+
 
 

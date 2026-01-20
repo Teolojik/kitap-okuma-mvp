@@ -549,6 +549,25 @@ export default function Layout() {
                 isOpen={isCommandPaletteOpen}
                 onClose={() => setIsCommandPaletteOpen(false)}
             />
+
+            {/* Social Media - X (Twitter) Button */}
+            <a
+                href="https://x.com/teolojikk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fixed bottom-6 right-6 z-50 md:bottom-8 md:right-8 group"
+                aria-label="X (Twitter) hesabımızı takip edin"
+            >
+                <div className="h-12 w-12 rounded-full bg-black dark:bg-white shadow-2xl shadow-black/20 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-black/40 group-active:scale-95">
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5 text-white dark:text-black fill-current"
+                        aria-hidden="true"
+                    >
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                </div>
+            </a>
         </div>
     );
 }
