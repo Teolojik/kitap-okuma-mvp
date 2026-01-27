@@ -96,6 +96,9 @@ export default function LibraryPage() {
     };
 
     const filteredBooks = books.filter(book => {
+        // If logged in, only show my own books. Admin can view others in Admin Panel.
+        if (user && book.user_id !== user.id) return false;
+
         const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             book.author.toLowerCase().includes(searchQuery.toLowerCase());
 
