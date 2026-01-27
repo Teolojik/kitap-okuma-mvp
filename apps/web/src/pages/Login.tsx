@@ -117,9 +117,7 @@ export default function LoginPage() {
                     >
                         {isRegister ? t('alreadyHaveAccount') : t('noAccount')}
                     </Button>
-                    <div className="text-[10px] text-center text-muted-foreground font-medium opacity-50 uppercase tracking-tighter">
-                        {t('demoLoginInfo')}
-                    </div>
+
                 </CardFooter>
             </Card>
         </div>
