@@ -49,10 +49,6 @@ export default function LibraryPage() {
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    // Strict filter: Personal Library only shows MY books.
-    // Admin features are available in the Admin Panel.
-    const myBooks = user ? books.filter(b => b.user_id === user.id) : books;
-
     useEffect(() => {
         fetchBooks();
 
@@ -99,7 +95,7 @@ export default function LibraryPage() {
         return c.name;
     };
 
-    const filteredBooks = myBooks.filter(book => {
+    const filteredBooks = books.filter(book => {
         const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             book.author.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -124,7 +120,7 @@ export default function LibraryPage() {
     });
 
     // The highlight card should ALWAYS show the absolute latest active book
-    const latestBook = myBooks.length > 0 ? [...myBooks].sort((a, b) => {
+    const latestBook = books.length > 0 ? [...books].sort((a, b) => {
         const dateA = a.progress?.lastActive ? new Date(a.progress.lastActive).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
         const dateB = b.progress?.lastActive ? new Date(b.progress.lastActive).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
 
@@ -184,7 +180,7 @@ export default function LibraryPage() {
         return () => clearInterval(interval);
     }, []);
 
-    const draggedBookMeta = draggedBookId ? myBooks.find(b => b.id === draggedBookId) : null;
+    const draggedBookMeta = draggedBookId ? books.find(b => b.id === draggedBookId) : null;
 
     return (
         <div className="flex flex-col lg:flex-row gap-8 pb-20 lg:pb-0 h-full relative">
@@ -258,9 +254,9 @@ export default function LibraryPage() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[10px] font-black opacity-30 ${selectedCollection === c.id ? 'opacity-100' : ''}`}>
-                                                {c.id === 'all' ? myBooks.length :
-                                                    c.id === 'favorites' ? myBooks.filter(b => b.is_favorite).length :
-                                                        myBooks.filter(b => b.collection_id === c.id).length}
+                                                {c.id === 'all' ? books.length :
+                                                    c.id === 'favorites' ? books.filter(b => b.is_favorite).length :
+                                                        books.filter(b => b.collection_id === c.id).length}
                                             </span>
                                         </div>
                                     </button>
@@ -331,7 +327,7 @@ export default function LibraryPage() {
                             {t('happyReading')}, <span className="text-primary italic">{user?.user_metadata?.name || user?.email?.split('@')[0] || t('guest')}</span>
                         </motion.h1>
                         <p className="text-muted-foreground text-sm mt-1 flex items-center gap-2">
-                            {t('libraryWelcomeCount', { count: myBooks.length })}
+                            {t('libraryWelcomeCount', { count: books.length })}
                             {!user && (
                                 <>
                                     <span>•</span>
@@ -623,10 +619,10 @@ export default function LibraryPage() {
                     <h3 className="text-lg font-serif font-bold text-primary mb-1">{t('weeklyGoal')}</h3>
                     <p className="text-xs text-muted-foreground mb-4">{t('maintainingStreak')}</p>
                     <div className="flex items-end gap-2 mb-2">
-                        <span className="text-4xl font-bold tabular-nums text-foreground/90">{myBooks.length}</span>
+                        <span className="text-4xl font-bold tabular-nums text-foreground/90">{books.length}</span>
                         <span className="text-sm font-medium text-muted-foreground mb-1.5">{t('booksGoal')}</span>
                     </div>
-                    <Progress value={(myBooks.length / 5) * 100} className="h-2 bg-primary/10" />
+                    <Progress value={(books.length / 5) * 100} className="h-2 bg-primary/10" />
                 </div >
             </div >
         </div >

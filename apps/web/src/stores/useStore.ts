@@ -180,6 +180,7 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
                 const { data, error } = await supabase
                     .from('books')
                     .select('*')
+                    .eq('user_id', user.id)
                     .order('created_at', { ascending: false });
 
                 if (!error && data) {
