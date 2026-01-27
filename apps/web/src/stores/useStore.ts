@@ -286,7 +286,7 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
         const currentLang = get().settings.language || 'tr';
         const t = (key: keyof typeof translations['tr']) => translations[currentLang][key] || key;
 
-        // Guest limit check
+        // Guest limit check (only 1 book allowed locally/guest)
         if (!user && currentBooks.length >= 1) {
             get().triggerGuestLimit();
             toast.error(t('guestLimitReached'), {
@@ -298,90 +298,84 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
 
         set({ loading: true });
         try {
-            const user = useAuthStore.getState().user;
-            if (user) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Math.random()}.${fileExt}`;
-                const filePath = `${user.id}/${fileName}`;
+            // Determine paths and metadata
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const userIdPath = user ? user.id : 'guest';
+            const filePath = `${userIdPath}/${fileName}`;
 
-                // Metadata refinement
-                let finalTitle = meta.title || file.name;
-                let finalAuthor = meta.author || '';
+            // Metadata refinement
+            let finalTitle = meta.title || file.name;
+            let finalAuthor = meta.author || '';
 
-                // 1. Try local extraction first to improve discovery
-                if (!finalAuthor || finalAuthor === '' || finalTitle === file.name) {
-                    const localMeta = await extractMetadataLocally(file);
-                    if (localMeta) {
-                        if (!finalAuthor && localMeta.author) finalAuthor = localMeta.author;
-                        if (finalTitle === file.name && localMeta.title) finalTitle = localMeta.title;
-                        console.log("Local metadata applied for discovery:", { finalTitle, finalAuthor });
+            // 1. Try local extraction first to improve discovery
+            if (!finalAuthor || finalAuthor === '' || finalTitle === file.name) {
+                const localMeta = await extractMetadataLocally(file);
+                if (localMeta) {
+                    if (!finalAuthor && localMeta.author) finalAuthor = localMeta.author;
+                    if (finalTitle === file.name && localMeta.title) finalTitle = localMeta.title;
+                    console.log("Local metadata applied for discovery:", { finalTitle, finalAuthor });
+                }
+            }
+
+            const badAuthors = ['LIBRARY', 'UNKNOWN', 'ADMIN', 'BILINMIYOR', 'ANONIM', ''];
+            if (badAuthors.some(bad => finalAuthor.toUpperCase().includes(bad))) {
+                const parsed = parseFileName(file.name);
+                if (parsed) {
+                    finalTitle = parsed.title;
+                    finalAuthor = parsed.author;
+                }
+            }
+
+            const displayTitle = smartClean(finalTitle);
+
+            // COVER EXTRACTION STRATEGY
+            let finalCover = meta.cover_url;
+
+            // Try local cover extraction
+            if (!finalCover) {
+                console.log('Cover Search: Starting local extraction first...');
+                const localCover = await extractCoverLocally(file).catch(err => {
+                    console.error('Local cover extraction failed:', err);
+                    return null;
+                });
+
+                if (localCover) {
+                    finalCover = localCover;
+                } else {
+                    // Remote discovery
+                    const discovery = await findCoverImage(displayTitle, finalAuthor).catch(() => null);
+                    if (discovery && discovery.url && !discovery.url.includes('unsplash')) {
+                        finalCover = discovery.url;
+                        if (!finalAuthor || finalAuthor === '') {
+                            finalAuthor = discovery.author || '';
+                        }
                     }
                 }
+            }
 
-                const badAuthors = ['LIBRARY', 'UNKNOWN', 'ADMIN', 'BILINMIYOR', 'ANONIM', ''];
-                if (badAuthors.some(bad => finalAuthor.toUpperCase().includes(bad))) {
-                    const parsed = parseFileName(file.name);
-                    if (parsed) {
-                        finalTitle = parsed.title;
-                        finalAuthor = parsed.author;
-                    }
-                }
+            if (!finalCover) {
+                finalCover = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+            }
 
-                const displayTitle = smartClean(finalTitle);
-
-                // COVER EXTRACTION STRATEGY (LOCAL FIRST, THEN REMOTE)
-                let finalCover = meta.cover_url;
-
+            // ATTEMPT SUPABASE UPLOAD (Guest or User)
+            try {
                 // Step 1: Upload file to storage
                 const { error: uploadError } = await supabase.storage
                     .from('books')
                     .upload(filePath, file);
+
                 if (uploadError) throw uploadError;
-
-                // Step 2: Try to extract cover (LOCAL FIRST for EPUB/PDF)
-                if (!finalCover) {
-                    console.log('Cover Search: Starting local extraction first...');
-
-                    // Try local extraction first (most reliable for EPUBs)
-                    const localCover = await extractCoverLocally(file).catch(err => {
-                        console.error('Local cover extraction failed:', err);
-                        return null;
-                    });
-
-                    if (localCover) {
-                        console.log('Cover Search: Local extraction SUCCESS - using embedded cover');
-                        finalCover = localCover;
-                    } else {
-                        // Fallback to remote discovery (Google Books, OpenLibrary)
-                        console.log('Cover Search: Local failed, trying remote discovery...');
-                        const discovery = await findCoverImage(displayTitle, finalAuthor).catch(() => null);
-
-                        if (discovery && discovery.url && !discovery.url.includes('unsplash')) {
-                            console.log('Cover Search: Remote discovery SUCCESS');
-                            finalCover = discovery.url;
-
-                            if (!finalAuthor || finalAuthor === '') {
-                                finalAuthor = discovery.author || '';
-                                if (finalAuthor) console.log('Author recovered from discovery:', finalAuthor);
-                            }
-                        }
-                    }
-                }
-
-                // Fallback to placeholder
-                if (!finalCover) {
-                    console.log('Cover Search: All methods failed, using placeholder');
-                    finalCover = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-                }
 
                 const { data: { publicUrl } } = supabase.storage
                     .from('books')
                     .getPublicUrl(filePath);
 
+                // Step 2: Insert into DB
                 const { error: dbError } = await supabase
                     .from('books')
                     .insert({
-                        user_id: user.id,
+                        user_id: user ? user.id : null, // Send null for guest if allowed
                         title: displayTitle,
                         author: smartClean(finalAuthor),
                         cover_url: finalCover,
@@ -391,10 +385,30 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
                     });
 
                 if (dbError) throw dbError;
-            } else {
-                await MockAPI.books.upload(file, meta);
+
+            } catch (supabaseError) {
+                console.warn("Supabase upload failed (likely guest permissions), falling back to Local MockAPI:", supabaseError);
+
+                // If Supabase fails (e.g. RLS blocks guest insert), fallback to MockAPI
+                if (!user) {
+                    await MockAPI.books.upload(file, {
+                        ...meta,
+                        title: displayTitle,
+                        author: finalAuthor,
+                        cover_url: finalCover
+                    });
+
+                    // Show specific error TOAST to let user/admin know why it's invisible remotely
+                    // toast.warning("Kitap sadece cihazınıza kaydedildi (Cloud yükleme izni yok).");
+                } else {
+                    throw supabaseError; // Re-throw for logged-in users
+                }
             }
+
             await get().fetchBooks();
+        } catch (e) {
+            console.error("Upload process failed:", e);
+            throw e;
         } finally {
             set({ loading: false });
         }
