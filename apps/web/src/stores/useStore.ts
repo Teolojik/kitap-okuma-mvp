@@ -297,6 +297,16 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
             return;
         }
 
+        // Free User Limit Check (10 books)
+        // Premium/Admin have unlimited access
+        if (user) {
+            const role = user.user_metadata?.role || 'Reader';
+            if (role !== 'Premium' && role !== 'Admin' && currentBooks.length >= 10) {
+                toast.error(t('freeUploadLimit'));
+                return;
+            }
+        }
+
         set({ loading: true });
         try {
             // Determine paths and metadata
