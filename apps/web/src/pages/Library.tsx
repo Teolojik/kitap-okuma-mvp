@@ -326,8 +326,16 @@ export default function LibraryPage() {
                         >
                             {t('happyReading')}, <span className="text-primary italic">{user?.user_metadata?.name || user?.email?.split('@')[0] || t('guest')}</span>
                         </motion.h1>
-                        <p className="text-muted-foreground text-sm mt-1">
+                        <p className="text-muted-foreground text-sm mt-1 flex items-center gap-2">
                             {t('libraryWelcomeCount', { count: books.length })}
+                            {!user && (
+                                <>
+                                    <span>•</span>
+                                    <Link to="/login" className="text-primary font-bold hover:underline">
+                                        {t('signIn')}
+                                    </Link>
+                                </>
+                            )}
                         </p>
                     </div>
 
