@@ -128,3 +128,32 @@
     @apply bg-primary/10 rounded-full transition-colors hover:bg-primary/30;
   }
 }
+
+/* Mobile PWA Optimizations */
+@layer components {
+  /* Prevent 'pull to refresh' and overscroll bounce on mobile */
+  html, body {
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent text selection and accidental taps on UI elements */
+  .no-select {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  
+  /* Modern Touch Action */
+  button, a {
+    touch-action: manipulation;
+  }
+
+  /* Safe Area for notched phones */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
