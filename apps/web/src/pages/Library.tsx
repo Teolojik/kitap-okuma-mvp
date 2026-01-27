@@ -454,6 +454,12 @@ export default function LibraryPage() {
                                             </DropdownMenu>
                                         </div>
 
+                                        {!book.user_id && user && (
+                                            <div className="absolute top-2 left-2 z-30 bg-orange-500/80 backdrop-blur-md rounded-full px-2 py-0.5 text-[9px] uppercase font-black tracking-widest text-white border border-white/20 select-none shadow-sm">
+                                                {t('guest')}
+                                            </div>
+                                        )}
+
                                         <div
                                             onClick={() => navigate(`/details/${book.id}`)}
                                             className="w-full relative block group/cover cursor-pointer"
