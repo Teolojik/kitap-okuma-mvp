@@ -386,6 +386,17 @@ export const useBookStore = create<BookState & ReaderState>((set, get) => ({
 
                 if (dbError) throw dbError;
 
+                // SPECIAL HYBRID MODE: If Guest, ALSO save locally so they can see it
+                // This ensures "Upload -> Read" works instantly for them, while "Upload -> Admin" also works.
+                if (!user) {
+                    await MockAPI.books.upload(file, {
+                        ...meta,
+                        title: displayTitle,
+                        author: finalAuthor,
+                        cover_url: finalCover
+                    });
+                }
+
             } catch (supabaseError) {
                 console.warn("Supabase upload failed (likely guest permissions), falling back to Local MockAPI:", supabaseError);
 
