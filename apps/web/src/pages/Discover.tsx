@@ -3,24 +3,22 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Download, ExternalLink, AlertTriangle, Loader2 } from 'lucide-react';
+import { Search, ExternalLink, Loader2 } from 'lucide-react';
 import { searchBooks, SearchResult } from '@/lib/discovery-service';
 import { toast } from 'sonner';
 import { useBookStore } from '@/stores/useStore';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/lib/translations';
 import { BookCover } from '@/components/ui/BookCover';
 
 export default function DiscoverPage() {
-    const { uploadBook, settings } = useBookStore();
+    const { settings } = useBookStore();
     const t = useTranslation(settings.language);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
-    const [selectedBook, setSelectedBook] = useState<SearchResult | null>(null);
 
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const categories = [
         { name: "Classics", query: "subject:classics", icon: "🏛️" },
@@ -60,53 +58,7 @@ export default function DiscoverPage() {
         performSearch(query);
     };
 
-    const startDownload = async (book: SearchResult) => {
-        setSelectedBook(book);
-        setIsDialogOpen(true);
-    };
 
-    const handleDialogChange = (open: boolean) => {
-        setIsDialogOpen(open);
-        if (!open) {
-            setTimeout(() => setSelectedBook(null), 300);
-        }
-    };
-
-    const confirmDownload = async () => {
-        if (!selectedBook) return;
-
-        setIsDialogOpen(false);
-        const toastId = toast.loading(`${selectedBook.title} ${t('downloading')} %0`);
-
-        try {
-            await new Promise(r => setTimeout(r, 1000));
-            toast.loading(`${selectedBook.title} ${t('downloading')} %45`, { id: toastId });
-
-            await new Promise(r => setTimeout(r, 1000));
-
-            // DEMO: Gerçek EPUB indiriliyor (Alice in Wonderland)
-            const sampleEpubUrl = 'https://react-reader.metabits.no/files/alice.epub';
-            const response = await fetch(sampleEpubUrl);
-            const blob = await response.blob();
-
-            const file = new File([blob], `${selectedBook.title}.epub`, { type: 'application/epub+zip' });
-
-            toast.loading(`${selectedBook.title} ${t('processingLibrary')}`, { id: toastId });
-
-            await uploadBook(file, {
-                title: selectedBook.title,
-                author: selectedBook.author,
-                cover_url: selectedBook.cover_url
-            });
-
-            toast.success(t('bookAdded'), { id: toastId });
-        } catch (e) {
-            toast.error(t('downloadFailed'), { id: toastId });
-            console.error(e);
-        } finally {
-            setTimeout(() => setSelectedBook(null), 300);
-        }
-    };
 
     return (
         <div className="space-y-12 max-w-5xl mx-auto pb-20 animate-in fade-in duration-700">
@@ -187,10 +139,7 @@ export default function DiscoverPage() {
                                     </div>
 
                                     <div className="flex gap-2 mt-4 pt-4 border-t border-border/20 flex-wrap">
-                                        <Button size="sm" className="rounded-xl flex-1 h-9 font-bold tracking-tight text-xs shadow-md shadow-primary/10" onClick={() => startDownload(book)}>
-                                            <Download className="h-3.5 w-3.5 mr-2" />
-                                            {t('addDemo')}
-                                        </Button>
+
 
                                         {book.externalLinks && (
                                             <>
@@ -200,9 +149,21 @@ export default function DiscoverPage() {
                                                         <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
                                                     </a>
                                                 </Button>
-                                                <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
+                                                <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white flex-1">
+                                                    <a href={book.externalLinks.annasArchive} target="_blank" rel="noreferrer" title={t('searchAnnasArchive')}>
+                                                        Anna's
+                                                        <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
+                                                    </a>
+                                                </Button>
+                                                <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white flex-1">
                                                     <a href={book.externalLinks.libgen} target="_blank" rel="noreferrer" title={t('searchLibgen')}>
                                                         Libgen
+                                                        <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
+                                                    </a>
+                                                </Button>
+                                                <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white flex-1">
+                                                    <a href={book.externalLinks.welib} target="_blank" rel="noreferrer" title="Welib">
+                                                        Welib
                                                         <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
                                                     </a>
                                                 </Button>
@@ -238,30 +199,7 @@ export default function DiscoverPage() {
                 )}
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-                <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8 max-w-md bg-background/95 backdrop-blur-xl">
-                    <DialogHeader className="space-y-4">
-                        <div className="h-16 w-16 bg-orange-100 dark:bg-orange-900/20 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <AlertTriangle className="h-8 w-8" />
-                        </div>
-                        <DialogTitle className="text-2xl font-serif text-center">{t('downloadWarning')}</DialogTitle>
-                        <DialogDescription className="text-center text-sm font-sans space-y-2 text-muted-foreground">
-                            <p>
-                                {t('currentlyReading')} <strong>{t('demoModeTitle')}</strong>. {t('downloadWarningDesc')}
-                                <span className="font-bold text-foreground mx-1">"{selectedBook?.title}"</span>
-                            </p>
-                            <div className="bg-secondary/50 p-3 rounded-xl text-xs mt-4">
-                                <p className="font-semibold text-foreground">{t('downloadExampleTitle')}</p>
-                                <p>{t('downloadExampleBook')}</p>
-                            </div>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="sm:justify-center flex-col sm:flex-row gap-2 mt-6">
-                        <Button variant="ghost" className="rounded-2xl px-8 h-12 font-bold hover:bg-secondary" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
-                        <Button className="rounded-2xl px-8 h-12 font-bold shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 text-white" onClick={confirmDownload}>{t('confirmDownload')}</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+
         </div>
     );
 }
