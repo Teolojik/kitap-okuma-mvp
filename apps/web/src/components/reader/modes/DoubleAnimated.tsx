@@ -31,6 +31,21 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
     const innerReaderRef = useRef<any>(null);
     const [direction, setDirection] = useState(0); // -1 prev, 1 next
     const [flipkey, setFlipKey] = useState(0);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+    React.useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const epubOptions = {
+        flow: isMobile ? 'scrolled-doc' : 'paginated',
+        manager: isMobile ? 'continuous' : 'default',
+        spread: isMobile ? 'none' : 'always',
+        width: '100%',
+        height: '100%',
+    };
 
     const handleNext = () => {
         if (innerReaderRef.current?.next) {
@@ -72,7 +87,9 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
 
     return (
         <div className="h-full w-full relative overflow-hidden">
-            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-10 shadow-lg" />
+            {!isMobile && (
+                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-10 shadow-lg" />
+            )}
 
             <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">EPUB Motoru Hazırlanıyor...</div>}>
                 <EpubReader
@@ -83,13 +100,13 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
                     onTextSelected={onTextSelected}
                     onTotalPages={onTotalPages}
                     annotations={annotations}
-                    options={EPUB_OPTIONS}
+                    options={epubOptions}
                 />
             </Suspense>
 
-            {/* Flip Animation Overlay */}
+            {/* Flip Animation Overlay - Only on Desktop */}
             <AnimatePresence mode="wait">
-                {flipkey > 0 && (
+                {flipkey > 0 && !isMobile && (
                     <motion.div
                         key={flipkey}
                         initial={{
@@ -116,9 +133,10 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
                 )}
             </AnimatePresence>
 
-            <div className="absolute inset-y-0 left-0 w-24 z-20 cursor-pointer hover:bg-gradient-to-r from-black/5 to-transparent transition-all"
+            {/* Navigation Areas */}
+            <div className="absolute inset-y-0 left-0 w-16 sm:w-24 z-20 cursor-pointer hover:bg-gradient-to-r from-black/5 to-transparent transition-all active:bg-black/5"
                 onClick={handlePrev} title="Önceki Sayfa" />
-            <div className="absolute inset-y-0 right-0 w-24 z-20 cursor-pointer hover:bg-gradient-to-l from-black/5 to-transparent transition-all"
+            <div className="absolute inset-y-0 right-0 w-16 sm:w-24 z-20 cursor-pointer hover:bg-gradient-to-l from-black/5 to-transparent transition-all active:bg-black/5"
                 onClick={handleNext} title="Sonraki Sayfa" />
         </div>
     );

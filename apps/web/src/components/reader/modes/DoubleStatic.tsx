@@ -29,6 +29,22 @@ import { getFileType } from '@/lib/file-utils';
 const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
     book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
 }, ref) => {
+    const [isMobile, setIsMobile] = React.useState(window.innerWidth < 1024);
+
+    React.useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const epubOptions = {
+        flow: isMobile ? 'scrolled-doc' : 'paginated',
+        manager: isMobile ? 'continuous' : 'default',
+        spread: isMobile ? 'none' : 'always',
+        width: '100%',
+        height: '100%',
+    };
+
     if (book.format === 'pdf') {
         return (
             <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">PDF Motoru Hazırlanıyor...</div>}>
@@ -57,7 +73,7 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
                     onTextSelected={onTextSelected}
                     onTotalPages={onTotalPages}
                     annotations={annotations}
-                    options={EPUB_OPTIONS}
+                    options={epubOptions}
                 />
             </Suspense>
             {/* Simple Navigation Overlay */}
