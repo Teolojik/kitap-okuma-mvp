@@ -143,12 +143,6 @@ export default function DiscoverPage() {
 
                                         {book.externalLinks && (
                                             <>
-                                                <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white">
-                                                    <a href={book.externalLinks.annasArchive} target="_blank" rel="noreferrer" title={t('searchAnnasArchive')}>
-                                                        Anna's
-                                                        <ExternalLink className="h-3 w-3 ml-1.5 opacity-50" />
-                                                    </a>
-                                                </Button>
                                                 <Button size="sm" variant="outline" asChild className="rounded-xl h-9 px-3 border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-semibold bg-white/50 hover:bg-white flex-1">
                                                     <a href={book.externalLinks.annasArchive} target="_blank" rel="noreferrer" title={t('searchAnnasArchive')}>
                                                         Anna's
