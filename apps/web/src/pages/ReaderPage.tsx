@@ -167,7 +167,21 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
 const ReaderPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { settings, setSettings, addAnnotation, removeAnnotation, annotations: storeAnnotations, updateStats, drawings, saveDrawing, updateProgress, touchLastRead, fetchDrawingsForBook } = useBookStore();
+    const {
+        settings,
+        setSettings,
+        addAnnotation,
+        removeAnnotation,
+        annotations: storeAnnotations,
+        updateStats,
+        drawings,
+        saveDrawing,
+        updateProgress,
+        touchLastRead,
+        fetchDrawingsForBook,
+        books,
+        fetchBooks
+    } = useBookStore();
     const t = useTranslation(settings.language);
 
     // Main Book State
@@ -201,7 +215,6 @@ const ReaderPage: React.FC = () => {
     const [secondaryBook, setSecondaryBook] = useState<Book | null>(null);
     const [secondaryBookData, setSecondaryBookData] = useState<string | ArrayBuffer | null>(null);
     const [isSecondaryLoading, setIsSecondaryLoading] = useState(false);
-    const [books, setBooks] = useState<Book[]>([]);
     const [selection, setSelection] = useState<{ cfi: string; text: string } | null>(null);
     const [totalPages, setTotalPages] = useState<number>(0);
     const [scale, setScale] = useState(1.0);
@@ -368,8 +381,11 @@ const ReaderPage: React.FC = () => {
                     reader.onload = (e) => { setBookData(e.target?.result as ArrayBuffer); setLoading(false); };
                     reader.readAsArrayBuffer(blob);
                 } else { setBookData(bookInfo.file_url); setLoading(false); }
-                const allBooks = await getBooks();
-                setBooks(allBooks);
+
+                // Fetch books to store if empty
+                if (books.length === 0) {
+                    await fetchBooks();
+                }
 
                 // PERFORMANCE: Fetch drawings only for the active book
                 fetchDrawingsForBook(bookInfo.id);
