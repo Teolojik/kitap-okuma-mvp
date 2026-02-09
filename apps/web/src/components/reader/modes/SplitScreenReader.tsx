@@ -19,6 +19,7 @@ interface SplitScreenProps {
     secondaryData: string | ArrayBuffer | null;
     secondaryPageNumber?: number;
     onSecondaryLocationChange?: (loc: string, pct: number) => void;
+    onSecondaryTotalPages?: (total: number) => void;
 
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
@@ -32,7 +33,7 @@ const EPUB_OPTIONS = { flow: 'paginated', manager: 'default' };
 
 const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
     primaryBook, primaryData, primaryPageNumber, onPrimaryLocationChange, onTotalPages, scale,
-    secondaryBook, secondaryData, secondaryPageNumber, onSecondaryLocationChange,
+    secondaryBook, secondaryData, secondaryPageNumber, onSecondaryLocationChange, onSecondaryTotalPages,
     onTextSelected, annotations, onOpenSettings,
     activePanel = 'primary', onPanelActivate
 }, ref) => {
@@ -54,6 +55,9 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
         goToPercentage: (pct: number) => {
             if (activePanel === 'primary') primaryRef.current?.goToPercentage?.(pct);
             else if (activePanel === 'secondary') secondaryRef.current?.goToPercentage?.(pct);
+        },
+        goToSecondaryPercentage: (pct: number) => {
+            secondaryRef.current?.goToPercentage?.(pct);
         }
     }), [activePanel, primaryRef, secondaryRef]);
 
@@ -137,6 +141,7 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                                 simpleMode
                                 pageNumber={secondaryPageNumber || 1}
                                 onLocationChange={(loc, pct) => onSecondaryLocationChange?.(loc, pct)}
+                                onTotalPages={onSecondaryTotalPages}
                                 scale={activePanel === 'secondary' ? scale : scale}
                             />
                         </Suspense>
@@ -147,6 +152,7 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                                 url={secondaryData}
                                 initialLocation={secondaryBook.progress?.location as string}
                                 onLocationChange={onSecondaryLocationChange}
+                                onTotalPages={onSecondaryTotalPages}
                                 options={EPUB_OPTIONS}
                             />
                         </Suspense>

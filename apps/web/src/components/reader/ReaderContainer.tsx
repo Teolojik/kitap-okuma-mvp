@@ -27,12 +27,14 @@ interface ReaderContainerProps {
     onPanelActivate?: (panel: 'primary' | 'secondary') => void;
     secondaryPageNumber?: number;
     onSecondaryLocationChange?: (loc: string, pct: number) => void;
+    onSecondaryTotalPages?: (total: number) => void;
 }
 
 export interface ReaderContainerRef {
     next: () => void;
     prev: () => void;
     goToPercentage?: (pct: number) => void;
+    goToSecondaryPercentage?: (pct: number) => void;
     getCurrentText: () => Promise<string>;
     search: (query: string, isRegex?: boolean) => Promise<any[]>;
 }
@@ -53,6 +55,9 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
         },
         goToPercentage: (pct: number) => {
             if (contentRef.current?.goToPercentage) contentRef.current.goToPercentage(pct);
+        },
+        goToSecondaryPercentage: (pct: number) => {
+            if (contentRef.current?.goToSecondaryPercentage) contentRef.current.goToSecondaryPercentage(pct);
         },
         getCurrentText: async () => {
             return contentRef.current?.getCurrentText ? await contentRef.current.getCurrentText() : '';

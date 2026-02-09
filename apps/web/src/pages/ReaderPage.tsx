@@ -217,6 +217,7 @@ const ReaderPage: React.FC = () => {
     const [isSecondaryLoading, setIsSecondaryLoading] = useState(false);
     const [selection, setSelection] = useState<{ cfi: string; text: string } | null>(null);
     const [totalPages, setTotalPages] = useState<number>(0);
+    const [secondaryTotalPages, setSecondaryTotalPages] = useState<number>(0);
     const [scale, setScale] = useState(1.0);
     const [currentLocation, setCurrentLocation] = useState<string>('0');
     const [currentPercentage, setCurrentPercentage] = useState<number>(0);
@@ -495,13 +496,13 @@ const ReaderPage: React.FC = () => {
         if (!secondaryBook) return;
 
         let pageNum = parseInt(loc);
-        if (isNaN(pageNum) && totalPages > 0) {
-            pageNum = Math.round((percentage / 100) * totalPages) || 1;
+        if (isNaN(pageNum) && secondaryTotalPages > 0) {
+            pageNum = Math.round((percentage / 100) * secondaryTotalPages) || 1;
         }
 
         if (secondaryBook.progress?.location === loc && Math.abs((secondaryBook.progress?.percentage || 0) - percentage) < 0.1) return;
 
-        const newProgress = { ...secondaryBook.progress, location: loc, page: pageNum || 1 };
+        const newProgress = { ...secondaryBook.progress, location: loc, page: pageNum || 1, percentage: percentage };
         updateProgress(secondaryBook.id, newProgress);
         setSecondaryBook(prev => prev ? { ...prev, progress: newProgress } : null);
     };
@@ -1060,6 +1061,7 @@ const ReaderPage: React.FC = () => {
                                 onSecondaryLocationChange={handleSecondaryLocationChange}
                                 activePanel={activePanel}
                                 onPanelActivate={setActivePanel}
+                                 onSecondaryTotalPages={setSecondaryTotalPages}
 
                                 onLocationChange={handleLocationChange}
                                 onTotalPages={setTotalPages}
@@ -1201,9 +1203,10 @@ const ReaderPage: React.FC = () => {
                                     const pct100 = pct * 100;
                                     setActivePanel('secondary');
                                     if (secondaryBook?.format === 'epub') {
-                                        // EPUB secondary seek not fully in MVP
+                                        readerRef.current?.goToSecondaryPercentage?.(pct100);
                                     } else {
-                                        handleSecondaryLocationChange(String(Math.round(pct * 100)), pct100);
+                                        const targetPage = Math.max(1, Math.round(pct * secondaryTotalPages));
+                                        handleSecondaryLocationChange(String(targetPage), pct100);
                                     }
                                 }}>
                                 <div className={`h-full rounded-full transition-all duration-300 ${activePanel === 'secondary' ? 'bg-orange-500' : 'bg-orange-500/40'}`}
@@ -1265,7 +1268,7 @@ const ReaderPage: React.FC = () => {
                         }}
                     />
                     <span className="text-[11px] font-bold tabular-nums text-foreground tracking-tight opacity-40">/</span>
-                    <span className="text-[11px] font-bold tabular-nums text-foreground tracking-tight opacity-40">{totalPages}</span>
+                    <span className="text-[11px] font-bold tabular-nums text-foreground tracking-tight opacity-40">{activePanel === 'primary' ? totalPages : secondaryTotalPages}</span>
                 </div>
             </div>
 
