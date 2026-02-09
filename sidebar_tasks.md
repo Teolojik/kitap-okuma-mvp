@@ -319,5 +319,74 @@ Bu bölüm, uygulamanın tam kaynak kod analizinden elde edilen bulguları içer
 ---
 *Son Güncelleme: 19 Ocak 2026, 16:00 (Uygulama Adresi Güncellendi)*
 
+---
+
+## 🐛 Kod Kalitesi ve Bug Önleme Görevleri (29 Ocak 2026)
+
+> Bu bölüm, yazılım hata kataloğu analizi sonucu tespit edilen teknik borçları ve iyileştirme alanlarını içerir.
+
+### 🔴 Yüksek Öncelik (Kritik)
+
+- [ ] **TypeScript Strict Mode Aktivasyonu**
+  - `any` tipi kullanımını azaltmak için `tsconfig.json`'da strict mode aktifleştir
+  - Öncelikli dosyalar: `useStore.ts`, `Admin.tsx`, `mock-api.ts`
+
+- [ ] **Race Condition Önleme - Progress Sync**
+  - `useStore.ts` içinde `fetchBooks` ve `updateProgress` çakışmasını önle
+  - Optimistic locking veya timestamp-based çözüm implemente et
+  - Öneri: `updated_at` alanı ile çakışma kontrolü
+
+- [ ] **Supabase Auth Metadata Güvenliği**
+  - `Layout.tsx` ve `Admin.tsx`'teki client-side admin kontrollerini güçlendir
+  - Server-side RLS politikaları ile cross-check zorunlu hale getir
+  - Hardcoded email'leri kaldır veya environment variable'a taşı
+
+### 🟠 Orta Öncelik
+
+- [ ] **Regex Escape Düzeltmeleri**
+  - `EpubReader.tsx:56` - Arama fonksiyonunda kapsamlı regex escape ekle
+  - `PdfReader.tsx:106` - Aynı düzeltmeyi PDF aramaya da uygula
+  - Öneri: lodash `escapeRegExp` kullan veya kapsamlı regex escape pattern implemente et
+
+- [ ] **Null/Undefined Kontrolleri Güçlendirme**
+  - `ReaderContainer.tsx:71` - `ArrayBuffer` kontrolüne null check ekle
+  - `TTSController.tsx:52` - `voices` array boşsa fallback ekle
+  - `useStore.ts:878` - `JSON.parse(savedDrawings)` try-catch içine al
+
+- [ ] **EPUB İlerleme Hesaplama Düzeltmesi**
+  - `EpubReader.tsx:238-251` - `percentage === 0` kontrolünü düzelt
+  - Valid 0 değerinin yanlışlıkla atlanmasını önle
+
+### 🟡 Düşük Öncelik (İyileştirmeler)
+
+- [ ] **IndexedDB Versiyon Yönetimi**
+  - `useStore.ts:70` - Hardcoded versiyon 2'yi dinamik hale getir
+  - Schema migration stratejisi oluştur
+
+- [ ] **LocalStorage Key İsimlendirme**
+  - Tüm localStorage key'lerine prefix ekle (örn: `epigraph_`)
+  - Çakışma riskini minimize et
+
+- [ ] **Date Formatting Locale Güvenliği**
+  - `ReadingHeatmap.tsx:41` - `tr-TR` locale fallback mekanizması ekle
+  - Desteklenmeyen locale'lerde varsayılan formata dön
+
+- [ ] **Test Coverage Artırımı**
+  - Edge-case testleri: boş array, null değerler, invalid regex
+  - Unit test'ler için Jest/Vitest konfigürasyonu
+  - Race condition testleri
+
+### 🛠️ Teknik Borçlar
+
+- [ ] **Hardcoded Değerlerin Temizlenmesi**
+  - Admin email'leri: `support@epigraph.app`, `blocking_saxsafon@hotmail.com`
+  - Magic numbers ve string'ler için constants dosyası oluştur
+
+- [ ] **Error Handling Standardizasyonu**
+  - Tüm `console.error` log'larına correlation ID ekle
+  - Hata mesajlarını kullanıcı dostu hale getir
+  - Sentry veya benzeri error tracking entegrasyonu
+
+---
 
 
