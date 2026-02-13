@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Twitter, Palette, Loader2, Share2 } from 'lucide-react';
+import { Download, Twitter, Palette, Loader2, Share2, Lock } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import QuoteCard from './QuoteCard';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/useStore';
 
 interface QuoteModalProps {
     isOpen: boolean;
@@ -18,6 +19,8 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
     const cardRef = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<'warm' | 'dark' | 'glass' | 'nature'>('warm');
     const [isGenerating, setIsGenerating] = useState(false);
+    const { user } = useAuthStore();
+    const isAuthenticated = !!user;
 
     if (!selection || !book) return null;
 
@@ -159,10 +162,15 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                             <Button
                                 variant="outline"
                                 onClick={handleTwitterShare}
-                                className="rounded-xl h-8 px-3 gap-1.5 border-white/10 hover:bg-[#1DA1F2] hover:text-white transition-all hover:scale-105 text-xs"
+                                disabled={isGenerating || !isAuthenticated}
+                                className={`rounded-xl h-8 px-3 gap-1.5 border-white/10 transition-all hover:scale-105 text-xs ${isAuthenticated
+                                        ? 'hover:bg-[#1DA1F2] hover:text-white'
+                                        : 'opacity-50 cursor-not-allowed grayscale'
+                                    }`}
+                                title={!isAuthenticated ? "Sadece kayıtlı kullanıcılar paylaşabilir" : ""}
                             >
-                                <Twitter className="h-3.5 w-3.5" />
-                                <span className="font-bold">X'te Paylaş</span>
+                                {isAuthenticated ? <Twitter className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                                <span className="font-bold">X'ta Paylaş</span>
                             </Button>
                         </div>
                     </div>
