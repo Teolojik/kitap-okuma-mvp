@@ -3,6 +3,7 @@
 Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her başarılı özellik eklemesinden veya hata düzeltmesinden sonra güncellenmelidir.
 
 ## ✅ Tamamlananlar
+- **[2026-02-13] Alıntı Kartı & Okuyucu Düzeltmeleri:** QuoteModal kompaktlaştırıldı (reader ile çakışma giderildi), annotation `data` JSON pattern'e geçildi (not kaydetme hatası düzeltildi), AI Özetle butonu kaldırıldı, PDF metin seçim gölgesi (`mix-blend-mode: multiply`) düzeltildi.
 - **[2026-02-13] Güvenlik & Altyapı Denetimi:** Collections `user_id` filtresi, `AdminGuard` route koruması, merkezi `admin.ts` yetkilendirme modülü, 12 Supabase mutasyonuna try-catch + optimistic rollback, `console.error`/`console.warn` production koruması eklendi.
 - **[2026-02-13] Unified Sync & Veri Güvenliği:** Tüm kullanıcı verileri (ayarlar, istatistikler, notlar, vurgular, yer imleri, favoriler, koleksiyonlar) Supabase ile anlık senkronize edildi. Auth Observer ile giriş/çıkış sonrası otomatik veri tazeleme eklendi.
 - **[2026-02-13] Split Mode Kök Neden Düzeltmesi:** Bölünmüş ekran modunun kalıcı olarak kaydedilme sorunu 3 katmanlı override zinciri (localStorage → Supabase profil sync → ReaderPage) analiz edilerek çözüldü. `split` modu artık bir oturum durumu (session state) olarak ele alınıyor; `localStorage` ve Supabase'e asla `split` olarak kaydedilmiyor.

@@ -80,3 +80,26 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - `Layout.tsx` hardcoded e-postalar kaldırılıp merkezi `isAdmin()` kullanıldı.
 - **Kural:** Admin kontrolü her zaman hem frontend (UI gizleme) hem de route seviyesinde (guard) yapılmalıdır. Üretim ortamında Supabase RLS kuralları da eklenmelidir.
 
+### 11. QuoteModal — Kompakt Tasarım Prensibi
+**Sorun:** Alıntı paylaşım modalı (`QuoteModal`) çok büyüktü. Tam ekran dışında reader header/footer çıkınca modal kontrolleriyle çakışıyordu.
+**Çözüm:**
+- Modal genişliği `max-w-4xl` → `max-w-2xl`, yüksekliği `max-h-[85vh]` ile sınırlandı.
+- Kart önizleme `scale-[0.45]` ~ `scale-[0.65]` aralığına küçültüldü, negatif margin ile boş alan azaltıldı.
+- Kontrol barı tek satır `flex-wrap` düzeniyle kompaktlaştırıldı.
+- **Kural:** Reader üzerindeki modal/overlay bileşenleri her zaman reader header/footer z-index'inden düşük tutulmalı veya viewport'un %85'ini geçmemeli.
+
+### 12. PDF Metin Seçimi — mix-blend-mode Tuzağı
+**Sorun:** `PdfReader`'da `.react-pdf__Page__textContent` katmanına uygulanan `mix-blend-mode: multiply` seçilen metni çoklu gölge/karanlık katman olarak gösteriyordu.
+**Çözüm:**
+- `mix-blend-mode: multiply` (ve dark mode için `screen`) tamamen kaldırıldı.
+- Bunun yerine `color: transparent !important` ile metin katmanı görünmez yapıldı.
+- `::selection` pseudo-element'e turuncu arka plan (`rgba(249, 115, 22, 0.3)`) uygulandı.
+- **Kural:** PDF text katmanında asla `mix-blend-mode` kullanılmamalı — `color: transparent` + `::selection` yeterlidir.
+
+### 13. Supabase Annotation Insert — data JSON Pattern
+**Sorun:** `addAnnotation` fonksiyonu, client-side alanları (`cfiRange`, `type`, `note`, `text`, `color`, `createdAt`) doğrudan Supabase `annotations` tablosundaki sütun isimleri ile eşleştirmeye çalışıyordu. camelCase veya eksik sütunlar nedeniyle insert başarısız oluyordu.
+**Çözüm:**
+- Supabase'e sadece `id`, `book_id`, `user_id` ve tüm annotation objesini içeren `data` (jsonb) sütunu gönderiliyor.
+- Bu pattern, tablo şemasını değiştirmeden client-side veri yapısının serbestçe genişletilmesine olanak tanır.
+- **Kural:** Karmaşık/iç içe veri yapıları Supabase'e `jsonb` sütun olarak yazılmalı, her alan için ayrı sütun açılmamalı.
+
