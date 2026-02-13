@@ -73,9 +73,11 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
             const blob = await (await fetch(dataUrl)).blob();
             const file = new File([blob], `epigraph-quote-${new Date().getTime()}.png`, { type: 'image/png' });
 
-            // 2. Try Web Share API (Best for Mobile & Supported Desktop browsers)
-            // This attaches the ACTUAL FILE to X if supported
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+            // 2. Try Web Share API ONLY on Mobile
+            // On desktop (Windows), this opens a clunky menu which we want to avoid.
+            if (isMobile && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title: 'Epigraph Alıntısı',
@@ -85,7 +87,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                 return;
             }
 
-            // 3. Fallback for Desktop (Clipboard + Open X)
+            // 3. Desktop Flow (Clipboard + Open X)
             // X doesn't allow automatic file injection via URL, so we copy & user pastes.
             try {
                 // Copy image to clipboard
