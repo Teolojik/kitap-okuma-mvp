@@ -47,3 +47,18 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 **Çözüm:** 
 - Okuyucu konfigürasyonu (`flow`, `manager`, `spread`) `useMemo` içine alınarak referans sabitlendi.
 - Parent'tan gelen `ref`, doğrudan çocuk bileşene (`EpubReader`) verilmek yerine local bir `innerRef` üzerinden `useImperativeHandle` ile tünellendi. Bu sayede render tetikleyicileri ile navigasyon komutları birbirinden izole edildi.
+
+### 7. Unified Sync — Merkezi Veri Senkronizasyonu
+**Sorun:** Favoriler, koleksiyonlar, notlar, istatistikler ve ayarlar sadece `localStorage`'da tutuluyordu. Kullanıcı cihaz değiştirdiğinde veya tarayıcı önbelleğini temizlediğinde tüm verilerini kaybediyordu.
+**Çözüm:**
+- `useStore.ts` içinde tüm kritik veri metodları (`toggleFavorite`, `updateBookTags`, `addAnnotation`, `removeAnnotation`, `addBookmark`, `removeBookmark`, `addCollection`, `removeCollection`, `updateCollection`, `setSettings`, `updateStats`) override edilerek Supabase senkronizasyonu eklendi.
+- `fetchBooks` içinde `bookmarks` ve `annotations` tabloları da çekilerek uygulama açılışında tam hydration sağlandı.
+- Auth Observer: `useAuthStore.subscribe` ile kullanıcı değiştiğinde `fetchBooks()` otomatik tetikleniyor.
+
+### 8. Split Mode — Geçici Oturum Durumu (Session State)
+**Sorun:** Bölünmüş ekran (split) modunun kalıcı olarak `localStorage` ve Supabase'e kaydedilmesi, her yeni kitap açılışında hatanın tekrarlamasına neden oluyordu. Migration çalışsa bile Supabase profil sync `split`'i geri yüklüyordu (3 katmanlı override zinciri).
+**Çözüm:**
+- `split` modu artık bir "geçici oturum durumu" (temporary session state) olarak ele alınıyor.
+- `setSettings` override'ında: `readingMode === 'split'` ise, `localStorage`'a ve Supabase'e `double-static` olarak kaydediliyor. Bellekteki (in-memory) state ise aktif oturumda `split` kalıyor.
+- `fetchBooks` profil sync'inde: Supabase'den `readingMode: 'split'` gelirse otomatik olarak `double-static` ile değiştiriliyor.
+- **Kural:** Kalıcılık katmanlarına (localStorage, Supabase) asla `split` yazılmamalıdır.
