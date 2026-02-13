@@ -82,7 +82,7 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
 
                 let userCollections: Collection[] = [];
                 if (user) {
-                    const { data: collData } = await supabase.from('collections').select('*').order('name');
+                    const { data: collData } = await supabase.from('collections').select('*').eq('user_id', user.id).order('name');
                     if (collData) {
                         userCollections = (collData as Collection[]).filter(c => !['all', 'favorites', 'reading', 'finished'].includes(c.id));
                     }
@@ -222,10 +222,15 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                 books: state.books.map(b => b.id === id ? { ...b, progress: fullProgress } : b)
             }));
 
-            if (user) {
-                await supabase.from('books').update({ progress: fullProgress }).eq('id', id);
-            } else {
-                await MockAPI.books.updateProgress(id, fullProgress);
+            try {
+                if (user) {
+                    const { error } = await supabase.from('books').update({ progress: fullProgress }).eq('id', id);
+                    if (error) throw error;
+                } else {
+                    await MockAPI.books.updateProgress(id, fullProgress);
+                }
+            } catch (e) {
+                console.error('[Sync] updateProgress failed:', e);
             }
         },
 
@@ -241,10 +246,15 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                 books: state.books.map(b => b.id === id ? { ...b, progress: newProgress } : b)
             }));
 
-            if (user) {
-                await supabase.from('books').update({ progress: newProgress }).eq('id', id);
-            } else {
-                await MockAPI.books.updateProgress(id, newProgress);
+            try {
+                if (user) {
+                    const { error } = await supabase.from('books').update({ progress: newProgress }).eq('id', id);
+                    if (error) throw error;
+                } else {
+                    await MockAPI.books.updateProgress(id, newProgress);
+                }
+            } catch (e) {
+                console.error('[Sync] touchLastRead failed:', e);
             }
         },
 
@@ -258,19 +268,39 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                 books: state.books.map(b => b.id === id ? { ...b, is_favorite: newState } : b)
             }));
 
-            if (user) {
-                await supabase.from('books').update({ is_favorite: newState }).eq('id', id);
+            try {
+                if (user) {
+                    const { error } = await supabase.from('books').update({ is_favorite: newState }).eq('id', id);
+                    if (error) throw error;
+                }
+            } catch (e) {
+                console.error('[Sync] toggleFavorite failed:', e);
+                // Rollback on failure
+                set(state => ({
+                    books: state.books.map(b => b.id === id ? { ...b, is_favorite: !newState } : b)
+                }));
+                toast.error('Senkronizasyon hatası. Lütfen tekrar deneyin.');
             }
         },
 
         updateBookTags: async (id, tags) => {
             const user = useAuthStore.getState().user;
+            const oldTags = get().books.find(b => b.id === id)?.tags;
             set(state => ({
                 books: state.books.map(b => b.id === id ? { ...b, tags } : b)
             }));
 
-            if (user) {
-                await supabase.from('books').update({ tags }).eq('id', id);
+            try {
+                if (user) {
+                    const { error } = await supabase.from('books').update({ tags }).eq('id', id);
+                    if (error) throw error;
+                }
+            } catch (e) {
+                console.error('[Sync] updateBookTags failed:', e);
+                set(state => ({
+                    books: state.books.map(b => b.id === id ? { ...b, tags: oldTags } : b)
+                }));
+                toast.error('Etiket güncellemesi kaydedilemedi.');
             }
         },
 
@@ -320,102 +350,195 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
             const user = useAuthStore.getState().user;
             const newBookmark = { id: crypto.randomUUID(), location, note, createdAt: new Date().toISOString() };
 
-            if (user) {
-                await supabase.from('bookmarks').insert({ ...newBookmark, book_id: bookId, user_id: user.id });
-            }
-
             set(state => ({
                 bookmarks: { ...state.bookmarks, [bookId]: [...(state.bookmarks[bookId] || []), newBookmark] }
             }));
+
+            try {
+                if (user) {
+                    const { error } = await supabase.from('bookmarks').insert({ ...newBookmark, book_id: bookId, user_id: user.id });
+                    if (error) throw error;
+                }
+            } catch (e) {
+                console.error('[Sync] addBookmark failed:', e);
+                set(state => ({
+                    bookmarks: { ...state.bookmarks, [bookId]: (state.bookmarks[bookId] || []).filter(b => b.id !== newBookmark.id) }
+                }));
+                toast.error('Yer imi kaydedilemedi.');
+            }
         },
 
         removeBookmark: async (bookId, bookmarkId) => {
             const user = useAuthStore.getState().user;
-            if (user) {
-                await supabase.from('bookmarks').delete().eq('id', bookmarkId);
-            }
+            const removed = (get().bookmarks[bookId] || []).find(b => b.id === bookmarkId);
             set(state => ({
                 bookmarks: { ...state.bookmarks, [bookId]: (state.bookmarks[bookId] || []).filter(b => b.id !== bookmarkId) }
             }));
+
+            try {
+                if (user) {
+                    const { error } = await supabase.from('bookmarks').delete().eq('id', bookmarkId);
+                    if (error) throw error;
+                }
+            } catch (e) {
+                console.error('[Sync] removeBookmark failed:', e);
+                if (removed) {
+                    set(state => ({
+                        bookmarks: { ...state.bookmarks, [bookId]: [...(state.bookmarks[bookId] || []), removed] }
+                    }));
+                }
+                toast.error('Yer imi silinemedi.');
+            }
         },
 
         addAnnotation: async (bookId, annotation) => {
             const user = useAuthStore.getState().user;
             const newAnnotation = { ...annotation, id: annotation.id || crypto.randomUUID(), createdAt: new Date().toISOString() };
 
-            if (user) {
-                await supabase.from('annotations').insert({ ...newAnnotation, book_id: bookId, user_id: user.id });
-            }
-
             set(state => ({
                 annotations: { ...state.annotations, [bookId]: [...(state.annotations[bookId] || []), newAnnotation] }
             }));
+
+            try {
+                if (user) {
+                    const { error } = await supabase.from('annotations').insert({ ...newAnnotation, book_id: bookId, user_id: user.id });
+                    if (error) throw error;
+                }
+            } catch (e) {
+                console.error('[Sync] addAnnotation failed:', e);
+                set(state => ({
+                    annotations: { ...state.annotations, [bookId]: (state.annotations[bookId] || []).filter(a => a.id !== newAnnotation.id) }
+                }));
+                toast.error('Not kaydedilemedi.');
+            }
         },
 
         removeAnnotation: async (bookId, id) => {
             const user = useAuthStore.getState().user;
-            if (user) {
-                await supabase.from('annotations').delete().eq('id', id);
-            }
+            const removed = (get().annotations[bookId] || []).find(a => a.id === id);
             set(state => ({
                 annotations: { ...state.annotations, [bookId]: (state.annotations[bookId] || []).filter(a => a.id !== id) }
             }));
+
+            try {
+                if (user) {
+                    const { error } = await supabase.from('annotations').delete().eq('id', id);
+                    if (error) throw error;
+                }
+            } catch (e) {
+                console.error('[Sync] removeAnnotation failed:', e);
+                if (removed) {
+                    set(state => ({
+                        annotations: { ...state.annotations, [bookId]: [...(state.annotations[bookId] || []), removed] }
+                    }));
+                }
+                toast.error('Not silinemedi.');
+            }
         },
 
         assignToCollection: async (bookId, collectionId) => {
             const user = useAuthStore.getState().user;
+            const oldCollectionId = get().books.find(b => b.id === bookId)?.collection_id;
             set(state => ({
                 books: state.books.map(b => b.id === bookId ? { ...b, collection_id: collectionId || undefined } : b)
             }));
 
-            if (user) {
-                await supabase.from('books').update({ collection_id: collectionId }).eq('id', bookId);
+            try {
+                if (user) {
+                    const { error } = await supabase.from('books').update({ collection_id: collectionId }).eq('id', bookId);
+                    if (error) throw error;
+                }
+            } catch (e) {
+                console.error('[Sync] assignToCollection failed:', e);
+                set(state => ({
+                    books: state.books.map(b => b.id === bookId ? { ...b, collection_id: oldCollectionId } : b)
+                }));
+                toast.error('Koleksiyon ataması kaydedilemedi.');
             }
         },
 
         addCollection: async (collection) => {
             const user = useAuthStore.getState().user;
-            if (user) {
-                await supabase.from('collections').insert({ ...collection, user_id: user.id });
-            } else {
-                const stored = localStorage.getItem('mock_collections');
-                const cols = stored ? JSON.parse(stored) : [];
-                localStorage.setItem('mock_collections', JSON.stringify([...cols, collection]));
-            }
             set(state => ({ collections: [...state.collections, collection] }));
+
+            try {
+                if (user) {
+                    const { error } = await supabase.from('collections').insert({ ...collection, user_id: user.id });
+                    if (error) throw error;
+                } else {
+                    const stored = localStorage.getItem('mock_collections');
+                    const cols = stored ? JSON.parse(stored) : [];
+                    localStorage.setItem('mock_collections', JSON.stringify([...cols, collection]));
+                }
+            } catch (e) {
+                console.error('[Sync] addCollection failed:', e);
+                set(state => ({ collections: state.collections.filter(c => c.id !== collection.id) }));
+                toast.error('Koleksiyon oluşturulamadı.');
+            }
         },
 
         removeCollection: async (id) => {
             const user = useAuthStore.getState().user;
-            if (user) {
-                await supabase.from('collections').delete().eq('id', id);
-            } else {
-                const stored = localStorage.getItem('mock_collections');
-                if (stored) {
-                    const cols = JSON.parse(stored).filter((c: any) => c.id !== id);
-                    localStorage.setItem('mock_collections', JSON.stringify(cols));
-                }
-            }
+            const removedCollection = get().collections.find(c => c.id === id);
+            const affectedBooks = get().books.filter(b => b.collection_id === id);
             set(state => ({
                 collections: state.collections.filter(c => c.id !== id),
                 books: state.books.map(b => b.collection_id === id ? { ...b, collection_id: undefined } : b)
             }));
+
+            try {
+                if (user) {
+                    const { error } = await supabase.from('collections').delete().eq('id', id);
+                    if (error) throw error;
+                } else {
+                    const stored = localStorage.getItem('mock_collections');
+                    if (stored) {
+                        const cols = JSON.parse(stored).filter((c: any) => c.id !== id);
+                        localStorage.setItem('mock_collections', JSON.stringify(cols));
+                    }
+                }
+            } catch (e) {
+                console.error('[Sync] removeCollection failed:', e);
+                if (removedCollection) {
+                    set(state => ({
+                        collections: [...state.collections, removedCollection],
+                        books: state.books.map(b => {
+                            const was = affectedBooks.find(ab => ab.id === b.id);
+                            return was ? { ...b, collection_id: id } : b;
+                        })
+                    }));
+                }
+                toast.error('Koleksiyon silinemedi.');
+            }
         },
 
         updateCollection: async (id, updates) => {
             const user = useAuthStore.getState().user;
-            if (user) {
-                await supabase.from('collections').update(updates).eq('id', id);
-            } else {
-                const stored = localStorage.getItem('mock_collections');
-                if (stored) {
-                    const cols = JSON.parse(stored).map((c: any) => c.id === id ? { ...c, ...updates } : c);
-                    localStorage.setItem('mock_collections', JSON.stringify(cols));
-                }
-            }
+            const oldCollection = get().collections.find(c => c.id === id);
             set(state => ({
                 collections: state.collections.map(c => c.id === id ? { ...c, ...updates } : c)
             }));
+
+            try {
+                if (user) {
+                    const { error } = await supabase.from('collections').update(updates).eq('id', id);
+                    if (error) throw error;
+                } else {
+                    const stored = localStorage.getItem('mock_collections');
+                    if (stored) {
+                        const cols = JSON.parse(stored).map((c: any) => c.id === id ? { ...c, ...updates } : c);
+                        localStorage.setItem('mock_collections', JSON.stringify(cols));
+                    }
+                }
+            } catch (e) {
+                console.error('[Sync] updateCollection failed:', e);
+                if (oldCollection) {
+                    set(state => ({
+                        collections: state.collections.map(c => c.id === id ? oldCollection : c)
+                    }));
+                }
+                toast.error('Koleksiyon güncellenemedi.');
+            }
         }
     };
 });

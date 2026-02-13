@@ -13,6 +13,7 @@ import DiscoverPage from '@/pages/Discover';
 import SettingsPage from '@/pages/Settings';
 import StatsPage from '@/pages/Stats';
 import AdminPage from '@/pages/Admin';
+import AdminGuard from '@/components/AdminGuard';
 import ReloadPrompt from '@/components/ReloadPrompt';
 import { Toaster } from 'sonner';
 import { Analytics } from "@vercel/analytics/react";
@@ -115,7 +116,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/stats" element={<StatsPage />} />
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />
             <Route path="/read/:id" element={<ReaderPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" />} />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '@/stores/useStore';
+import { isAdmin } from '@/lib/admin';
 import {
     Home,
     Compass,
@@ -61,11 +62,9 @@ export default function Layout() {
         { href: '/stats', label: t('stats'), icon: BarChart2 },
     ];
 
-    const isAdmin = user?.user_metadata?.role === 'admin' ||
-        user?.email === 'support@epigraph.app' ||
-        user?.email === 'blocking_saxsafon@hotmail.com';
+    const isAdminUser = isAdmin(user);
 
-    const finalNavItems = isAdmin
+    const finalNavItems = isAdminUser
         ? [...navItems, { href: '/admin', label: t('adminTitle'), icon: ShieldCheck }]
         : navItems;
 
