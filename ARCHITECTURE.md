@@ -16,7 +16,10 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
 5.  **SelectionToolbar:** Metin seçildiğinde çıkan araç çubuğu (AI, Not, Alıntı Paylaş).
 6.  **QuoteModal & QuoteCard:** Alıntıları görsele dönüştüren paylaşım sistemi.
 7.  **Re-init Protection:** `useMemo` ile sabitlenen render seçenekleri ve local ref yönetimi sayesinde EPUB/PDF motorlarının kararlı çalışması sağlanır.
-18. **Selection-Aware Navigation:** Okuyucu üzerindeki tüm navigasyon katmanları (tap-to-navigate, yan butonlar) `window.getSelection()` durumuna duyarlıdır. Metin seçimi aktifken navigasyon eventleri bastırılarak (suppress) yanlışlıkla sayfa çevrilmesi ve "refresh" etkisi engellenir.
+18. **Selection-Aware Navigation:** Okuyucu üzerindeki tüm navigasyon katmanları (tap-to-navigate, yan butonlar) `window.getSelection()` durumuna duyarlıdır.
+    - **Seçim-Duyarlı Navigasyon**: Metin seçimi algılandığında navigasyon butonları pasifleşerek kullanıcı deneyimi korunur.
+    - **Yerel Tarih Önceliği**: Okuma istatistikleri ve aktivite grafikleri için her zaman kullanıcının yerel zaman dilimi (`en-CA` formatı) baz alınır.
+    - **Envanter Sıralaması**: Yönetim araçlarında tüm global veriler (kullanıcılar, içerikler) kronolojik olarak en yeniden eskiye doğru sıralanır.
 19. **Listener Stabilization:** `PdfReader` ve `EpubReader` gibi leaf component'lerde parent callback'leri `useRef` ile tünellenerek, event listener'ların referans değişimlerinden etkilenmeden kararlı çalışması sağlanır.
 
 ## 🧠 State Yönetimi (Zustand)

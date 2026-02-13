@@ -135,3 +135,15 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - Alt bileşenlerde (`PdfReader`, `EpubReader`) bu callback'ler bir **Ref** (`useRef`) içinde tutularak event listener'lar içinde kullanıldı.
 - Bu sayede listener asla silinmeden her zaman callback'in en güncel haline erişebilir hale geldi.
 - **Kural:** Sık tetiklenen window/document event listener'ları içinde dışarıdan gelen callback'ler her zaman `useRef` üzerinden tüketilmelidir.
+
+### 19. Seri Okuma (Streak) & İstatistik Mantığı
+**Sorun:** Kullanıcı okuma serisinin hesaplanmaması ve tarihlerin UTC farkı nedeniyle grafiklerde yanlış veya boş görünmesi.
+**Çözüm:**
+- `updateStats` fonksiyonu `en-CA` locale'i (YYYY-MM-DD) kullanacak şekilde standardize edildi. Bu, yerel zamana göre gün değişimlerini garanti altına alır.
+- Seri okuma (streak) hesaplaması için `T00:00:00` zorlamasıyla takvim günü farkı (`diffDays === 1`) kontrolü eklendi.
+- **Kural:** İstatistik verilerinde `toISOString().split('T')[0]` yerine her zaman `toLocaleDateString('en-CA')` tercih edilmelidir.
+
+### 20. Admin Paneli Veri Siralaması
+**Öğrenilen:** Admin panelindeki kullanıcı ve kitap listeleri varsayılan olarak rastgele geliyordu. 
+**Çözüm:** Supabase sorgularına `.order('created_at', { ascending: false })` eklendi. Ayrıca UI tablolarına "Zaman" sütunu eklenerek görünürlük artırıldı.
+- **Kural:** Yönetimsel listeler her zaman "en yeni önce" prensibiyle sunulmalıdır.
