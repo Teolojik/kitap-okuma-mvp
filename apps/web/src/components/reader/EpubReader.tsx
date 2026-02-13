@@ -444,12 +444,16 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 )}
                 <div ref={viewerRef} className="w-full h-full" />
             </div>
-            {/* Styles for highlights */}
+            {/* Styles for highlights and selection */}
             <style>{`
                 ::selection { 
-                    background: rgba(249, 115, 22, 0.3) !important; 
+                    background: rgba(249, 115, 22, 0.4) !important; 
                     color: inherit !important; 
                 }
+                body {
+                    mix-blend-mode: multiply;
+                }
+                ${settings.theme === 'dark' ? 'body { mix-blend-mode: screen; }' : ''}
             `}</style>
         </div>
     );

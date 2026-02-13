@@ -44,27 +44,22 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
             <div className={`absolute bottom-0 left-0 w-48 h-48 opacity-10 blur-3xl rounded-full -ml-24 -mb-24 ${accentColors[theme]}`} />
 
             {/* Content Container */}
-            <div className="relative z-10 flex gap-8 items-start">
-                {/* Mini Book Cover */}
-                <div className="w-32 shrink-0 shadow-2xl transform -rotate-2 group-hover:rotate-0 transition-transform duration-700">
-                    <BookCover
-                        url={coverUrl}
-                        title={title}
-                        aspectRatio="aspect-[2/3]"
-                    />
-                </div>
+            <div className="relative z-10 flex flex-col gap-10 items-center text-center px-6">
+                {/* Large Quote Symbol */}
+                <div className={`w-16 h-1 w-1 rounded-full ${accentColors[theme]} opacity-30 mb-2`} />
 
-                {/* Quote Text */}
-                <div className="flex-1 space-y-6">
-                    <div className="opacity-40 italic font-serif text-6xl leading-none">"</div>
-                    <p className="text-2xl font-serif font-medium leading-relaxed italic tracking-tight">
+                <div className="space-y-8 w-full">
+                    <div className="opacity-20 italic font-serif text-8xl leading-none h-10 select-none">"</div>
+                    <p className="text-3xl font-serif font-medium leading-relaxed italic tracking-tight px-4">
                         {text}
                     </p>
-                    <div className="flex items-center gap-4">
-                        <div className={`h-px w-8 ${accentColors[theme]} opacity-60`} />
-                        <div className="space-y-0.5">
-                            <p className="text-sm font-bold uppercase tracking-[0.2em] opacity-80">{author || 'Bilinmeyen Yazar'}</p>
-                            <p className="text-xs uppercase tracking-widest opacity-40">{title}</p>
+                    <div className="opacity-20 italic font-serif text-8xl leading-none h-10 rotate-180 transform select-none">"</div>
+
+                    <div className="flex flex-col items-center gap-4 mt-8">
+                        <div className={`h-px w-20 ${accentColors[theme]} opacity-60`} />
+                        <div className="space-y-1">
+                            <p className="text-base font-bold uppercase tracking-[0.3em] opacity-90">{author || 'Bilinmeyen Yazar'}</p>
+                            <p className="text-xs uppercase tracking-[0.2em] opacity-50 font-medium">{title}</p>
                         </div>
                     </div>
                 </div>

@@ -280,7 +280,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                             pageNumber={page}
                             width={calculatedWidth}
                             onLoadSuccess={(p) => setPageRatio(p.width / p.height)}
-                            className={`${pageBgClass} relative z-[1] select-none`}
+                            className="relative z-[1] select-none"
                             renderTextLayer={true}
                             renderAnnotationLayer={false}
                             loading=""
@@ -288,20 +288,33 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                         <style>{`
                             .react-pdf__Page {
                                 user-select: none !important;
-                            }
-                            .react-pdf__Page__textContent {
-                                user-select: text !important;
-                                z-index: 20 !important;
-                                pointer-events: auto !important;
-                            }
-                            .react-pdf__Page__annotations {
-                                pointer-events: none !important;
-                                z-index: 5 !important;
+                                background: transparent !important;
                             }
                             .react-pdf__Page__canvas {
                                 pointer-events: none !important;
                                 user-select: none !important;
                                 z-index: 1 !important;
+                                ${pageBgClass ? (pageBgClass.includes('invert') ? 'filter: invert(1) brightness(0.9) contrast(1.1);' : 'filter: sepia(0.3) brightness(0.95) contrast(1.05);') : ''}
+                            }
+                            .react-pdf__Page__textContent {
+                                user-select: text !important;
+                                z-index: 20 !important;
+                                pointer-events: auto !important;
+                                mix-blend-mode: multiply;
+                            }
+                            /* Dark mode selection fix */
+                            ${settings.theme === 'dark' ? `
+                            .react-pdf__Page__textContent {
+                                mix-blend-mode: screen;
+                            }
+                            .react-pdf__Page__textContent span::selection {
+                                background: rgba(249, 115, 22, 0.4) !important;
+                                color: #fff !important;
+                            }
+                            ` : ''}
+                            .react-pdf__Page__annotations {
+                                pointer-events: none !important;
+                                z-index: 5 !important;
                             }
                         `}</style>
                         {/* Paper Grain/Texture Overlay */}
@@ -326,7 +339,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                             <Page
                                 pageNumber={page + 1}
                                 width={calculatedWidth}
-                                className={`${pageBgClass} relative z-[1]`}
+                                className="relative z-[1]"
                                 renderTextLayer={true}
                                 renderAnnotationLayer={false}
                                 loading=""
