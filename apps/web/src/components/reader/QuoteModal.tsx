@@ -102,10 +102,10 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                 const item = new ClipboardItem({ 'image/png': blob });
                 await navigator.clipboard.write([item]);
 
-                // Open X intent
-                // const shareText = `"${selection.text.substring(0, 100)}..."`;
-                // const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-                // window.open(twitterUrl, '_blank');
+                // X (Twitter) URL with text snippet for social card crawler
+                // This link isn't opened, but it defines the 'og' data for the shared snapshot
+                const shareUrl = `https://epigraphreader.com/api/share?img=${encodeURIComponent(dataUrl)}&title=${encodeURIComponent(displayTitle)}&author=${encodeURIComponent(displayAuthor)}&text=${encodeURIComponent(selection.text.substring(0, 160))}`;
+                console.log("Viral payload generated:", shareUrl);
 
                 toast.success("Görsel panoya kopyalandı! Dilediğiniz yere yapıştırabilirsiniz.");
             } catch (clipboardError) {

@@ -1,6 +1,6 @@
-
 export default function handler(req, res) {
-    const { img, title, author } = req.query;
+    const { img, title, author, text } = req.query;
+    const cleanText = text ? decodeURIComponent(text).slice(0, 160) + '...' : 'Kitaptan bir alıntı paylaşıldı.';
 
     // Basic HTML template with OG meta tags
     const html = `
@@ -12,19 +12,19 @@ export default function handler(req, res) {
     
     <!-- Dynamic Social Tags -->
     <title>${title} - ${author} | Epigraph</title>
-    <meta name="description" content="Kitaptan bir alıntı paylaşıldı.">
+    <meta name="description" content="${cleanText}">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="${title} | Kitap Alıntısı">
-    <meta property="og:description" content="${author} tarafından yazılan ${title} kitabından bir kesit.">
+    <meta property="og:title" content="${title} | ${author}">
+    <meta property="og:description" content="${cleanText}">
     <meta property="og:image" content="${img}">
     <meta property="og:url" content="https://epigraphreader.com">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${title} | Kitap Alıntısı">
-    <meta name="twitter:description" content="${author} tarafından yazılan ${title} kitabından bir kesit.">
+    <meta name="twitter:title" content="${title} | ${author}">
+    <meta name="twitter:description" content="${cleanText}">
     <meta name="twitter:image" content="${img}">
 
     <!-- Redirect to home after crawl or if user visits -->
