@@ -53,7 +53,7 @@ export default function Layout() {
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-    const currentAppName = "Epigraph";
+    const currentAppName = "epigraphreader.com";
 
     const navItems = [
         { href: '/', label: t('library'), icon: Home },
@@ -121,10 +121,9 @@ export default function Layout() {
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -10 }}
-                                        className="font-black text-xl tracking-tighter whitespace-nowrap"
+                                        className="font-black text-lg tracking-tighter whitespace-nowrap"
                                     >
-                                        {currentAppName.substring(0, currentAppName.length - 3)}
-                                        <span className="text-primary">{currentAppName.substring(currentAppName.length - 3)}</span>
+                                        epigraph<span className="text-primary text-sm font-medium">reader.com</span>
                                     </motion.span>
                                 )}
                             </AnimatePresence>

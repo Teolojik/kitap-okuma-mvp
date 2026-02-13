@@ -88,7 +88,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
             if (isMobile && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
-                    title: 'Epigraph Alıntısı',
+                    title: 'epigraphreader.com Alıntısı',
                     text: `"${selection.text.substring(0, 100)}..."`
                 });
                 toast.success("Paylaşım menüsü açıldı!");

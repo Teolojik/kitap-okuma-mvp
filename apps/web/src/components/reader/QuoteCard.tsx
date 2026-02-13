@@ -78,13 +78,11 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
                 </div>
             </div>
 
-            {/* Footer / Branding */}
             <div className="relative z-10 mt-6 flex items-center justify-between border-t border-current/10 pt-4 opacity-40">
                 <div className="flex items-center gap-2">
                     <div className={`h-5 w-5 rounded-full ${accentColors[theme]}`} />
-                    <span className="text-xs font-black tracking-widest uppercase font-sans">Epigraph</span>
+                    <span className="text-xs font-black tracking-widest uppercase font-sans">epigraphreader.com</span>
                 </div>
-                <p className="text-[10px] font-sans font-bold uppercase tracking-widest">epigraphreader.com</p>
             </div>
         </div>
     );
