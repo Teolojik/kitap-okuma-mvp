@@ -147,3 +147,19 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 **Öğrenilen:** Admin panelindeki kullanıcı ve kitap listeleri varsayılan olarak rastgele geliyordu. 
 **Çözüm:** Supabase sorgularına `.order('created_at', { ascending: false })` eklendi. Ayrıca UI tablolarına "Zaman" sütunu eklenerek görünürlük artırıldı.
 - **Kural:** Yönetimsel listeler her zaman "en yeni önce" prensibiyle sunulmalıdır.
+
+### 21. Recharts Tooltip Formatter — Type Stability
+**Sorun:** Recharts `Tooltip` bileşeninde `formatter` fonksiyonuna gelen `value` parametresi bazen `undefined` olabiliyor ve bu durum TypeScript hatalarına veya görsel bozukluklara yol açıyor.
+**Çözüm:** Formatter fonksiyonunda her zaman `(value: any) => value !== undefined ? ... : ...` kontrolü yapılmalı ve değer `any` olarak işaretlenerek Recharts'ın iç tip uyuşmazlıkları bypass edilmelidir.
+
+### 22. Dependency-Free UI Components — ScrollArea Pattern
+**Sorun:** `@radix-ui/react-scroll-area` gibi ağır bağımlılıkların her küçük bileşen için projeye dahil edilmesi bundle boyutunu artırır ve bazen versiyon çakışmalarına neden olur.
+**Çözüm:** Modern CSS (scrollbar-thin, custom scrollbar styling) ve React forwardRef kullanılarak, ek paket gerektirmeyen ancak premium hissettiren özelleştirilmiş ScrollArea bileşenleri tercih edilmelidir.
+
+### 23. Admin Panel Modernizasyonu — Modular Analysis
+**Öğrenilen:** Karmaşık yönetim sayfalarını (Admin.tsx gibi) tek bir dosya yerine `ActivityStream`, `UserDetailDrawer` ve `StorageChart` gibi bağımlı olmayan alt bileşenlere bölmek, sürdürülebilirliği %300 artırır.
+**Kural:** Büyük tablolar ve istatistik panelleri her zaman kendi state ve logic'ine sahip izole bileşenler olarak tasarlanmalıdır.
+
+### 24. Storage Cleanup Logic
+**Sorun:** Kitap silindiğinde bazen fiziksel dosyaların (Supabase Storage) kalması ve "orphan" (yetim) dosyaların birikmesi.
+**Çözüm:** Storage'daki tüm dosyaları listeleyen ve veritabanındaki kitap yollarıyla karşılaştıran bir `handleScanStorage` motoru uygulandı. Eşleşmeyen dosyalar toplu silme (bulk delete) ile temizlenir.
