@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Palette, Loader2, Share2, Lock, Copy } from 'lucide-react';
+import { Download, Palette, Loader2, Share2, Lock, Copy, User, Type } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import QuoteCard from './QuoteCard';
@@ -19,6 +20,10 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
     const cardRef = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<'warm' | 'dark' | 'glass' | 'nature'>('warm');
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // Editable metadata state
+    const [displayTitle, setDisplayTitle] = useState(book?.title || '');
+    const [displayAuthor, setDisplayAuthor] = useState(book?.author || '');
     const { user } = useAuthStore();
     const isAuthenticated = !!user;
 
@@ -130,68 +135,90 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                     </div>
                 </DialogHeader>
 
-                <div className="px-2 py-2 flex flex-col items-center justify-center min-h-[400px]">
+                <div className="px-6 py-4 space-y-4 bg-secondary/20">
+                    {/* Metadata Editors */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="relative group">
+                            <Type className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 opacity-40 group-focus-within:opacity-100 group-focus-within:text-primary transition-all" />
+                            <Input
+                                value={displayTitle}
+                                onChange={(e) => setDisplayTitle(e.target.value)}
+                                placeholder="Kitap Başlığı"
+                                className="h-9 pl-9 bg-background/50 border-white/5 text-[11px] font-bold rounded-xl focus-visible:ring-1 focus-visible:ring-primary/40"
+                            />
+                        </div>
+                        <div className="relative group">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 opacity-40 group-focus-within:opacity-100 group-focus-within:text-primary transition-all" />
+                            <Input
+                                value={displayAuthor}
+                                onChange={(e) => setDisplayAuthor(e.target.value)}
+                                placeholder="Yazar Adı"
+                                className="h-9 pl-9 bg-background/50 border-white/5 text-[11px] font-bold rounded-xl focus-visible:ring-1 focus-visible:ring-primary/40"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Controls — single compact row */}
+                    <div className="w-full flex flex-wrap items-center justify-center gap-2 bg-card/50 p-3 rounded-xl border border-white/5">
+                        {/* Theme Switcher */}
+                        <div className="flex items-center gap-2">
+                            <Palette className="h-4 w-4 opacity-50" />
+                            <div className="flex gap-1">
+                                {themes.map((t) => (
+                                    <Button
+                                        key={t.value}
+                                        variant={theme === t.value ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setTheme(t.value)}
+                                        className={`rounded-full px-2.5 py-1 h-7 text-[10px] font-bold uppercase tracking-wider transition-all ${theme === t.value ? 'shadow-md' : 'hover:bg-white/5'}`}
+                                    >
+                                        {t.name}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="h-6 w-px bg-white/10 mx-1 hidden sm:block" />
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={handleDownload}
+                                disabled={isGenerating}
+                                className="rounded-xl h-8 px-3 gap-1.5 bg-primary hover:scale-105 transition-transform text-xs"
+                            >
+                                {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                <span className="font-bold">İndir</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleTwitterShare}
+                                disabled={isGenerating || !isAuthenticated}
+                                className={`rounded-xl h-8 px-3 gap-1.5 border-white/10 transition-all hover:scale-105 text-xs ${isAuthenticated
+                                    ? 'hover:bg-orange-500 hover:text-white'
+                                    : 'opacity-50 cursor-not-allowed grayscale'
+                                    }`}
+                                title={!isAuthenticated ? "Sadece kayıtlı kullanıcılar paylaşabilir" : ""}
+                            >
+                                {isAuthenticated ? <Copy className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                                <span className="font-bold">Görseli Kopyala</span>
+                            </Button>
+                        </div>
+                    </div>
+
                     {/* Live Preview — maximized to fill modal */}
                     <div className="w-full flex justify-center items-center overflow-hidden">
                         <div ref={cardRef} className="p-4 bg-transparent">
                             <div className="scale-[0.45] sm:scale-[0.7] md:scale-[0.85] lg:scale-100 origin-center">
                                 <QuoteCard
                                     text={selection.text}
-                                    author={book.author}
-                                    title={book.title}
+                                    author={displayAuthor}
+                                    title={displayTitle}
                                     coverUrl={book.cover_url}
                                     theme={theme}
                                 />
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                {/* Controls — single compact row */}
-                <div className="w-full flex flex-wrap items-center justify-center gap-2 bg-card/50 p-3 rounded-xl border border-white/5">
-                    {/* Theme Switcher */}
-                    <div className="flex items-center gap-2">
-                        <Palette className="h-4 w-4 opacity-50" />
-                        <div className="flex gap-1">
-                            {themes.map((t) => (
-                                <Button
-                                    key={t.value}
-                                    variant={theme === t.value ? 'default' : 'ghost'}
-                                    size="sm"
-                                    onClick={() => setTheme(t.value)}
-                                    className={`rounded-full px-2.5 py-1 h-7 text-[10px] font-bold uppercase tracking-wider transition-all ${theme === t.value ? 'shadow-md' : 'hover:bg-white/5'}`}
-                                >
-                                    {t.name}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="h-6 w-px bg-white/10 mx-1 hidden sm:block" />
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
-                        <Button
-                            onClick={handleDownload}
-                            disabled={isGenerating}
-                            className="rounded-xl h-8 px-3 gap-1.5 bg-primary hover:scale-105 transition-transform text-xs"
-                        >
-                            {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                            <span className="font-bold">İndir</span>
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={handleTwitterShare}
-                            disabled={isGenerating || !isAuthenticated}
-                            className={`rounded-xl h-8 px-3 gap-1.5 border-white/10 transition-all hover:scale-105 text-xs ${isAuthenticated
-                                ? 'hover:bg-orange-500 hover:text-white'
-                                : 'opacity-50 cursor-not-allowed grayscale'
-                                }`}
-                            title={!isAuthenticated ? "Sadece kayıtlı kullanıcılar paylaşabilir" : ""}
-                        >
-                            {isAuthenticated ? <Copy className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                            <span className="font-bold">Görseli Kopyala</span>
-                        </Button>
                     </div>
                 </div>
             </DialogContent>
