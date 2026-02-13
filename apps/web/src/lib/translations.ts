@@ -467,7 +467,6 @@ export const translations = {
         adminActivityTimeline: "Aktivite Zaman Çizelgesi",
         clickToExpand: "Genişletmek için tıkla",
         storageUsage: "Depolama Kullanımı",
-        adminReadingGoalReach: "Okuma Hedefine Ulaşma",
         // Search Modal & Commands
         goToLibraryCommand: "Kütüphaneye Git",
         discoverPage: "Keşfet Sayfası",
@@ -503,6 +502,21 @@ export const translations = {
         speedReading: "Hızlı Okuma",
         newVersionAvailable: "Yeni bir güncelleme mevcut.",
         refresh: "Yenile",
+        adminReadingGoalReach: "Okuma Hedefine Ulaşma",
+        last7Days: "Son 7 Gün",
+        unknownPlatform: "Bilinmeyen Platform",
+        browser: "Tarayıcı",
+        memberSince: "Üyelik Tarihi",
+        pages: "Sayfa",
+        userLibrary: "Kullanıcı Kütüphanesi",
+        lastSeen: "Son Görülme",
+        online: "Çevrimiçi",
+        offline: "Çevrimdışı",
+        completed: "Tamamlandı",
+        reading: "Okunuyor",
+        notStarted: "Başlanmadı",
+        noBooksFound: "Kitap bulunamadı",
+        adminActivityTimelineDesc: "Son kullanıcı aktiviteleri",
     },
     en: {
         loading: "Loading",
@@ -1008,7 +1022,17 @@ export const translations = {
         speedReading: "Speed Reading",
         newVersionAvailable: "New version available.",
         refresh: "Refresh",
-    }
+
+        pages: "Pages",
+        userLibrary: "User Library",
+        lastSeen: "Last Seen",
+        online: "Online",
+        offline: "Offline",
+        completed: "Completed",
+        reading: "Reading",
+        notStarted: "Not Started",
+        noBooksFound: "No books found",
+    },
 };
 
 export const useTranslation = (language: 'tr' | 'en') => {

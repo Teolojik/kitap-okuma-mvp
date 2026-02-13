@@ -1475,6 +1475,7 @@ const AdminPage = () => {
                 isOpen={isUserDrawerOpen}
                 onClose={() => setIsUserDrawerOpen(false)}
                 logs={adminLogs}
+                userBooks={allBooks.filter(b => b.user_id === selectedUser?.id)}
                 t={t}
             />
         </div>

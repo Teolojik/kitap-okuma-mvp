@@ -4,6 +4,7 @@ import { Book, Collection, MockAPI, smartClean, parseFileName, extractCoverLocal
 import { findCoverImage } from '@/lib/discovery-service';
 import { toast } from 'sonner';
 import { translations } from '@/lib/translations';
+import { getBrowserInfo, getPlatformInfo } from '@/lib/utils';
 
 // Slices
 import { createAuthSlice, AuthSlice } from './slices/auth.slice';
@@ -120,14 +121,18 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                         }
 
                         // CAPTURE DEVICE INFO (Real-time)
-                        const userAgent = navigator.userAgent;
-                        const platform = navigator.platform;
+                        const rawUserAgent = navigator.userAgent;
+                        const rawPlatform = navigator.platform;
+                        const platform = getPlatformInfo(rawUserAgent, rawPlatform);
+                        const browser = getBrowserInfo(rawUserAgent);
+
                         // Simple check to avoid unnecessary updates if nothing changed (optional, but good for perf)
                         // We update 'lastSeen' every time fetchBooks runs (session start)
-                        const prevDeviceInfo = (currentStats as any).deviceInfo || {};
+                        // const prevDeviceInfo = (currentStats as any).deviceInfo || {};
                         const newDeviceInfo = {
-                            userAgent,
+                            userAgent: rawUserAgent, // Keep raw for compatibility/debug
                             platform,
+                            browser,
                             lastSeen: new Date().toISOString()
                         };
 

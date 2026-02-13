@@ -23,6 +23,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { getBrowserInfo, getPlatformInfo } from '@/lib/utils';
 import ActivityStream from './ActivityStream';
 
 interface UserDetailDrawerProps {
@@ -30,10 +31,11 @@ interface UserDetailDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     logs: any[];
+    userBooks: any[];
     t: (key: any) => string;
 }
 
-const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClose, logs, t }) => {
+const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClose, logs, userBooks, t }) => {
     if (!user) return null;
 
     const userStats = user.stats || {};
@@ -45,19 +47,37 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
     // Filter logs for this specific user
     const userLogs = logs.filter(log => log.target_id === user.id || log.details?.userId === user.id);
 
+    // Online Status Logic (Active in last 15 mins)
+    const lastSeen = user.stats?.deviceInfo?.lastSeen;
+    const isOnline = lastSeen && (new Date().getTime() - new Date(lastSeen).getTime() < 15 * 60 * 1000);
+
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
             <SheetContent side="right" className="sm:max-w-xl w-full p-0 border-l border-border/40 bg-background/95 backdrop-blur-3xl overflow-hidden flex flex-col">
                 <SheetHeader className="p-8 pb-4 text-left">
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center font-black text-2xl text-primary border border-primary/20">
-                            {(user.name || user.email || 'U')[0].toUpperCase()}
+                        <div className="relative">
+                            <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center font-black text-2xl text-primary border border-primary/20">
+                                {(user.name || user.email || 'U')[0].toUpperCase()}
+                            </div>
+                            <div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-[3px] border-background ${isOnline ? 'bg-green-500' : 'bg-muted-foreground/30'} flex items-center justify-center`}>
+                                {isOnline && <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />}
+                            </div>
                         </div>
                         <div className="space-y-1">
                             <SheetTitle className="text-2xl font-black tracking-tight">{user.display_name}</SheetTitle>
                             <SheetDescription className="flex items-center gap-2 font-medium">
                                 <Mail className="h-3 w-3" /> {user.display_email}
                             </SheetDescription>
+                            <div className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground/60">
+                                <span className={isOnline ? 'text-green-500' : ''}>{isOnline ? t('online') : t('offline')}</span>
+                                {lastSeen && (
+                                    <>
+                                        <span>•</span>
+                                        <span>{t('lastSeen')}: {new Date(lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -87,6 +107,47 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                                     <p className="text-xl font-black tracking-tighter">{stat.value}</p>
                                 </div>
                             ))}
+                        </div>
+
+                        {/* User Library Section */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                <BookOpen className="h-3 w-3" /> {t('userLibrary')} <span className="opacity-50">({userBooks?.length || 0})</span>
+                            </h4>
+                            <div className="space-y-3">
+                                {userBooks && userBooks.length > 0 ? (
+                                    userBooks.map((book) => {
+                                        const progress = book.progress?.percentage || 0;
+                                        const isFinished = progress >= 100;
+                                        return (
+                                            <div key={book.id} className="flex items-center gap-4 p-3 rounded-2xl bg-secondary/5 border border-border/10">
+                                                <div className="h-12 w-8 bg-muted rounded shadow-sm overflow-hidden flex-shrink-0">
+                                                    {book.cover_url ? (
+                                                        <img src={book.cover_url} alt={book.title} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary text-[8px] font-black">
+                                                            {(book.title || '?')[0]}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h5 className="text-xs font-bold truncate">{book.title}</h5>
+                                                    <p className="text-[10px] text-muted-foreground truncate">{book.author || t('unknownAuthor')}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <Badge variant={isFinished ? 'default' : 'secondary'} className="text-[9px] h-5 rounded-md px-1.5 font-bold">
+                                                        {isFinished ? t('completed') : progress > 0 ? `${progress.toFixed(0)}%` : t('notStarted')}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="p-6 text-center rounded-2xl bg-secondary/5 border border-border/10 border-dashed">
+                                        <p className="text-xs text-muted-foreground font-medium">{t('noBooksFound')}</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Reading Habits Section */}
@@ -153,35 +214,34 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                                 <Monitor className="h-3 w-3" /> {t('adminDeviceSystem')}
                             </h4>
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/5 border border-border/10">
-                                    <div className="flex items-center gap-3">
-                                        <Smartphone className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-xs font-bold">{
-                                            (user.stats?.deviceInfo?.platform || 'Unknown Platform')
-                                        }</span>
-                                    </div>
-                                    <span className="text-[10px] font-black text-muted-foreground/60 overflow-hidden text-ellipsis max-w-[120px]" title={user.stats?.deviceInfo?.userAgent}>
-                                        {(() => {
-                                            const ua = user.stats?.deviceInfo?.userAgent || 'Unknown';
-                                            if (ua.includes('Win')) return 'Windows';
-                                            if (ua.includes('Mac')) return 'MacOS';
-                                            if (ua.includes('Android')) return 'Android';
-                                            if (ua.includes('iPhone')) return 'iPhone';
-                                            if (ua.includes('Linux')) return 'Linux';
-                                            return 'Browser';
-                                        })()}
-                                    </span>
+                                <div className="flex items-center gap-3">
+                                    <Smartphone className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-xs font-bold">{
+                                        (() => {
+                                            const stats = user.stats?.deviceInfo || {};
+                                            // Function to get icon or just text? Text for now.
+                                            // If we have stats.platform, we invoke getPlatformInfo to ensure it's clean if it was raw, 
+                                            // or just return it if it's already clean (the util handles cleanup nicely)
+                                            return getPlatformInfo(stats.userAgent || '', stats.platform) || t('unknownPlatform');
+                                        })()
+                                    }</span>
                                 </div>
-                                <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/5 border border-border/10">
-                                    <div className="flex items-center gap-3">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-xs font-bold">Member Since</span>
-                                    </div>
-                                    <span className="text-[10px] font-black text-muted-foreground/60">{new Date(user.created_at).toLocaleDateString()}</span>
+                                <span className="text-[10px] font-black text-muted-foreground/60 overflow-hidden text-ellipsis max-w-[120px]" title={user.stats?.deviceInfo?.userAgent}>
+                                    {(() => {
+                                        const stats = user.stats?.deviceInfo || {};
+                                        // Prefer 'browser' field if exists (new data), otherwise parse userAgent (old data)
+                                        return stats.browser || getBrowserInfo(stats.userAgent || '') || t('browser');
+                                    })()}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/5 border border-border/10">
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-xs font-bold">{t('memberSince')}</span>
                                 </div>
+                                <span className="text-[10px] font-black text-muted-foreground/60">{new Date(user.created_at).toLocaleDateString(t('language') === 'tr' ? 'tr-TR' : 'en-US')}</span>
                             </div>
                         </div>
-
                         {/* Recent Activity Timeline for User */}
                         <div className="space-y-6">
                             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
@@ -198,7 +258,7 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                     </Badge>
                 </div>
             </SheetContent>
-        </Sheet>
+        </Sheet >
     );
 };
 
