@@ -11,20 +11,20 @@ export default function handler(req, res) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Dynamic Social Tags -->
-    <title>Epigraph - "${title}" Alıntısı</title>
-    <meta name="description" content="${author} - ${title}">
+    <title>${title} - ${author} | Epigraph</title>
+    <meta name="description" content="Kitaptan bir alıntı paylaşıldı.">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Epigraph - Kitap Alıntısı">
-    <meta property="og:description" content="${author} - ${title}">
+    <meta property="og:title" content="${title} | Kitap Alıntısı">
+    <meta property="og:description" content="${author} tarafından yazılan ${title} kitabından bir kesit.">
     <meta property="og:image" content="${img}">
     <meta property="og:url" content="https://epigraphreader.com">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Epigraph - Kitap Alıntısı">
-    <meta name="twitter:description" content="${author} - ${title}">
+    <meta name="twitter:title" content="${title} | Kitap Alıntısı">
+    <meta name="twitter:description" content="${author} tarafından yazılan ${title} kitabından bir kesit.">
     <meta name="twitter:image" content="${img}">
 
     <!-- Redirect to home after crawl or if user visits -->
