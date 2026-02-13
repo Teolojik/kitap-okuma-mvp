@@ -66,40 +66,50 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
         try {
             // 1. Generate PNG for Social (1200x630 Canvas)
             const dataUrl = await toPng(socialRef.current, {
-                pixelRatio: 1.5, // 1800px width which is plenty
+                pixelRatio: 2, // High quality
                 backgroundColor: theme === 'dark' ? '#002b36' : (theme === 'warm' ? '#fdf6e3' : (theme === 'nature' ? '#f0f4f0' : '#1e293b')),
             });
 
-            // Convert dataUrl to Blob
             const blob = await (await fetch(dataUrl)).blob();
-            const fileName = `quote-${new Date().getTime()}.png`;
-            const filePath = `shares/${fileName}`;
+            const file = new File([blob], `epigraph-quote-${new Date().getTime()}.png`, { type: 'image/png' });
 
-            // 2. Upload to Supabase 'shares' bucket
-            const { data, error } = await supabase.storage
-                .from('shares')
-                .upload(filePath, blob, {
-                    contentType: 'image/png',
-                    upsert: true
+            // 2. Try Web Share API (Best for Mobile & Supported Desktop browsers)
+            // This attaches the ACTUAL FILE to X if supported
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Epigraph Alıntısı',
+                    text: `"${selection.text.substring(0, 100)}..."`
                 });
+                toast.success("Paylaşım menüsü açıldı!");
+                return;
+            }
 
-            if (error) throw error;
+            // 3. Fallback for Desktop (Clipboard + Open X)
+            // X doesn't allow automatic file injection via URL, so we copy & user pastes.
+            try {
+                // Copy image to clipboard
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
 
-            // 3. Get Public URL
-            const { data: { publicUrl } } = supabase.storage.from('shares').getPublicUrl(filePath);
+                // Open X intent
+                const shareText = `"${selection.text.substring(0, 100)}..."`;
+                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+                window.open(twitterUrl, '_blank');
 
-            // 4. Construct Share API URL (Points to our Vercel function)
-            const shareApiUrl = `https://epigraphreader.com/api/share?img=${encodeURIComponent(publicUrl)}&title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author)}`;
-
-            // 5. Open Twitter Intent with simplified text (Card does the talking)
-            const shareText = `"${selection.text.substring(0, 100)}..."`;
-            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareApiUrl)}`;
-
-            window.open(twitterUrl, '_blank');
-            toast.success("Görsel X (Twitter) için optimize edildi ve paylaşılıyor!");
+                toast.success("Görsel panoya kopyalandı! X penceresinde Ctrl+V ile yapıştırabilirsiniz.");
+            } catch (clipboardError) {
+                console.error('Clipboard Error:', clipboardError);
+                // Last resort: Just download
+                const link = document.createElement('a');
+                link.download = file.name;
+                link.href = dataUrl;
+                link.click();
+                toast.info("Görsel indirildi, X'e yükleyebilirsiniz.");
+            }
         } catch (err) {
-            console.error('Native Share Error:', err);
-            toast.error("Paylaşım hazırlanırken bir hata oluştu.");
+            console.error('Direct Share Error:', err);
+            toast.error("Paylaşım hazırlanırken bir hta oluştu.");
         } finally {
             setIsGenerating(false);
         }
