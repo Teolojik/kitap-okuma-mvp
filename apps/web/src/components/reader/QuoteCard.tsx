@@ -46,20 +46,20 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
             {/* Content Container */}
             <div className="relative z-10 flex flex-col gap-10 items-center text-center px-6">
                 {/* Large Quote Symbol */}
-                <div className={`w-16 h-1 w-1 rounded-full ${accentColors[theme]} opacity-30 mb-2`} />
+                <div className={`w-16 h-1 rounded-full ${accentColors[theme]} opacity-30 mb-2`} />
 
                 <div className="space-y-8 w-full">
                     <div className="opacity-20 italic font-serif text-8xl leading-none h-10 select-none">"</div>
-                    <p className="text-3xl font-serif font-medium leading-relaxed italic tracking-tight px-4">
+                    <p className="text-2xl font-serif font-medium leading-relaxed italic tracking-tight px-4">
                         {text}
                     </p>
                     <div className="opacity-20 italic font-serif text-8xl leading-none h-10 rotate-180 transform select-none">"</div>
 
                     <div className="flex flex-col items-center gap-4 mt-8">
                         <div className={`h-px w-20 ${accentColors[theme]} opacity-60`} />
-                        <div className="space-y-1">
+                        <div className="space-y-1 max-w-[90%]">
                             <p className="text-base font-bold uppercase tracking-[0.3em] opacity-90">{author || 'Bilinmeyen Yazar'}</p>
-                            <p className="text-xs uppercase tracking-[0.2em] opacity-50 font-medium">{title}</p>
+                            <p className="text-xs uppercase tracking-[0.2em] opacity-50 font-medium truncate">{title}</p>
                         </div>
                     </div>
                 </div>
