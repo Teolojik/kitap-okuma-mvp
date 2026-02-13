@@ -401,7 +401,12 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
 
             try {
                 if (user) {
-                    const { error } = await supabase.from('annotations').insert({ ...newAnnotation, book_id: bookId, user_id: user.id });
+                    const { error } = await supabase.from('annotations').insert({
+                        id: newAnnotation.id,
+                        book_id: bookId,
+                        user_id: user.id,
+                        data: newAnnotation,
+                    });
                     if (error) throw error;
                 }
             } catch (e) {

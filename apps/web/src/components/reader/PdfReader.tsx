@@ -300,16 +300,15 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                                 user-select: text !important;
                                 z-index: 20 !important;
                                 pointer-events: auto !important;
-                                mix-blend-mode: multiply;
+                                color: transparent !important;
+                            }
+                            .react-pdf__Page__textContent span::selection {
+                                background: rgba(249, 115, 22, 0.3) !important;
                             }
                             /* Dark mode selection fix */
                             ${settings.theme === 'dark' ? `
-                            .react-pdf__Page__textContent {
-                                mix-blend-mode: screen;
-                            }
                             .react-pdf__Page__textContent span::selection {
                                 background: rgba(249, 115, 22, 0.4) !important;
-                                color: #fff !important;
                             }
                             ` : ''}
                             .react-pdf__Page__annotations {

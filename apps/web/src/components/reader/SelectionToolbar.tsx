@@ -3,12 +3,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
-    Sparkles,
-    Book,
     Highlighter,
     Copy,
     X,
-    MessageSquare,
     StickyNote,
     Share2
 } from 'lucide-react';
@@ -55,25 +52,6 @@ const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ selection, onClose,
                 >
                     <Share2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
                     <span className="text-[10px] font-black uppercase tracking-widest">Paylaş</span>
-                </Button>
-
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onAction('ai')}
-                    className="rounded-full gap-2 hover:bg-primary hover:text-white transition-all group px-3"
-                >
-                    {wordCount > 3 ? (
-                        <>
-                            <Sparkles className="h-4 w-4 group-hover:animate-spin" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">AI Özetle</span>
-                        </>
-                    ) : (
-                        <>
-                            <Book className="h-4 w-4 group-hover:scale-125 transition-transform" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Anlamı</span>
-                        </>
-                    )}
                 </Button>
 
                 <Button
