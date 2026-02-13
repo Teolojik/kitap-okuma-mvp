@@ -60,7 +60,7 @@ export const createReaderSlice: StateCreator<ReaderSlice> = (set, get) => ({
         fontSize: 100,
         fontFamily: 'Inter',
         theme: 'sepia',
-        readingMode: 'single',
+        readingMode: 'double-static',
         lineHeight: 1.5,
         letterSpacing: 0,
         margin: 20,
