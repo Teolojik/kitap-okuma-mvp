@@ -64,15 +64,15 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[95vh] bg-background/80 backdrop-blur-3xl border-white/10 p-0 overflow-y-auto rounded-[2.5rem]">
-                <DialogHeader className="p-8 border-b border-white/5">
-                    <DialogTitle className="text-2xl font-serif">Alıntıyı Paylaş</DialogTitle>
+            <DialogContent className="max-w-2xl max-h-[85vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-y-auto rounded-2xl">
+                <DialogHeader className="px-5 pt-4 pb-3 border-b border-white/5">
+                    <DialogTitle className="text-lg font-serif">Alıntıyı Paylaş</DialogTitle>
                 </DialogHeader>
 
-                <div className="p-8 space-y-8 flex flex-col items-center">
-                    {/* Live Preview */}
+                <div className="px-5 py-4 space-y-4 flex flex-col items-center">
+                    {/* Live Preview — compact */}
                     <div className="w-full flex justify-center overflow-hidden">
-                        <div className="scale-[0.55] sm:scale-75 md:scale-90 origin-top">
+                        <div className="scale-[0.45] sm:scale-[0.55] md:scale-[0.65] origin-top -mb-20 sm:-mb-16 md:-mb-10">
                             <QuoteCard
                                 ref={cardRef}
                                 text={selection.text}
@@ -84,19 +84,19 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                         </div>
                     </div>
 
-                    {/* Controls */}
-                    <div className="w-full flex flex-wrap items-center justify-center gap-4 bg-card/50 p-4 sm:p-6 rounded-[2rem] border border-white/5">
+                    {/* Controls — single compact row */}
+                    <div className="w-full flex flex-wrap items-center justify-center gap-2 bg-card/50 p-3 rounded-xl border border-white/5">
                         {/* Theme Switcher */}
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/5 rounded-xl"><Palette className="h-5 w-5 opacity-60" /></div>
-                            <div className="flex gap-1 sm:gap-2">
+                        <div className="flex items-center gap-2">
+                            <Palette className="h-4 w-4 opacity-50" />
+                            <div className="flex gap-1">
                                 {themes.map((t) => (
                                     <Button
                                         key={t.value}
                                         variant={theme === t.value ? 'default' : 'ghost'}
                                         size="sm"
                                         onClick={() => setTheme(t.value)}
-                                        className={`rounded-full px-3 sm:px-4 text-xs font-bold uppercase tracking-wider sm:tracking-widest transition-all ${theme === t.value ? 'shadow-lg' : 'hover:bg-white/5'}`}
+                                        className={`rounded-full px-2.5 py-1 h-7 text-[10px] font-bold uppercase tracking-wider transition-all ${theme === t.value ? 'shadow-md' : 'hover:bg-white/5'}`}
                                     >
                                         {t.name}
                                     </Button>
@@ -104,23 +104,25 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                             </div>
                         </div>
 
+                        <div className="h-6 w-px bg-white/10 mx-1 hidden sm:block" />
+
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                             <Button
                                 onClick={handleDownload}
                                 disabled={isGenerating}
-                                className="rounded-2xl h-11 px-5 gap-2 bg-primary hover:scale-105 transition-transform"
+                                className="rounded-xl h-8 px-3 gap-1.5 bg-primary hover:scale-105 transition-transform text-xs"
                             >
-                                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                <span className="font-bold text-sm">Görseli İndir</span>
+                                {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                <span className="font-bold">İndir</span>
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={handleTwitterShare}
-                                className="rounded-2xl h-11 px-5 gap-2 border-white/10 hover:bg-[#1DA1F2] hover:text-white transition-all hover:scale-105"
+                                className="rounded-xl h-8 px-3 gap-1.5 border-white/10 hover:bg-[#1DA1F2] hover:text-white transition-all hover:scale-105 text-xs"
                             >
-                                <Twitter className="h-4 w-4" />
-                                <span className="font-bold text-sm">X'te Paylaş</span>
+                                <Twitter className="h-3.5 w-3.5" />
+                                <span className="font-bold">X'te Paylaş</span>
                             </Button>
                         </div>
                     </div>
