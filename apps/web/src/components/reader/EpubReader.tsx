@@ -298,26 +298,17 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 }
             });
 
+            // Use a ref for selection callback to avoid event binding cycles
+            const onTextSelectedRef = { current: onTextSelected };
             rendition.on('selected', (cfiRange: string, contents: any) => {
                 book.getRange(cfiRange).then((range) => {
                     if (range) {
                         const text = range.toString();
-                        // We need to notify parent to show a popover
-                        // Passing the CFI and Text. 
-                        // To show it roughly in correct place, we might need client rects, but that's complex with iframes.
-                        // For MVP, we pass the event or simple coordinate relative to view if possible, 
-                        // OR simpler: Just show a global "Selection Menu" at the bottom or top of screen with the current selection text.
-                        // Or better: pass the serialized CFI to parent, parent shows a floating dialog.
-
-                        // Emit custom event or callback?
-                        // Let's check props. We need a new prop 'onTextSelected'.
-                        if (onTextSelected) {
-                            onTextSelected(cfiRange, text, contents);
+                        if (onTextSelectedRef.current) {
+                            onTextSelectedRef.current(cfiRange, text, contents);
                         }
                     }
                 });
-                // We don't want to clear selection immediately so user can see it
-                // rendition.getContents().forEach(c => c.window.getSelection().removeAllRanges());
             });
 
             // Restore annotations (highlights)

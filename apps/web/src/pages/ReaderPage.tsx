@@ -219,6 +219,9 @@ const ReaderPage: React.FC = () => {
     const [secondaryBookData, setSecondaryBookData] = useState<string | ArrayBuffer | null>(null);
     const [isSecondaryLoading, setIsSecondaryLoading] = useState(false);
     const [selection, setSelection] = useState<{ cfi: string; text: string } | null>(null);
+    const handleTextSelected = React.useCallback((cfi: string, text: string) => {
+        setSelection({ cfi, text });
+    }, []);
     const [totalPages, setTotalPages] = useState<number>(0);
     const [secondaryTotalPages, setSecondaryTotalPages] = useState<number>(0);
     const [scale, setScale] = useState(1.0);
@@ -1027,8 +1030,22 @@ const ReaderPage: React.FC = () => {
                         </Button>
                     </div>
                     {/* Mobile tap-to-navigate: invisible touch zones on left/right 15% */}
-                    <div className="absolute inset-y-0 left-0 w-[15%] z-[75] md:hidden cursor-pointer" onClick={prevPage} />
-                    <div className="absolute inset-y-0 right-0 w-[15%] z-[75] md:hidden cursor-pointer" onClick={nextPage} />
+                    <div
+                        className="absolute inset-y-0 left-0 w-[10%] z-5 md:hidden cursor-pointer active:bg-black/5"
+                        onClick={(e) => {
+                            if (window.getSelection()?.toString()) return;
+                            e.stopPropagation();
+                            prevPage();
+                        }}
+                    />
+                    <div
+                        className="absolute inset-y-0 right-0 w-[10%] z-5 md:hidden cursor-pointer active:bg-black/5"
+                        onClick={(e) => {
+                            if (window.getSelection()?.toString()) return;
+                            e.stopPropagation();
+                            nextPage();
+                        }}
+                    />
                 </>
             )}
 
@@ -1074,7 +1091,7 @@ const ReaderPage: React.FC = () => {
                                 onLocationChange={handleLocationChange}
                                 onTotalPages={setTotalPages}
                                 scale={scale}
-                                onTextSelected={(cfi: string, text: string) => setSelection({ cfi, text })}
+                                onTextSelected={handleTextSelected}
                                 annotations={book ? (storeAnnotations[book.id] || []) : []}
                                 onOpenSettings={() => setIsBookSelectOpen(true)}
                             />

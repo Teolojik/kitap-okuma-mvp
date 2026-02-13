@@ -206,17 +206,29 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         };
     }, [url]);
 
+    // Use a ref for callback to avoid listener reset cycles
+    const onTextSelectedRef = React.useRef(onTextSelected);
     React.useEffect(() => {
-        const handleMouseUp = () => {
+        onTextSelectedRef.current = onTextSelected;
+    }, [onTextSelected]);
+
+    React.useEffect(() => {
+        const handleMouseUp = (e: MouseEvent) => {
+            // Don't trigger if clicking on buttons or toolbar
+            if ((e.target as HTMLElement).closest('button, .SelectionToolbar')) return;
+
             const selection = window.getSelection();
             if (selection && selection.toString().trim().length > 0) {
                 const text = selection.toString();
-                if (onTextSelected) onTextSelected(page, text);
+                // Ensure selection is within this reader's context
+                if (wrapperRef.current?.contains(selection.anchorNode)) {
+                    if (onTextSelectedRef.current) onTextSelectedRef.current(page, text);
+                }
             }
         };
         document.addEventListener('mouseup', handleMouseUp);
         return () => document.removeEventListener('mouseup', handleMouseUp);
-    }, [page, onTextSelected]);
+    }, [page]); // No longer depends on onTextSelected directly
 
 
 
