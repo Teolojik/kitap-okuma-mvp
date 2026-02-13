@@ -870,7 +870,14 @@ const AdminPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-border/10">
                                     {filteredUsers.length > 0 ? filteredUsers.slice((userPage - 1) * ITEMS_PER_PAGE, userPage * ITEMS_PER_PAGE).map((u, i) => (
-                                        <tr key={u.id || i} className="hover:bg-secondary/5 transition-colors group">
+                                        <tr
+                                            key={u.id || i}
+                                            className="hover:bg-secondary/5 transition-colors group cursor-pointer"
+                                            onClick={() => {
+                                                setSelectedUser(u);
+                                                setIsUserDrawerOpen(true);
+                                            }}
+                                        >
                                             <td className="px-8 py-5">
                                                 <div className="flex items-center gap-4">
                                                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center font-black text-xs text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
@@ -894,6 +901,7 @@ const AdminPage = () => {
                                                 <select
                                                     className="bg-transparent border-none focus:ring-0 cursor-pointer hover:text-primary transition-colors outline-none"
                                                     value={u.role || 'Reader'}
+                                                    onClick={(e) => e.stopPropagation()}
                                                     onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
                                                 >
                                                     <option value="Reader">{t('adminReader')}</option>
@@ -911,7 +919,10 @@ const AdminPage = () => {
                                                             variant="ghost"
                                                             size="sm"
                                                             className="rounded-xl h-9 w-9 p-0 hover:bg-red-500/10 hover:text-red-500"
-                                                            onClick={() => handleUpdateUserStatus(u.id, 'Banned')}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleUpdateUserStatus(u.id, 'Banned');
+                                                            }}
                                                         >
                                                             <CircleSlash className="h-4 w-4" />
                                                         </Button>
@@ -920,7 +931,10 @@ const AdminPage = () => {
                                                             variant="ghost"
                                                             size="sm"
                                                             className="rounded-xl h-9 w-9 p-0 hover:bg-green-500/10 hover:text-green-500"
-                                                            onClick={() => handleUpdateUserStatus(u.id, 'Active')}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleUpdateUserStatus(u.id, 'Active');
+                                                            }}
                                                         >
                                                             <RotateCcw className="h-4 w-4" />
                                                         </Button>
@@ -929,7 +943,10 @@ const AdminPage = () => {
                                                         variant="ghost"
                                                         size="sm"
                                                         className="rounded-xl h-9 w-9 p-0 hover:bg-red-500/10 hover:text-red-500"
-                                                        onClick={() => handleDeleteUser(u.id)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteUser(u.id);
+                                                        }}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
