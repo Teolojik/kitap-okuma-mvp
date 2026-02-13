@@ -41,7 +41,7 @@ const StatsPage = () => {
     const weeklyData = Array.from({ length: 7 }).map((_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = d.toLocaleDateString('en-CA');
         const dayNames = [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')];
         return {
             day: dayNames[d.getDay()],
@@ -110,29 +110,41 @@ const StatsPage = () => {
                         </div>
                     </CardHeader>
                     <CardContent className="pt-10">
-                        <div className="h-64 flex items-end justify-between gap-4 px-4">
-                            {weeklyData.map((data, idx) => {
-                                const height = (data.pages / maxPages) * 100;
-                                return (
-                                    <div key={data.day} className="flex-1 flex flex-col items-center gap-4 group">
-                                        <div className="relative w-full flex justify-center items-end h-full">
-                                            <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-all -translate-y-2 group-hover:translate-y-0 bg-primary text-primary-foreground text-[10px] font-black px-3 py-1.5 rounded-full shadow-xl pointer-events-none z-20">
-                                                {data.pages} {t('page')}
+                        {weeklyData.every(d => d.pages === 0) ? (
+                            <div className="h-64 flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-primary/10 rounded-[2rem] bg-primary/5">
+                                <div className="h-16 w-16 rounded-full bg-background flex items-center justify-center shadow-xl">
+                                    <TrendingUp className="h-8 w-8 text-muted-foreground/30" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-black uppercase tracking-widest text-muted-foreground/60">{t('noDataYet') || 'HENÜZ VERİ YOK'}</p>
+                                    <p className="text-[10px] text-muted-foreground/40 max-w-[200px] mx-auto">{t('startReadingHint') || 'Okuma yaparak grafikleri canlandırabilirsin.'}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="h-64 flex items-end justify-between gap-4 px-4">
+                                {weeklyData.map((data, idx) => {
+                                    const height = (data.pages / maxPages) * 100;
+                                    return (
+                                        <div key={data.day} className="flex-1 flex flex-col items-center gap-4 group">
+                                            <div className="relative w-full flex justify-center items-end h-full">
+                                                <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-all -translate-y-2 group-hover:translate-y-0 bg-primary text-primary-foreground text-[10px] font-black px-3 py-1.5 rounded-full shadow-xl pointer-events-none z-20">
+                                                    {data.pages} {t('page')}
+                                                </div>
+                                                <motion.div
+                                                    initial={{ height: 0 }}
+                                                    animate={{ height: `${height}%` }}
+                                                    transition={{ delay: idx * 0.05 + 0.3, duration: 1.5, type: "spring" }}
+                                                    className="w-full max-w-[48px] bg-gradient-to-t from-primary/20 via-primary to-primary/80 rounded-t-2xl group-hover:brightness-110 transition-all shadow-lg shadow-primary/20 relative"
+                                                >
+                                                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-white/20 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </motion.div>
                                             </div>
-                                            <motion.div
-                                                initial={{ height: 0 }}
-                                                animate={{ height: `${height}%` }}
-                                                transition={{ delay: idx * 0.05 + 0.3, duration: 1.5, type: "spring" }}
-                                                className="w-full max-w-[48px] bg-gradient-to-t from-primary/20 via-primary to-primary/80 rounded-t-2xl group-hover:brightness-110 transition-all shadow-lg shadow-primary/20 relative"
-                                            >
-                                                <div className="absolute top-0 left-0 right-0 h-1/2 bg-white/20 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </motion.div>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 group-hover:text-primary transition-colors">{data.day}</span>
                                         </div>
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 group-hover:text-primary transition-colors">{data.day}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

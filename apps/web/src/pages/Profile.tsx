@@ -106,6 +106,11 @@ const ProfilePage = () => {
                 <div className="md:col-span-2 space-y-10">
                     <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden p-8 px-10">
                         <ReadingHeatmap data={stats.dailyPages} language={settings.language} />
+                        <div className="mt-4 pt-4 border-t border-primary/5 text-center">
+                            <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">
+                                {t('startReadingHint') || 'Okuma yaparak ısı haritasını canlandırabilirsin.'}
+                            </p>
+                        </div>
                     </Card>
 
                     <div className="space-y-6">

@@ -74,7 +74,7 @@ const ReadingHeatmap: React.FC<ReadingHeatmapProps> = ({ data, language = 'tr' }
                                     const day = week.find(d => d.getDay() === dayIdx);
                                     if (!day) return <div key={dayIdx} className="h-3 w-3 sm:h-4 sm:w-4 rounded-sm bg-transparent" />;
 
-                                    const dateKey = day.toISOString().split('T')[0];
+                                    const dateKey = day.toLocaleDateString('en-CA');
                                     const count = data[dateKey] || 0;
 
                                     return (

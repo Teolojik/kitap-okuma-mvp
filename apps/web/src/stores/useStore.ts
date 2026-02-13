@@ -106,7 +106,19 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                             }
                             set(state => ({ settings: { ...state.settings, ...syncedSettings } }));
                         }
-                        if (profile.stats) set(state => ({ stats: { ...state.stats, ...profile.stats } }));
+
+                        if (profile.stats) {
+                            set(state => ({
+                                stats: {
+                                    ...state.stats,
+                                    ...profile.stats,
+                                    // Ensure critical arrays and objects exist
+                                    dailyPages: profile.stats.dailyPages || {},
+                                    achievements: profile.stats.achievements || [],
+                                    bookTime: profile.stats.bookTime || {}
+                                }
+                            }));
+                        }
                     }
                 }
             } finally {
@@ -326,22 +338,82 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
         updateStats: (pagesRead, bookId, timeSpent = 0) => {
             const user = useAuthStore.getState().user;
             set(state => {
-                const today = new Date().toISOString().split('T')[0];
+                // Use local date for activity tracking to match user's perspective
+                const now = new Date();
+                const today = now.toLocaleDateString('en-CA');
+
                 const newStats = { ...state.stats };
+
+                // 1. Basic increments
                 newStats.totalPagesRead += pagesRead;
                 newStats.totalReadingTime += timeSpent;
-                newStats.dailyPages = { ...newStats.dailyPages, [today]: (newStats.dailyPages[today] || 0) + pagesRead };
-                newStats.lastReadDate = today;
 
-                if (bookId) {
-                    newStats.bookTime = { ...newStats.bookTime, [bookId]: (newStats.bookTime[bookId] || 0) + timeSpent };
+                // 2. Daily pages tracking
+                newStats.dailyPages = {
+                    ...newStats.dailyPages,
+                    [today]: (newStats.dailyPages[today] || 0) + pagesRead
+                };
+
+                // 3. Streak Calculation
+                if (pagesRead > 0) {
+                    if (!newStats.lastReadDate) {
+                        newStats.currentStreak = 1;
+                    } else if (newStats.lastReadDate !== today) {
+                        const lastDate = new Date(newStats.lastReadDate + 'T00:00:00');
+                        const todayDate = new Date(today + 'T00:00:00');
+                        const diffTime = todayDate.getTime() - lastDate.getTime();
+                        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays === 1) {
+                            // Consecutive day
+                            newStats.currentStreak += 1;
+                        } else {
+                            // Streak broken
+                            newStats.currentStreak = 1;
+                        }
+                    }
+                    newStats.lastReadDate = today;
                 }
 
+                // 4. Book specific time tracking
+                if (bookId) {
+                    newStats.bookTime = {
+                        ...newStats.bookTime,
+                        [bookId]: (newStats.bookTime[bookId] || 0) + timeSpent
+                    };
+                }
+
+                // 5. Achievement Logic (Re-implemented from slice to ensure it works in override)
+                const currentAchievements = [...(newStats.achievements || [])];
+                const t = (key: string) => (translations[state.settings.language || 'tr'] as any)[key] || key;
+
+                // Bookworm Achievement (10 pages)
+                if (newStats.totalPagesRead >= 10 && !currentAchievements.find(a => a.id === 'kitap-kurdu')) {
+                    currentAchievements.push({ id: 'kitap-kurdu', unlockedAt: now.toISOString() });
+                    toast.success(t('achievementKitapKurduTitle'), { description: t('achievementKitapKurduDesc'), icon: '📚' });
+                }
+
+                // Master Reader Achievement (100 pages)
+                if (newStats.totalPagesRead >= 100 && !currentAchievements.find(a => a.id === 'usta-okur')) {
+                    currentAchievements.push({ id: 'usta-okur', unlockedAt: now.toISOString() });
+                    toast.success(t('achievementUstaOkurTitle'), { description: t('achievementUstaOkurDesc'), icon: '🏆' });
+                }
+
+                // Night Owl & Streak achievements could be added here too...
+                newStats.achievements = currentAchievements;
+
+                // Persistence
                 localStorage.setItem('reader_stats', JSON.stringify(newStats));
 
                 if (user) {
-                    supabase.from('profiles').update({ stats: newStats }).eq('id', user.id).then();
+                    supabase.from('profiles')
+                        .update({ stats: newStats })
+                        .eq('id', user.id)
+                        .then(({ error }) => {
+                            if (error) console.error('[Sync] updateStats Supabase error:', error);
+                        });
                 }
+
                 return { stats: newStats };
             });
         },
