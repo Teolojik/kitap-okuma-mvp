@@ -122,17 +122,19 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl max-h-[90vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-hidden rounded-2xl">
-                <DialogHeader className="px-5 pt-4 pb-3 border-b border-white/5">
-                    <DialogTitle className="text-lg font-serif">Alıntıyı Paylaş</DialogTitle>
-                    <DialogDescription className="sr-only">Seçili alıntıyı kart olarak paylaş</DialogDescription>
+            <DialogContent className="w-full max-w-[95vw] sm:max-w-[680px] max-h-[95vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-hidden rounded-3xl shadow-2xl">
+                <DialogHeader className="px-6 py-3 border-b border-white/5 flex flex-row items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-base font-serif opacity-70">Alıntıyı Paylaş</DialogTitle>
+                        <DialogDescription className="sr-only">Seçili alıntıyı kart olarak paylaş</DialogDescription>
+                    </div>
                 </DialogHeader>
 
-                <div className="px-5 py-4 space-y-4 flex flex-col items-center">
-                    {/* Live Preview — with capture wrapper */}
-                    <div className="w-full flex justify-center overflow-hidden">
+                <div className="px-2 py-2 flex flex-col items-center justify-center min-h-[400px]">
+                    {/* Live Preview — maximized to fill modal */}
+                    <div className="w-full flex justify-center items-center overflow-hidden">
                         <div ref={cardRef} className="p-4 bg-transparent">
-                            <div className="scale-[0.35] sm:scale-[0.45] md:scale-[0.55] origin-top -mb-28 sm:-mb-24 md:-mb-18 lg:-mb-14">
+                            <div className="scale-[0.45] sm:scale-[0.7] md:scale-[0.85] lg:scale-100 origin-center">
                                 <QuoteCard
                                     text={selection.text}
                                     author={book.author}
