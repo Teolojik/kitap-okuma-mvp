@@ -630,10 +630,12 @@ export default function LibraryPage() {
                     <h3 className="text-lg font-serif font-bold text-primary mb-1">{t('weeklyGoal')}</h3>
                     <p className="text-xs text-muted-foreground mb-4">{t('maintainingStreak')}</p>
                     <div className="flex items-end gap-2 mb-2">
-                        <span className="text-4xl font-bold tabular-nums text-foreground/90">{books.length}</span>
+                        <span className="text-4xl font-bold tabular-nums text-foreground/90">
+                            {books.filter(b => (b.progress?.percentage || 0) >= 100).length}
+                        </span>
                         <span className="text-sm font-medium text-muted-foreground mb-1.5">/ {settings.weeklyGoal || 5} {t('booksGoal')}</span>
                     </div>
-                    <Progress value={(books.length / (settings.weeklyGoal || 5)) * 100} className="h-2 bg-primary/10" />
+                    <Progress value={(books.filter(b => (b.progress?.percentage || 0) >= 100).length / (settings.weeklyGoal || 5)) * 100} className="h-2 bg-primary/10" />
                 </div>
             </div >
         </div >

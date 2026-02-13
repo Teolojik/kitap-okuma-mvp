@@ -515,6 +515,9 @@ export const translations = {
         notStarted: "Başlanmadı",
         userNoBooksFound: "Kitap bulunamadı",
         adminActivityTimelineDesc: "Son kullanıcı aktiviteleri",
+        adminGuestsTab: "Misafirler",
+        guestBooks: "Misafir Kitapları",
+        guestUploader: "Misafir Yükleyici",
     },
     en: {
         loading: "Loading",
@@ -1030,6 +1033,9 @@ export const translations = {
         notStarted: "Not Started",
         userNoBooksFound: "No books found",
         adminActivityTimelineDesc: "Recent user activities",
+        adminGuestsTab: "Guests",
+        guestBooks: "Guest Books",
+        guestUploader: "Guest Uploader",
     },
 };
 

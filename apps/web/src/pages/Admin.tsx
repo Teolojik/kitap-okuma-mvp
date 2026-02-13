@@ -747,6 +747,9 @@ const AdminPage = () => {
                         <TabsTrigger value="users" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
                             <Users className="h-4 w-4" /> {t('adminUsersTab')}
                         </TabsTrigger>
+                        <TabsTrigger value="guests" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
+                            <Users className="h-4 w-4" /> {t('adminGuestsTab')}
+                        </TabsTrigger>
                         <TabsTrigger value="content" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
                             <BookOpen className="h-4 w-4" /> {t('adminContentTab')}
                         </TabsTrigger>
@@ -1002,6 +1005,57 @@ const AdminPage = () => {
                                 </Button>
                             </div>
                         )}
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="guests" className="space-y-6 outline-none text-left">
+                    <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden p-8 px-10">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-xl font-black tracking-tight">{t('guestBooks')}</h3>
+                                <p className="text-muted-foreground font-medium">{t('adminManageAllBooks')}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {allBooks.filter(b => !b.user_id).length > 0 ? (
+                                allBooks.filter(b => !b.user_id).map((book) => (
+                                    <div key={book.id} className="flex items-center gap-4 p-4 rounded-3xl bg-secondary/10 border border-border/5 hover:bg-secondary/20 transition-all">
+                                        <div className="h-16 w-11 bg-muted rounded-lg shadow-sm overflow-hidden flex-shrink-0">
+                                            {book.cover_url ? (
+                                                <img src={book.cover_url} alt={book.title} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary text-xs font-black">
+                                                    ?
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h5 className="text-sm font-bold truncate">{book.title}</h5>
+                                            <p className="text-[10px] text-muted-foreground truncate">{book.author || t('unknownAuthor')}</p>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Badge variant="secondary" className="text-[8px] font-black uppercase tracking-widest">
+                                                    {t('guestUploader')}
+                                                </Badge>
+                                                <span className="text-[9px] text-muted-foreground/60">{formatDate(book.created_at)}</span>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-red-500 hover:bg-red-500/10 rounded-xl"
+                                            onClick={() => handleDeleteBook(book.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-full py-12 text-center text-muted-foreground">
+                                    {t('noBooksFound')}
+                                </div>
+                            )}
+                        </div>
                     </Card>
                 </TabsContent>
 

@@ -39,9 +39,9 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
     if (!user) return null;
 
     const userStats = user.stats || {};
-    const totalPages = userStats.totalPages || 0;
-    const totalTime = Math.floor((userStats.totalTime || 0) / 60); // minutes
-    const streak = userStats.streak || 0;
+    const totalPages = userStats.totalPagesRead || 0;
+    const totalTime = Math.floor((userStats.totalReadingTime || 0) / 60); // minutes
+    const streak = userStats.currentStreak || userStats.streak || 0;
     const booksCount = Object.keys(userStats.bookTime || {}).length;
 
     // Filter logs for this specific user
@@ -239,7 +239,9 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                                     <Calendar className="h-4 w-4 text-muted-foreground" />
                                     <span className="text-xs font-bold">{t('memberSince')}</span>
                                 </div>
-                                <span className="text-[10px] font-black text-muted-foreground/60">{new Date(user.created_at).toLocaleDateString(t('language') === 'tr' ? 'tr-TR' : 'en-US')}</span>
+                                <span className="text-[10px] font-black text-muted-foreground/60">
+                                    {new Date(user.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </span>
                             </div>
                         </div>
                         {/* Recent Activity Timeline for User */}
