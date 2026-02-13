@@ -42,4 +42,8 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 **Öğrenilen:**
 - Görsel kalitesini artırmak için `pixelRatio: 2` kullanılmalıdır.
 - Modal açıldığında ilk renderda fontların veya kapağın tam yüklenmemesini önlemek için 100ms'lik bir `setTimeout` gecikmesi güvenli bir çözümdür.
-- `toPng` fonksiyonu statik export edilen CSS sınıflarını (Tailwind vb.) doğru yakalamak için hedef elementi temiz bir ref üzerinden almalıdır.
+### 6. EPUB Re-init Loop ve Navigasyon Sabitliği
+**Sorun:** `DoubleStatic` gibi modlarda `epubOptions` nesnesinin her render'da yeni bir referans alması, `EpubReader`'ın sürekli `destroy/init` döngüsüne girmesine neden oluyordu. Bu da sayfa ilerleyince okuyucunun başa dönmesine veya takılmasına sebep oluyordu.
+**Çözüm:** 
+- Okuyucu konfigürasyonu (`flow`, `manager`, `spread`) `useMemo` içine alınarak referans sabitlendi.
+- Parent'tan gelen `ref`, doğrudan çocuk bileşene (`EpubReader`) verilmek yerine local bir `innerRef` üzerinden `useImperativeHandle` ile tünellendi. Bu sayede render tetikleyicileri ile navigasyon komutları birbirinden izole edildi.

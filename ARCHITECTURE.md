@@ -15,6 +15,7 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
 4.  **PdfReader / EpubReader:** Formata özel render motorları (`pdfjs` ve `epub.js`).
 5.  **SelectionToolbar:** Metin seçildiğinde çıkan araç çubuğu (AI, Not, Alıntı Paylaş).
 6.  **QuoteModal & QuoteCard:** Alıntıları görsele dönüştüren paylaşım sistemi.
+7.  **Re-init Protection:** `useMemo` ile sabitlenen render seçenekleri ve local ref yönetimi sayesinde EPUB/PDF motorlarının kararlı çalışması sağlanır.
 
 ## 🧠 State Yönetimi (Zustand)
 `apps/web/src/store/useReaderStore.ts` altında merkezi state yönetilir:

@@ -3,7 +3,8 @@
 Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her başarılı özellik eklemesinden veya hata düzeltmesinden sonra güncellenmelidir.
 
 ## ✅ Tamamlananlar
-- **[2026-02-13] SEO & Alıntı Kartları:** Open Graph etiketleri, sitemap ve alıntıları resim olarak paylaşma özelliği eklendi.
+- **[2026-02-13] Navigasyon ve Mod Düzeltmeleri:** EPUB re-init loop hatası giderildi, varsayılan okuma modu `double-static` yapıldı ve ref yönetimi modernize edildi. `useStore` seviyesinde veri senkronizasyonu (Database Sync) ve mod migration mantığı eklenerek "Devam Et" butonu ve varsayılan mod sorunları kökten çözüldü.
+- **[2026-02-13] SEO & Alıntı Kartları:** Open Graph etiketleri, sitemap ve alıntıları resim olarak paylaşma özelliği eklendi. Alıntı kartından kapak kaldırılarak minimalist tasarıma geçildi.
 - **[2026-02-09] Bölünmüş Ekran Navigasyon Düzeltmesi:** İkincil kitabın toplam sayfa takibi (`onSecondaryTotalPages`) ve footer seek mantığı (EPUB dahil) düzeltildi.
 - **[2026-02-09] Vibe Coding Altyapısı:** `TODO.md`, `ARCHITECTURE.md`, `KNOWLEDGE.md` ve `.agent/rules.md` yapılandırıldı.
 - **[2026-02-08] Store Refactoring:** Zustand store'lar slice'lara ayrılarak modüler hale getirildi.

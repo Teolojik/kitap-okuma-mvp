@@ -175,6 +175,45 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
         }
     },
 
+    updateProgress: async (id, progress) => {
+        const user = useAuthStore.getState().user;
+        const now = new Date().toISOString();
+        const fullProgress = { ...progress, lastActive: now };
+
+        // 1. Local Update
+        set(state => ({
+            books: state.books.map(b => b.id === id ? { ...b, progress: fullProgress } : b)
+        }));
+
+        // 2. Database Sync
+        if (user) {
+            await supabase.from('books').update({ progress: fullProgress }).eq('id', id);
+        } else {
+            await MockAPI.books.updateProgress(id, fullProgress);
+        }
+    },
+
+    touchLastRead: async (id) => {
+        const user = useAuthStore.getState().user;
+        const now = new Date().toISOString();
+        const book = get().books.find(b => b.id === id);
+        if (!book) return;
+
+        const newProgress = { ...(book.progress || { percentage: 0, page: 1 }), lastActive: now };
+
+        // 1. Local Update
+        set(state => ({
+            books: state.books.map(b => b.id === id ? { ...b, progress: newProgress } : b)
+        }));
+
+        // 2. Database Sync
+        if (user) {
+            await supabase.from('books').update({ progress: newProgress }).eq('id', id);
+        } else {
+            await MockAPI.books.updateProgress(id, newProgress);
+        }
+    },
+
     // Auth-aware overrides for Reader Slice
     addBookmark: async (bookId, location, note) => {
         const user = useAuthStore.getState().user;
@@ -186,12 +225,26 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
             bookmarks: { ...state.bookmarks, [bookId]: [...(state.bookmarks[bookId] || []), newBookmark] }
         }));
     },
-    // ... other sync methods will be added as needed, or kept unified
 }));
 
-// Initialize BookStore from Cache
+// Initialize BookStore from Cache & Handle Migrations
 const savedSettings = localStorage.getItem('reader_settings');
-if (savedSettings) useBookStore.setState(s => ({ settings: { ...s.settings, ...JSON.parse(savedSettings) } }));
+if (savedSettings) {
+    const settings = JSON.parse(savedSettings);
+
+    // MIGRATION: Force 'double-static' if user is stuck in 'split' or other modes
+    // This addresses the user requirement: "herkese kitaba tıkladığında çift yaprak sabit gelmeli"
+    const MIGRATION_KEY = 'reader_v2_migration_done';
+    const isMigrated = localStorage.getItem(MIGRATION_KEY);
+
+    if (!isMigrated || settings.readingMode === 'split') {
+        settings.readingMode = 'double-static';
+        localStorage.setItem('reader_settings', JSON.stringify(settings));
+        localStorage.setItem(MIGRATION_KEY, 'true');
+    }
+
+    useBookStore.setState(s => ({ settings: { ...s.settings, ...settings } }));
+}
 
 const savedStats = localStorage.getItem('reader_stats');
 if (savedStats) useBookStore.setState(s => ({ stats: { ...s.stats, ...JSON.parse(savedStats) } }));
