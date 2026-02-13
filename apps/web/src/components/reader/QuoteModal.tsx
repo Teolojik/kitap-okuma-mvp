@@ -129,11 +129,10 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                 </DialogHeader>
 
                 <div className="px-5 py-4 space-y-4 flex flex-col items-center">
-                    {/* Live Preview — compact */}
+                    {/* Live Preview — with capture wrapper */}
                     <div className="w-full flex justify-center overflow-hidden">
-                        {/* Wrapper for capture to preserve shadows */}
-                        <div ref={cardRef} className="p-8 bg-transparent">
-                            <div className="scale-[0.45] sm:scale-[0.55] md:scale-[0.65] origin-top -mb-20 sm:-mb-16 md:-mb-10 lg:-mb-0 lg:scale-100">
+                        <div ref={cardRef} className="p-6 bg-transparent">
+                            <div className="scale-[0.4] sm:scale-[0.5] md:scale-[0.6] origin-top -mb-24 sm:-mb-20 md:-mb-14 lg:-mb-10">
                                 <QuoteCard
                                     text={selection.text}
                                     author={book.author}
@@ -183,13 +182,13 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                             onClick={handleTwitterShare}
                             disabled={isGenerating || !isAuthenticated}
                             className={`rounded-xl h-8 px-3 gap-1.5 border-white/10 transition-all hover:scale-105 text-xs ${isAuthenticated
-                                ? 'hover:bg-[#1DA1F2] hover:text-white'
+                                ? 'hover:bg-orange-500 hover:text-white'
                                 : 'opacity-50 cursor-not-allowed grayscale'
                                 }`}
                             title={!isAuthenticated ? "Sadece kayıtlı kullanıcılar paylaşabilir" : ""}
                         >
-                            {isAuthenticated ? <Twitter className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                            <span className="font-bold">X'ta Paylaş</span>
+                            {isAuthenticated ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                            <span className="font-bold">Görseli Kopyala & Paylaş</span>
                         </Button>
                     </div>
                 </div>
