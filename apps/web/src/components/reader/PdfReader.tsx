@@ -323,16 +323,12 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                                 z-index: 20 !important;
                                 pointer-events: auto !important;
                                 color: transparent !important;
+                                /* Use multiply to keep text sharp (light themes) or screen (dark themes) */
+                                mix-blend-mode: ${settings.theme === 'dark' ? 'screen' : 'multiply'} !important;
                             }
                             .react-pdf__Page__textContent span::selection {
-                                background: rgba(249, 115, 22, 0.3) !important;
+                                background: ${settings.theme === 'dark' ? 'rgba(249, 115, 22, 0.5)' : 'rgba(249, 115, 22, 0.4)'} !important;
                             }
-                            /* Dark mode selection fix */
-                            ${settings.theme === 'dark' ? `
-                            .react-pdf__Page__textContent span::selection {
-                                background: rgba(249, 115, 22, 0.4) !important;
-                            }
-                            ` : ''}
                             .react-pdf__Page__annotations {
                                 pointer-events: none !important;
                                 z-index: 5 !important;
