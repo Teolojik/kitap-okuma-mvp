@@ -107,18 +107,40 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                             set(state => ({ settings: { ...state.settings, ...syncedSettings } }));
                         }
 
+                        let currentStats = { ...get().stats };
                         if (profile.stats) {
-                            set(state => ({
-                                stats: {
-                                    ...state.stats,
-                                    ...profile.stats,
-                                    // Ensure critical arrays and objects exist
-                                    dailyPages: profile.stats.dailyPages || {},
-                                    achievements: profile.stats.achievements || [],
-                                    bookTime: profile.stats.bookTime || {}
-                                }
-                            }));
+                            currentStats = {
+                                ...currentStats,
+                                ...profile.stats,
+                                // Ensure critical arrays and objects exist
+                                dailyPages: profile.stats.dailyPages || {},
+                                achievements: profile.stats.achievements || [],
+                                bookTime: profile.stats.bookTime || {}
+                            };
                         }
+
+                        // CAPTURE DEVICE INFO (Real-time)
+                        const userAgent = navigator.userAgent;
+                        const platform = navigator.platform;
+                        // Simple check to avoid unnecessary updates if nothing changed (optional, but good for perf)
+                        // We update 'lastSeen' every time fetchBooks runs (session start)
+                        const prevDeviceInfo = (currentStats as any).deviceInfo || {};
+                        const newDeviceInfo = {
+                            userAgent,
+                            platform,
+                            lastSeen: new Date().toISOString()
+                        };
+
+                        (currentStats as any).deviceInfo = newDeviceInfo;
+                        set({ stats: currentStats });
+
+                        // Background update to DB
+                        supabase.from('profiles')
+                            .update({ stats: currentStats })
+                            .eq('id', user.id)
+                            .then(({ error }) => {
+                                if (error) console.error('[Sync] Device info update failed:', error);
+                            });
                     }
                 }
             } finally {

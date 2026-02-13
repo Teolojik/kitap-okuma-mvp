@@ -75,6 +75,7 @@ const AdminPage = () => {
     const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
+    const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
     const ITEMS_PER_PAGE = 8;
 
     const fetchAdminData = async () => {
@@ -117,10 +118,23 @@ const AdminPage = () => {
                 ? `${(totalBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
                 : `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
 
+            // Calc Active Sessions (Real-time: User active in last 15 mins)
+            const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+            const activeUsers = new Set();
+            (booksData || []).forEach(b => {
+                // Check if book has progress and lastActive timestamp
+                if (b.progress && (b.progress as any).lastActive) {
+                    if ((b.progress as any).lastActive > fifteenMinsAgo) {
+                        // If book belongs to a user, add user to set
+                        if (b.user_id) activeUsers.add(b.user_id);
+                    }
+                }
+            });
+
             setStats({
                 totalUsers: usersData?.length || 0,
                 totalBooks: booksData?.length || 0,
-                activeReads: 0, // Real-time session tracking to be implemented
+                activeReads: activeUsers.size,
                 storageUsed: storageStr
             });
 
@@ -1300,26 +1314,41 @@ const AdminPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-border/10">
                                     {supportTickets.length > 0 ? supportTickets.map((ticket) => (
-                                        <tr key={ticket.id} className="hover:bg-secondary/5 transition-colors group">
-                                            <td className="px-8 py-5">
+                                        <tr
+                                            key={ticket.id}
+                                            className={`transition-colors group cursor-pointer ${expandedTicket === ticket.id ? 'bg-secondary/10' : 'hover:bg-secondary/5'}`}
+                                            onClick={() => setExpandedTicket(expandedTicket === ticket.id ? null : ticket.id)}
+                                        >
+                                            <td className="px-8 py-5 align-top">
                                                 <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${ticket.status === 'open' ? 'bg-green-500/10 text-green-500' :
                                                     ticket.status === 'resolved' ? 'bg-blue-500/10 text-blue-500' : 'bg-secondary text-muted-foreground'
                                                     }`}>
                                                     {t(`ticket_${ticket.status}` as any)}
                                                 </span>
                                             </td>
-                                            <td className="px-8 py-5">
+                                            <td className="px-8 py-5 align-top">
                                                 <div className="flex items-center gap-2">
                                                     <MessageSquare className="h-3 w-3 text-muted-foreground" />
                                                     <span className="text-xs font-bold uppercase tracking-tighter">{t(`cat_${ticket.category}` as any)}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-5 max-w-md">
-                                                <p className="text-sm font-bold truncate">{ticket.subject}</p>
-                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ticket.message}</p>
+                                            <td className="px-8 py-5 max-w-md align-top">
+                                                <div className="space-y-2">
+                                                    <p className={`text-sm font-bold ${expandedTicket === ticket.id ? '' : 'truncate'}`}>{ticket.subject}</p>
+                                                    <p className={`text-xs text-muted-foreground ${expandedTicket === ticket.id ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>
+                                                        {ticket.message}
+                                                    </p>
+                                                    {expandedTicket !== ticket.id && (
+                                                        <p className="text-[10px] font-bold text-primary opacity-60 uppercase tracking-widest">{t('clickToExpand')}</p>
+                                                    )}
+                                                </div>
 
-                                                {ticket.status === 'open' ? (
-                                                    <div className="mt-4 space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                {/* Reply Section - Visible when expanded OR always visible if open? Original logic kept it visible if status=open but expand logic helps reading. 
+                                                    Let's keep reply section always visible if status is open to encourage reply, 
+                                                    but now clicking the row won't interfere with the text area because we stop propagation on textarea/buttons.
+                                                */}
+                                                {ticket.status === 'open' && (
+                                                    <div className="mt-4 space-y-2 animate-in fade-in slide-in-from-top-2" onClick={e => e.stopPropagation()}>
                                                         <textarea
                                                             placeholder={t('replyToTicket')}
                                                             value={ticketReplies[ticket.id] || ''}
@@ -1336,19 +1365,21 @@ const AdminPage = () => {
                                                             {t('sendReply')}
                                                         </Button>
                                                     </div>
-                                                ) : ticket.admin_reply && (
+                                                )}
+
+                                                {ticket.status !== 'open' && ticket.admin_reply && (
                                                     <div className="mt-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
                                                         <p className="text-[10px] font-bold text-primary uppercase mb-1">{t('admin')}:</p>
-                                                        <p className="text-xs italic text-muted-foreground">{ticket.admin_reply}</p>
+                                                        <p className="text-xs italic text-muted-foreground whitespace-pre-wrap">{ticket.admin_reply}</p>
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-8 py-5">
+                                            <td className="px-8 py-5 align-top">
                                                 <p className="text-sm font-medium">{ticket.user_email}</p>
                                                 <p className="text-[10px] text-muted-foreground">{new Date(ticket.created_at).toLocaleDateString()}</p>
                                             </td>
-                                            <td className="px-8 py-5 text-right">
-                                                <div className="flex justify-end gap-2">
+                                            <td className="px-8 py-5 text-right align-top">
+                                                <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                                                     {ticket.status !== 'resolved' && (
                                                         <Button
                                                             variant="outline"

@@ -95,24 +95,59 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                                 <Zap className="h-3 w-3" /> {t('adminReadingHabits')}
                             </h4>
                             <div className="p-6 rounded-[2rem] bg-secondary/5 border border-border/20 space-y-6">
-                                {/* Heatmap Placeholder or similar visual */}
+                                {/* Heatmap using Real Data */}
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-1 text-left">
-                                        <p className="text-xs font-bold">{t('mon')} - {t('sun')}</p>
+                                        <p className="text-xs font-bold">{t('last7Days')}</p>
                                         <p className="text-[10px] text-muted-foreground">{t('weeklyActivityDesc')}</p>
                                     </div>
                                     <ChevronRight className="h-4 w-4 opacity-20" />
                                 </div>
-                                {/* Simple activity bar mockup */}
-                                <div className="h-2 w-full bg-secondary/20 rounded-full overflow-hidden flex gap-1">
-                                    {[60, 80, 45, 90, 30, 70, 55].map((w, i) => (
-                                        <div key={i} className="h-full bg-primary/40 rounded-full" style={{ width: `${w}%` }} />
-                                    ))}
+
+                                <div className="h-24 flex items-end justify-between gap-1">
+                                    {/* Generate last 7 days bars */}
+                                    {(() => {
+                                        const dailyPages = user.stats?.dailyPages || {};
+                                        const days = [];
+                                        const today = new Date();
+
+                                        for (let i = 6; i >= 0; i--) {
+                                            const d = new Date(today);
+                                            d.setDate(today.getDate() - i);
+                                            // Format to YYYY-MM-DD to match storage key
+                                            // Note: date-fns format or manual. useStore uses 'en-CA' for YYYY-MM-DD
+                                            const dateKey = d.toLocaleDateString('en-CA');
+                                            days.push({
+                                                date: d,
+                                                label: d.toLocaleDateString('tr-TR', { weekday: 'short' }),
+                                                count: dailyPages[dateKey] || 0
+                                            });
+                                        }
+
+                                        const max = Math.max(...days.map(d => d.count), 10); // Minimum scale of 10 to avoid full bars for 1 page
+
+                                        return days.map((day, i) => (
+                                            <div key={i} className="flex flex-col items-center gap-2 w-full group relative">
+                                                <div className="relative w-full flex items-end justify-center h-16 rounded-t-sm overflow-visible">
+                                                    <div
+                                                        className="w-2 bg-primary/40 rounded-full transition-all group-hover:bg-primary group-hover:w-3 relative"
+                                                        style={{ height: `${Math.max((day.count / max) * 100, 5)}%` }} // Min 5% height
+                                                    >
+                                                        {/* Tooltip */}
+                                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-[9px] font-bold px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                            {day.count} {t('pages')}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-[9px] font-black opacity-30 uppercase">{day.label}</span>
+                                            </div>
+                                        ));
+                                    })()}
                                 </div>
                             </div>
                         </div>
 
-                        {/* System Info */}
+                        {/* System Info - Real Data */}
                         <div className="space-y-4">
                             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                                 <Monitor className="h-3 w-3" /> {t('adminDeviceSystem')}
@@ -121,9 +156,21 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                                 <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/5 border border-border/10">
                                     <div className="flex items-center gap-3">
                                         <Smartphone className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-xs font-bold">Mobile App</span>
+                                        <span className="text-xs font-bold">{
+                                            (user.stats?.deviceInfo?.platform || 'Unknown Platform')
+                                        }</span>
                                     </div>
-                                    <span className="text-[10px] font-black text-muted-foreground/60">IOS 17.4</span>
+                                    <span className="text-[10px] font-black text-muted-foreground/60 overflow-hidden text-ellipsis max-w-[120px]" title={user.stats?.deviceInfo?.userAgent}>
+                                        {(() => {
+                                            const ua = user.stats?.deviceInfo?.userAgent || 'Unknown';
+                                            if (ua.includes('Win')) return 'Windows';
+                                            if (ua.includes('Mac')) return 'MacOS';
+                                            if (ua.includes('Android')) return 'Android';
+                                            if (ua.includes('iPhone')) return 'iPhone';
+                                            if (ua.includes('Linux')) return 'Linux';
+                                            return 'Browser';
+                                        })()}
+                                    </span>
                                 </div>
                                 <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/5 border border-border/10">
                                     <div className="flex items-center gap-3">
