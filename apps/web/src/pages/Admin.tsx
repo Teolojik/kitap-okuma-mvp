@@ -32,6 +32,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
+import ActivityStream from '../components/admin/ActivityStream';
+import UserDetailDrawer from '../components/admin/UserDetailDrawer';
+import StorageChart from '../components/admin/StorageChart';
+import { Badge } from '../components/ui/badge';
 
 const AdminPage = () => {
     const { settings, books } = useBookStore();
@@ -69,6 +73,8 @@ const AdminPage = () => {
     const [userPage, setUserPage] = useState(1);
     const [bookPage, setBookPage] = useState(1);
     const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
     const ITEMS_PER_PAGE = 8;
 
     const fetchAdminData = async () => {
@@ -731,7 +737,10 @@ const AdminPage = () => {
                             <BookOpen className="h-4 w-4" /> {t('adminContentTab')}
                         </TabsTrigger>
                         <TabsTrigger value="activity" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <History className="h-4 w-4" /> {t('adminActivityTab')}
+                            <History className="h-4 w-4" /> {t('adminStreamTab')}
+                        </TabsTrigger>
+                        <TabsTrigger value="storage" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
+                            <Database className="h-4 w-4" /> {t('adminStorageTab')}
                         </TabsTrigger>
                         <TabsTrigger value="announcements" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
                             <Megaphone className="h-4 w-4" /> {t('adminAnnouncementsTab')}
@@ -1079,124 +1088,84 @@ const AdminPage = () => {
                 </TabsContent>
 
                 <TabsContent value="settings" className="space-y-6 outline-none">
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <Card className="rounded-[2.5rem] border-border/50 bg-card/40 backdrop-blur-sm p-8 text-left">
-                            <CardTitle className="text-lg flex items-center gap-2 mb-6">
-                                <SettingsIcon className="h-5 w-5 text-primary" /> {t('systemConfig')}
-                            </CardTitle>
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between p-4 rounded-3xl bg-secondary/10">
-                                    <div className="space-y-1">
-                                        <p className="font-bold text-sm">{t('maintenanceMode')}</p>
-                                        <p className="text-xs text-muted-foreground">{t('maintenanceOnlyAdmin')}</p>
-                                    </div>
-                                    <Switch
-                                        checked={systemSettings.maintenance_mode}
-                                        onCheckedChange={(val) => handleUpdateSystemSetting('maintenance_mode', val)}
-                                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Maintenance Mode */}
+                        <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden p-8 px-10">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="space-y-1 text-left">
+                                    <h3 className="text-xl font-black tracking-tight">{t('maintenanceMode')}</h3>
+                                    <p className="text-muted-foreground font-medium">{t('maintenanceOnlyAdmin')}</p>
                                 </div>
-                                <div className="flex items-center justify-between p-4 rounded-3xl bg-secondary/10">
-                                    <div className="space-y-1">
-                                        <p className="font-bold text-sm">{t('newSignups')}</p>
-                                        <p className="text-xs text-muted-foreground">{t('allowSignupsDesc')}</p>
-                                    </div>
-                                    <Switch
-                                        checked={systemSettings.allow_signups}
-                                        onCheckedChange={(val) => handleUpdateSystemSetting('allow_signups', val)}
-                                    />
-                                </div>
+                                <Switch
+                                    checked={systemSettings.maintenance_mode}
+                                    onCheckedChange={(val) => handleUpdateSystemSetting('maintenance_mode', val)}
+                                />
                             </div>
                         </Card>
 
-                        <Card className="rounded-[2.5rem] border-border/50 bg-card/40 backdrop-blur-sm p-8 flex flex-col items-center justify-center text-center gap-4">
-                            <div className="h-16 w-16 rounded-[2rem] bg-primary/10 flex items-center justify-center">
-                                <Database className="h-8 w-8 text-primary" />
-                            </div>
-                            <div className="text-left w-full">
-                                <h4 className="font-black text-xl tracking-tight">{t('storageCleanup')}</h4>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {t('cleanupDesc')}
-                                </p>
-                            </div>
-
-                            <div className="w-full space-y-3">
-                                {orphanFiles.length > 0 ? (
-                                    <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-left">
-                                        <p className="text-sm font-bold text-orange-500">
-                                            {t('orphansFound', { count: orphanFiles.length })}
-                                        </p>
-                                        <Button
-                                            onClick={handleDeleteOrphans}
-                                            variant="destructive"
-                                            className="w-full mt-3 rounded-xl h-10 text-xs font-black uppercase tracking-widest"
-                                        >
-                                            {t('deleteOrphans')}
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <Button
-                                        onClick={handleScanStorage}
-                                        disabled={isScanningStorage}
-                                        className="w-full rounded-2xl h-12 gap-2 font-black uppercase tracking-widest text-[10px]"
-                                    >
-                                        {isScanningStorage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                        {t('scanStorage')}
-                                    </Button>
-                                )}
+                        {/* Signups */}
+                        <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden p-8 px-10">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="space-y-1 text-left">
+                                    <h3 className="text-xl font-black tracking-tight">{t('newSignups')}</h3>
+                                    <p className="text-muted-foreground font-medium">{t('allowSignupsDesc')}</p>
+                                </div>
+                                <Switch
+                                    checked={systemSettings.allow_signups}
+                                    onCheckedChange={(val) => handleUpdateSystemSetting('allow_signups', val)}
+                                />
                             </div>
                         </Card>
                     </div>
                 </TabsContent>
+
                 <TabsContent value="activity" className="space-y-6 outline-none">
-                    <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden text-left">
-                        <div className="p-8 border-b border-border/40">
-                            <h3 className="text-xl font-black tracking-tight">{t('adminRecentActivity')}</h3>
-                            <p className="text-muted-foreground font-medium">{t('adminActivityHistory')}</p>
+                    <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm p-8 px-10">
+                        <div className="flex items-center justify-between mb-10">
+                            <div className="text-left">
+                                <h3 className="text-2xl font-black tracking-tight">{t('adminStreamTab')}</h3>
+                                <p className="text-muted-foreground font-medium">{t('adminActivityHistory')}</p>
+                            </div>
+                            <Badge variant="outline" className="rounded-xl px-4 py-1 font-black uppercase tracking-widest text-[10px] border-primary/20 text-primary">
+                                {adminLogs.length} EVENTS
+                            </Badge>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-secondary/5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 border-b border-border/10">
-                                    <tr>
-                                        <th className="px-8 py-4">{t('time')}</th>
-                                        <th className="px-8 py-4">{t('admin')}</th>
-                                        <th className="px-8 py-4">{t('action')}</th>
-                                        <th className="px-8 py-4">{t('target')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/10">
-                                    {adminLogs.length > 0 ? adminLogs.map((log) => (
-                                        <tr key={log.id} className="hover:bg-secondary/5 transition-colors group">
-                                            <td className="px-8 py-5 text-xs font-medium text-muted-foreground">
-                                                {new Date(log.created_at).toLocaleString()}
-                                            </td>
-                                            <td className="px-8 py-5 text-sm font-bold">
-                                                {log.admin_email}
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${log.action.includes('BAN') || log.action.includes('DELETE')
-                                                    ? 'bg-red-500/10 text-red-500'
-                                                    : 'bg-blue-500/10 text-blue-500'
-                                                    }`}>
-                                                    {log.action}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-5 text-sm">
-                                                <span className="font-bold">{log.target_name}</span>
-                                                <p className="text-[10px] text-muted-foreground truncate max-w-[150px]">{log.target_id}</p>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan={4} className="px-8 py-10 text-center text-muted-foreground italic">
-                                                {t('adminNoLogs')}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                        <ActivityStream logs={adminLogs} t={t} />
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="storage" className="space-y-6 outline-none">
+                    <StorageChart books={allBooks} users={usersList} t={t} />
+
+                    <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm p-8 px-10">
+                        <div className="flex items-center justify-between">
+                            <div className="text-left">
+                                <h3 className="text-xl font-black tracking-tight">{t('storageCleanup')}</h3>
+                                <p className="text-muted-foreground font-medium">{t('cleanupDesc')}</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <Button
+                                    onClick={handleScanStorage}
+                                    disabled={isScanningStorage}
+                                    className="rounded-2xl h-12 px-6 gap-2 font-black uppercase tracking-widest text-[10px]"
+                                >
+                                    {isScanningStorage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                    {t('scanStorage')}
+                                </Button>
+                                {orphanFiles.length > 0 && (
+                                    <Button
+                                        onClick={handleDeleteOrphans}
+                                        variant="destructive"
+                                        className="rounded-2xl h-12 px-6 gap-2 font-black uppercase tracking-widest text-[10px]"
+                                    >
+                                        <Trash2 className="h-4 w-4" /> {t('deleteOrphans')}
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </Card>
                 </TabsContent>
+
                 <TabsContent value="announcements" className="space-y-6 outline-none">
                     <div className="grid md:grid-cols-3 gap-6">
                         <Card className="rounded-[2.5rem] border-border/50 bg-card/40 backdrop-blur-sm p-8 text-left md:col-span-1">
@@ -1287,6 +1256,7 @@ const AdminPage = () => {
                         </Card>
                     </div>
                 </TabsContent>
+
                 <TabsContent value="support" className="space-y-6 outline-none">
                     <Card className="rounded-[3rem] border-border/50 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden text-left">
                         <div className="p-8 border-b border-border/40 flex items-center justify-between">
@@ -1395,6 +1365,7 @@ const AdminPage = () => {
                         </div>
                     </Card>
                 </TabsContent>
+
                 <TabsContent value="insights" className="space-y-6 outline-none">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Popular Books */}
@@ -1449,7 +1420,16 @@ const AdminPage = () => {
                     </div>
                 </TabsContent>
             </Tabs>
-        </div >
+
+            {/* User Detail Drawer */}
+            <UserDetailDrawer
+                user={selectedUser}
+                isOpen={isUserDrawerOpen}
+                onClose={() => setIsUserDrawerOpen(false)}
+                logs={adminLogs}
+                t={t}
+            />
+        </div>
     );
 };
 
