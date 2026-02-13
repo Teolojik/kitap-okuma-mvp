@@ -51,7 +51,7 @@ const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ selection, onClose,
                     className="rounded-full gap-2 hover:bg-orange-500 hover:text-white transition-all px-3 group"
                 >
                     <Share2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Paylaş</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Alıntı Paylaş</span>
                 </Button>
 
                 <Button
