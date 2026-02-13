@@ -163,3 +163,27 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 ### 24. Storage Cleanup Logic
 **Sorun:** Kitap silindiğinde bazen fiziksel dosyaların (Supabase Storage) kalması ve "orphan" (yetim) dosyaların birikmesi.
 **Çözüm:** Storage'daki tüm dosyaları listeleyen ve veritabanındaki kitap yollarıyla karşılaştıran bir `handleScanStorage` motoru uygulandı. Eşleşmeyen dosyalar toplu silme (bulk delete) ile temizlenir.
+
+### 25. Misafir Kitapları Otomatik Temizlik (Guest Life Cycle)
+**Sorun:** Kayıtlı olmayan (misafir) kullanıcıların yüklediği kitapların, sistemde süresiz kalarak depolama alanını doldurması.
+**Çözüm:** `Admin.tsx` içindeki `fetchAdminData` fonksiyonuna bir temizlik mantığı eklendi. `user_id` değeri olmayan (misafir) ve 7 gündür hiçbir aktivite (`lastActive` veya `created_at`) göstermeyen kitaplar, admin panele her girildiğinde otomatik olarak taranır ve hem veritabanından hem de storage'dan silinir.
+
+### 26. Admin Paneli UI & Tipografi Standartları
+**Öğrenilen:** Yönetim panelindeki sekmeler (Tabs), çok fazla öğe eklendiğinde yatay kaydırmaya (scroll) neden olarak "Sistem" gibi kritik ayarları gizleyebiliyordu.
+**Çözüm:**
+- `TabsList` bileşenine `flex-wrap` ve `gap-1` uyarısı eklenerek sekmelerin alt satıra geçebilmesi sağlandı.
+- Sekme yazı boyutları `text-[9px]` yerine `text-[11px]` olarak güncellenerek okunabilirlik artırıldı.
+- "Misafirler" sekmesi gibi özel sekmelerdeki ayırt edici renkler (primary/red), genel tasarım bütünlüğünü bozmamak için nötrlendi ve sadece `active` state'e bırakıldı.
+
+### 27. Gerçek Zamanlı İstatistik Hassasiyeti (Live Readers)
+**Mantık:** "Aktif Seanslar" terimi kullanıcılar için kafa karıştırıcı olabiliyordu. 
+**Çözüm:** 
+- Terim hem TR hem EN çevirilerinde **"Anlık Okuyanlar" / "Live Readers"** olarak güncellendi.
+- "Anlık" tanımı, son **15 dakika** içinde en az bir sayfa çevirmiş olan kullanıcıları ifade edecek şekilde teknik olarak kısıtlanarak verinin doğruluğu sağlandı.
+
+### 28. İstatistik Grafikleri Görünürlük Sorunu (Empty State & Min Height)
+**Sorun:** `Stats.tsx` sayasındaki haftalık aktivite grafiğinde, kullanıcı az sayfa okuduğunda bar yüksekliklerinin 0'a yakın görünmesi ve grafiğin "boş" algılanması.
+**Çözüm:**
+- Barlar için `Math.max(percentage, 5)` kullanılarak minimum %5 yükseklik garantisi verildi.
+- `bg-primary/10` ile boş günler için soluk bir zemin oluşturuldu.
+- `Recharts` yerine kullanılan `motion.div` bazlı özel bar yapısı, hover durumunda detaylı `tooltip` ve gradyan efektleriyle modernize edildi.

@@ -20,11 +20,13 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
     - **Seçim-Duyarlı Navigasyon**: Metin seçimi algılandığında navigasyon butonları pasifleşerek kullanıcı deneyimi korunur.
     - **Yerel Tarih Önceliği**: Okuma istatistikleri ve aktivite grafikleri için her zaman kullanıcının yerel zaman dilimi (`en-CA` formatı) baz alınır.
     - **Envanter Sıralaması**: Yönetim araçlarında tüm global veriler (kullanıcılar, içerikler) kronolojik olarak en yeniden eskiye doğru sıralanır.
+    - **Minimum Grafik Tasarımı**: İstatistik sayfalarındaki barlar, veri az olsa dahi minimum %5 yükseklik ve interaktif tooltipler ile görselleştirilir.
 20. **Admin Panel Architecture:** Yönetim paneli artık modüler ve analiz tabanlı bir yapıya sahiptir:
     - **ActivityStream:** Tüm sistem loglarını kronolojik bir zaman çizelgesinde sunar.
     - **UserDetailDrawer:** Kullanıcı listesinden erişilen, derinlemesine okuma alışkanlığı ve cihaz analizi sunan yan panel.
     - **StorageChart:** Platformun depolama kaynaklarını Recharts (Pie & Bar) ile görselleştiren analiz modülü.
     - **Storage Cleanup Modülü:** Veritabanı ve fiziksel storage arasındaki senkronizasyonu tarayan temizlik motoru.
+    - **Guest Life Cycle Motoru:** Kayıtlı olmayan kullanıcıların 7 günden eski pasif içeriklerini otomatik temizleyen otonom yapı.
 
 ## 🧠 State Yönetimi (Zustand)
 `apps/web/src/stores/useStore.ts` altında merkezi state yönetilir:

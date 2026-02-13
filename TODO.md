@@ -3,6 +3,8 @@
 Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her başarılı özellik eklemesinden veya hata düzeltmesinden sonra güncellenmelidir.
 
 ## ✅ Tamamlananlar
+- [2026-02-13] **Admin Panel Modernizasyonu & Misafir Life Cycle**: Admin panelindeki sekmeler optimize edildi (`flex-wrap`, `text-[11px]`), "Anlık Okuyanlar" (Live Readers) sayacı aktifleştirildi (15 dk kısıtıyla), 7 günden eski pasif misafir kitapları için otonom temizlik motoru eklendi.
+- [2026-02-13] **İstatistik Görselleştirme Fix**: `Stats.tsx` sayfasındaki haftalık aktivite grafiği, düşük veri durumlarında dahi görünürlük sağlayan minimum yükseklik mantığı ve gelişmiş bar tasarımı (hover tooltip, gradyan) ile güncellendi.
 - **[2026-02-13] Alıntı Kartı & Okuyucu Düzeltmeleri:** QuoteModal kompaktlaştırıldı (reader ile çakışma giderildi), annotation `data` JSON pattern'e geçildi (not kaydetme hatası düzeltildi), AI Özetle butonu kaldırıldı, PDF metin seçim gölgesi (`mix-blend-mode: multiply`) düzeltildi.
 - **[2026-02-13] Güvenlik & Altyapı Denetimi:** Collections `user_id` filtresi, `AdminGuard` route koruması, merkezi `admin.ts` yetkilendirme modülü, 12 Supabase mutasyonuna try-catch + optimistic rollback, `console.error`/`console.warn` production koruması eklendi.
 - **[2026-02-13] Unified Sync & Veri Güvenliği:** Tüm kullanıcı verileri (ayarlar, istatistikler, notlar, vurgular, yer imleri, favoriler, koleksiyonlar) Supabase ile anlık senkronize edildi. Auth Observer ile giriş/çıkış sonrası otomatik veri tazeleme eklendi.
