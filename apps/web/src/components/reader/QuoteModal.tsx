@@ -64,7 +64,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl max-h-[85vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-y-auto rounded-2xl">
+            <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl max-h-[85vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-y-auto rounded-2xl">
                 <DialogHeader className="px-5 pt-4 pb-3 border-b border-white/5">
                     <DialogTitle className="text-lg font-serif">Alıntıyı Paylaş</DialogTitle>
                 </DialogHeader>

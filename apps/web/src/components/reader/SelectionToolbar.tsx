@@ -27,7 +27,7 @@ const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ selection, onClose,
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 p-2 bg-card/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                className="fixed bottom-20 sm:bottom-32 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 p-2 bg-card/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
             >
                 <div className="flex items-center gap-1.5 px-3 border-r border-white/10 shrink-0">
                     {[

@@ -613,22 +613,17 @@ const ReaderPage: React.FC = () => {
                                     <SheetTitle className="text-xl font-bold">{t('settings')}</SheetTitle>
                                 </SheetHeader>
                                 <div className="space-y-6 px-4 pb-20 overflow-y-auto max-h-[60vh]">
-                                    {/* Reading Mode for Mobile */}
+                                    {/* Reading Mode for Mobile — only single page */}
                                     <div className="space-y-3">
                                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('readingMode')}</span>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {[
-                                                { id: 'single', label: t('singlePage') },
-                                                { id: 'double-animated', label: t('doubleAnimated') },
-                                            ].map(mode => (
-                                                <button
-                                                    key={mode.id}
-                                                    onClick={() => setSettings({ readingMode: mode.id as any })}
-                                                    className={`p-3 rounded-xl text-xs font-bold transition-all ${settings.readingMode === mode.id ? 'bg-primary text-white' : 'bg-secondary'}`}
-                                                >
-                                                    {mode.label}
-                                                </button>
-                                            ))}
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => setSettings({ readingMode: 'single' })}
+                                                className={`flex-1 p-3 rounded-xl text-xs font-bold transition-all ${settings.readingMode === 'single' ? 'bg-primary text-white' : 'bg-secondary'}`}
+                                            >
+                                                {t('singlePage')}
+                                            </button>
+                                            <span className="text-[10px] text-muted-foreground italic">Çift sayfa bilgisayarda kullanılabilir</span>
                                         </div>
                                     </div>
 
@@ -1024,6 +1019,9 @@ const ReaderPage: React.FC = () => {
                             <ChevronRight className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity" />
                         </Button>
                     </div>
+                    {/* Mobile tap-to-navigate: invisible touch zones on left/right 15% */}
+                    <div className="absolute inset-y-0 left-0 w-[15%] z-[75] md:hidden cursor-pointer" onClick={prevPage} />
+                    <div className="absolute inset-y-0 right-0 w-[15%] z-[75] md:hidden cursor-pointer" onClick={nextPage} />
                 </>
             )}
 
@@ -1064,7 +1062,7 @@ const ReaderPage: React.FC = () => {
                                 onSecondaryLocationChange={handleSecondaryLocationChange}
                                 activePanel={activePanel}
                                 onPanelActivate={setActivePanel}
-                                 onSecondaryTotalPages={setSecondaryTotalPages}
+                                onSecondaryTotalPages={setSecondaryTotalPages}
 
                                 onLocationChange={handleLocationChange}
                                 onTotalPages={setTotalPages}
@@ -1090,33 +1088,33 @@ const ReaderPage: React.FC = () => {
 
                 {/* Selection & AI Components */}
                 {!isQuoteModalOpen && !isAIOpen && !isNoteDialogOpen && (
-                <SelectionToolbar
-                    selection={selection}
-                    onClose={() => setSelection(null)}
-                    onAction={(action, color) => {
-                        if (action === 'ai') setIsAIOpen(true);
-                        if (action === 'note') setIsNoteDialogOpen(true);
-                        if (action === 'share') setIsQuoteModalOpen(true);
-                        if (action === 'highlight' && selection) {
-                            addAnnotation(book.id, {
-                                id: crypto.randomUUID(),
-                                cfiRange: selection.cfi,
-                                text: selection.text,
-                                color: color || 'rgba(255, 255, 0, 0.4)',
-                                type: 'highlight',
-                                createdAt: new Date().toISOString()
-                            });
-                            setSelection(null);
-                        }
-                    }}
-                />
+                    <SelectionToolbar
+                        selection={selection}
+                        onClose={() => setSelection(null)}
+                        onAction={(action, color) => {
+                            if (action === 'ai') setIsAIOpen(true);
+                            if (action === 'note') setIsNoteDialogOpen(true);
+                            if (action === 'share') setIsQuoteModalOpen(true);
+                            if (action === 'highlight' && selection) {
+                                addAnnotation(book.id, {
+                                    id: crypto.randomUUID(),
+                                    cfiRange: selection.cfi,
+                                    text: selection.text,
+                                    color: color || 'rgba(255, 255, 0, 0.4)',
+                                    type: 'highlight',
+                                    createdAt: new Date().toISOString()
+                                });
+                                setSelection(null);
+                            }
+                        }}
+                    />
                 )}
 
-                
-                <QuoteModal 
-                    isOpen={isQuoteModalOpen} 
-                    onClose={() => setIsQuoteModalOpen(false)} 
-                    selection={selection} 
+
+                <QuoteModal
+                    isOpen={isQuoteModalOpen}
+                    onClose={() => setIsQuoteModalOpen(false)}
+                    selection={selection}
                     book={activePanel === 'primary' ? book : secondaryBook}
                 />
                 <AIAssistant
@@ -1179,7 +1177,7 @@ const ReaderPage: React.FC = () => {
             </main>
 
             {/* Minimalist Bottom Footer - Zen aware */}
-            <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 h-14 px-8 rounded-2xl bg-background/60 backdrop-blur-2xl border border-white/20 shadow-[0_10px_40px_rgba(0,0,0,0.1)] flex items-center justify-between gap-8 z-[90] transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+            <div className={`absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 h-12 sm:h-14 px-4 sm:px-8 rounded-2xl bg-background/60 backdrop-blur-2xl border border-white/20 shadow-[0_10px_40px_rgba(0,0,0,0.1)] flex items-center justify-between gap-4 sm:gap-8 z-[90] max-w-[95vw] transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
                 {/* Internal contents go here */}
                 {settings.readingMode === 'split' && secondaryBook ? (
                     <div className="flex flex-col gap-2 py-2 border-r border-white/10 pr-8">
@@ -1233,7 +1231,7 @@ const ReaderPage: React.FC = () => {
                         <span className="text-[11px] font-bold text-foreground tracking-tight">
                             {t('progressLabel', { percent: Math.round(book?.progress?.percentage || 0) })}
                         </span>
-                        <div className="w-64 h-2 bg-secondary/40 rounded-full cursor-pointer hover:scale-y-125 transition-all group/scroll"
+                        <div className="w-32 sm:w-64 h-3 sm:h-2 bg-secondary/40 rounded-full cursor-pointer hover:scale-y-125 transition-all group/scroll"
                             onClick={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 const x = e.clientX - rect.left;
