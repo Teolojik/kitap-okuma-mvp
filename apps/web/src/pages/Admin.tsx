@@ -74,17 +74,19 @@ const AdminPage = () => {
     const fetchAdminData = async () => {
         setIsLoading(true);
         try {
-            // 1. Fetch Total Books & Storage
+            // 1. Fetch Total Books & Storage (Sorted by latest)
             const { data: booksData, error: bookError } = await supabase
                 .from('books')
-                .select('*');
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (bookError) throw bookError;
 
-            // 2. Fetch Users
+            // 2. Fetch Users (Sorted by latest)
             const { data: usersData, error: usersError } = await supabase
                 .from('profiles')
-                .select('*');
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (usersError) throw usersError;
 
@@ -208,6 +210,17 @@ const AdminPage = () => {
         setInsights({
             popularBooks: popular,
             topReadBooks: topRead
+        });
+    };
+
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '-';
+        return new Date(dateStr).toLocaleDateString(settings.language === 'tr' ? 'tr-TR' : 'en-US', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
         });
     };
 
@@ -842,6 +855,7 @@ const AdminPage = () => {
                                         <th className="px-8 py-4">{t('profile')}</th>
                                         <th className="px-8 py-4">{t('adminStatus')}</th>
                                         <th className="px-8 py-4">{t('adminRole')}</th>
+                                        <th className="px-8 py-4">{t('time')}</th>
                                         <th className="px-8 py-4 text-right">{t('adminActions')}</th>
                                     </tr>
                                 </thead>
@@ -877,6 +891,9 @@ const AdminPage = () => {
                                                     <option value="Premium">{t('adminPremium')}</option>
                                                     <option value="Admin">{t('adminAdmin')}</option>
                                                 </select>
+                                            </td>
+                                            <td className="px-8 py-5 text-[10px] font-bold text-muted-foreground/60">
+                                                {formatDate(u.created_at)}
                                             </td>
                                             <td className="px-8 py-5 text-right">
                                                 <div className="flex justify-end gap-2">
@@ -973,6 +990,7 @@ const AdminPage = () => {
                                         <th className="px-8 py-4">{t('adminAuthor')}</th>
                                         <th className="px-8 py-4">{t('adminUploadedBy')}</th>
                                         <th className="px-8 py-4">{t('adminSize')}</th>
+                                        <th className="px-8 py-4">{t('time')}</th>
                                         <th className="px-8 py-4 text-right">{t('adminActions')}</th>
                                     </tr>
                                 </thead>
@@ -997,6 +1015,9 @@ const AdminPage = () => {
                                                     {usersList.find(u => u.id === b.user_id)?.display_name || b.user_id}
                                                 </td>
                                                 <td className="px-8 py-5 text-xs text-muted-foreground">{(b.file_size / (1024 * 1024)).toFixed(1)} MB</td>
+                                                <td className="px-8 py-5 text-[10px] font-bold text-muted-foreground/60">
+                                                    {formatDate(b.created_at)}
+                                                </td>
                                                 <td className="px-8 py-5 text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button
