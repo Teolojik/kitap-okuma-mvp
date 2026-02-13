@@ -510,12 +510,10 @@ export const translations = {
         pages: "Sayfa",
         userLibrary: "Kullanıcı Kütüphanesi",
         lastSeen: "Son Görülme",
-        online: "Çevrimiçi",
         offline: "Çevrimdışı",
-        completed: "Tamamlandı",
         reading: "Okunuyor",
         notStarted: "Başlanmadı",
-        noBooksFound: "Kitap bulunamadı",
+        userNoBooksFound: "Kitap bulunamadı",
         adminActivityTimelineDesc: "Son kullanıcı aktiviteleri",
     },
     en: {
@@ -1019,25 +1017,26 @@ export const translations = {
         searchCommandPlaceholder: "Search commands...",
         commandNotFound: "Command not found.",
         tryDifferentKeyword: "Try a different keyword.",
-        speedReading: "Speed Reading",
-        newVersionAvailable: "New version available.",
-        refresh: "Refresh",
 
+        last7Days: "Last 7 Days",
+        unknownPlatform: "Unknown Platform",
+        browser: "Browser",
+        memberSince: "Member Since",
         pages: "Pages",
         userLibrary: "User Library",
         lastSeen: "Last Seen",
-        online: "Online",
         offline: "Offline",
-        completed: "Completed",
         reading: "Reading",
         notStarted: "Not Started",
-        noBooksFound: "No books found",
+        userNoBooksFound: "No books found",
+        adminActivityTimelineDesc: "Recent user activities",
     },
 };
 
 export const useTranslation = (language: 'tr' | 'en') => {
     return (key: keyof typeof translations['tr'], params?: Record<string, any>) => {
         const lang = translations[language] || translations['tr'];
+        // @ts-ignore - Dynamic key access with fallback
         let text = lang[key] || key;
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
