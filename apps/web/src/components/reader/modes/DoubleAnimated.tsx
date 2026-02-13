@@ -39,13 +39,13 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const epubOptions = {
+    const epubOptions = React.useMemo(() => ({
         flow: isMobile ? 'scrolled-doc' : 'paginated',
         manager: isMobile ? 'continuous' : 'default',
         spread: isMobile ? 'none' : 'always',
         width: '100%',
         height: '100%',
-    };
+    }), [isMobile]);
 
     const handleNext = () => {
         if (innerReaderRef.current?.next) {
@@ -65,7 +65,11 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
 
     React.useImperativeHandle(ref, () => ({
         next: handleNext,
-        prev: handlePrev
+        prev: handlePrev,
+        goTo: (loc: string) => innerReaderRef.current?.goTo?.(loc),
+        goToPercentage: (pct: number) => innerReaderRef.current?.goToPercentage?.(pct),
+        getCurrentText: () => innerReaderRef.current?.getCurrentText?.() || Promise.resolve(''),
+        search: (query: string, isRegex?: boolean) => innerReaderRef.current?.search?.(query, isRegex) || Promise.resolve([])
     }));
 
     if (book.format === 'pdf') {

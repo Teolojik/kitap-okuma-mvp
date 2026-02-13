@@ -33,10 +33,25 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
     const [error, setError] = useState<string | null>(null);
 
     useImperativeHandle(ref, () => ({
-        prev: () => renditionRef.current?.prev(),
-        next: () => renditionRef.current?.next(),
+        prev: () => {
+            if (renditionRef.current) {
+                console.log('EPUB Navigation: prev() called');
+                return renditionRef.current.prev();
+            } else {
+                console.warn('EPUB Navigation: prev() called but rendition not ready');
+            }
+        },
+        next: () => {
+            if (renditionRef.current) {
+                console.log('EPUB Navigation: next() called');
+                return renditionRef.current.next();
+            } else {
+                console.warn('EPUB Navigation: next() called but rendition not ready');
+            }
+        },
         goTo: (location: string) => {
             if (renditionRef.current) {
+                console.log('EPUB Navigation: goTo() called', location);
                 renditionRef.current.display(location);
             }
         },

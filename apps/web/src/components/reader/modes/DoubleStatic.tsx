@@ -29,6 +29,7 @@ import { getFileType } from '@/lib/file-utils';
 const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
     book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
 }, ref) => {
+    const innerReaderRef = React.useRef<any>(null);
     const [isMobile, setIsMobile] = React.useState(window.innerWidth < 1024);
 
     React.useEffect(() => {
@@ -37,19 +38,28 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const epubOptions = {
+    const epubOptions = React.useMemo(() => ({
         flow: isMobile ? 'scrolled-doc' : 'paginated',
         manager: isMobile ? 'continuous' : 'default',
         spread: isMobile ? 'none' : 'always',
         width: '100%',
         height: '100%',
-    };
+    }), [isMobile]);
+
+    React.useImperativeHandle(ref, () => ({
+        next: () => innerReaderRef.current?.next?.(),
+        prev: () => innerReaderRef.current?.prev?.(),
+        goTo: (loc: string) => innerReaderRef.current?.goTo?.(loc),
+        goToPercentage: (pct: number) => innerReaderRef.current?.goToPercentage?.(pct),
+        getCurrentText: () => innerReaderRef.current?.getCurrentText?.() || Promise.resolve(''),
+        search: (query: string, isRegex?: boolean) => innerReaderRef.current?.search?.(query, isRegex) || Promise.resolve([])
+    }));
 
     if (book.format === 'pdf') {
         return (
             <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">PDF Motoru Hazırlanıyor...</div>}>
                 <PdfReader
-                    ref={ref}
+                    ref={innerReaderRef}
                     url={data}
                     pageNumber={pageNumber}
                     onLocationChange={onLocationChange}
@@ -66,7 +76,7 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
         <div className="h-full w-full relative overflow-hidden">
             <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-xs font-bold animate-pulse">EPUB Motoru Hazırlanıyor...</div>}>
                 <EpubReader
-                    ref={ref}
+                    ref={innerReaderRef}
                     url={data}
                     initialLocation={book.progress?.location as string}
                     onLocationChange={onLocationChange}
@@ -77,8 +87,8 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
                 />
             </Suspense>
             {/* Simple Navigation Overlay */}
-            <div className="absolute inset-y-0 left-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => (ref as any).current?.prev()} title="Önceki" />
-            <div className="absolute inset-y-0 right-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => (ref as any).current?.next()} title="Sonraki" />
+            <div className="absolute inset-y-0 left-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => innerReaderRef.current?.prev()} title="Önceki" />
+            <div className="absolute inset-y-0 right-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => innerReaderRef.current?.next()} title="Sonraki" />
         </div>
     );
 });
