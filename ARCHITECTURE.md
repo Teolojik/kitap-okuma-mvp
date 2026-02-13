@@ -27,6 +27,7 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
     - **StorageChart:** Platformun depolama kaynaklarını Recharts (Pie & Bar) ile görselleştiren analiz modülü.
     - **Storage Cleanup Modülü:** Veritabanı ve fiziksel storage arasındaki senkronizasyonu tarayan temizlik motoru.
     - **Guest Life Cycle Motoru:** Kayıtlı olmayan kullanıcıların 7 günden eski pasif içeriklerini otomatik temizleyen otonom yapı.
+    - **Social Share API (Vercel):** Dinamik Open Graph meta taglerini sunan, X/Twitter crawler dostu serverless katmanı.
 
 ## 🧠 State Yönetimi (Zustand)
 `apps/web/src/stores/useStore.ts` altında merkezi state yönetilir:
@@ -37,7 +38,7 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
 
 ## ☁️ Veri Katmanı
 - **Supabase:** Authentication, PostgreSQL veritabanı (books, profiles, bookmarks, annotations, collections tabloları).
-- **Storage:** Kitap dosyaları (.pdf, .epub) ve kapak görselleri (covers bucket).
+- **Storage:** Kitap dosyaları (.pdf, .epub), kapak görselleri (covers bucket) ve paylaşılan alıntı kartları (shares bucket - authenticated upload only).
 - **MockAPI:** Anonim (misafir) kullanıcılar için localStorage tabanlı fallback.
 - **Hata Yönetimi:** Tüm Supabase mutasyonlarında optimistic rollback pattern — hata durumunda yerel state geri alınır, kullanıcıya Türkçe toast gösterilir.
 
