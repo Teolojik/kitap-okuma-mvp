@@ -62,3 +62,21 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - `setSettings` override'ında: `readingMode === 'split'` ise, `localStorage`'a ve Supabase'e `double-static` olarak kaydediliyor. Bellekteki (in-memory) state ise aktif oturumda `split` kalıyor.
 - `fetchBooks` profil sync'inde: Supabase'den `readingMode: 'split'` gelirse otomatik olarak `double-static` ile değiştiriliyor.
 - **Kural:** Kalıcılık katmanlarına (localStorage, Supabase) asla `split` yazılmamalıdır.
+
+### 9. Güvenlik & Hata Yönetimi — Optimistic Rollback Pattern
+**Sorun:** Supabase mutasyonlarında (insert/update/delete) try-catch yoktu. Ağ kesildiğinde yerel state güncelleniyor ama veritabanına yazılamıyordu — kullanıcı sayfayı yenilediğinde veri kayboluyordu.
+**Çözüm — Optimistic Rollback:**
+1. Yerel state **önce** güncellenir (hızlı UI tepkisi).
+2. Supabase sorgusunun sonucu beklenir.
+3. Hata durumunda: yerel state **otomatik olarak geri alınır** (rollback) ve Türkçe `toast.error` gösterilir.
+- **Dikkat:** `updateProgress` ve `touchLastRead` gibi sık çağrılan metodlarda rollback yapılmaz (spam riski). Sadece `console.error` ile loglanır.
+- `toggleFavorite`, `addBookmark`, `addAnnotation`, `addCollection`, `removeCollection`, `updateCollection`, `assignToCollection` ve `updateBookTags` metodlarında tam rollback uygulandı.
+
+### 10. Admin Güvenliği — Merkezi Yetkilendirme
+**Sorun:** Admin paneli sadece frontend'te korunuyordu (`Layout.tsx`'te hardcoded e-posta kontrolü). Herhangi bir kullanıcı `/admin` URL'sine giderek erişebiliyordu.
+**Çözüm:**
+- `admin.ts` modülü oluşturularak admin e-postaları ve `isAdmin()` fonksiyonu merkezileştirildi.
+- `AdminGuard.tsx` route guard bileşeni eklendi — yetkisiz kullanıcılar ana sayfaya yönlendirilir.
+- `Layout.tsx` hardcoded e-postalar kaldırılıp merkezi `isAdmin()` kullanıldı.
+- **Kural:** Admin kontrolü her zaman hem frontend (UI gizleme) hem de route seviyesinde (guard) yapılmalıdır. Üretim ortamında Supabase RLS kuralları da eklenmelidir.
+

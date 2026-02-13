@@ -28,3 +28,10 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
 - **Supabase:** Authentication, PostgreSQL veritabanı (books, profiles, bookmarks, annotations, collections tabloları).
 - **Storage:** Kitap dosyaları (.pdf, .epub) ve kapak görselleri (covers bucket).
 - **MockAPI:** Anonim (misafir) kullanıcılar için localStorage tabanlı fallback.
+- **Hata Yönetimi:** Tüm Supabase mutasyonlarında optimistic rollback pattern — hata durumunda yerel state geri alınır, kullanıcıya Türkçe toast gösterilir.
+
+## 🔒 Güvenlik
+- **Admin Guard:** `AdminGuard.tsx` ile `/admin` route'u korunur. Merkezi `admin.ts` modülü üzerinden yetkilendirme yapılır.
+- **Veri İzolasyonu:** Collections ve bookmarks sorguları `user_id` filtresiyle korunur.
+- **Production Logging:** Sadece `console.log` kaldırılır; `console.error`/`console.warn` hata izleme için korunur.
+
