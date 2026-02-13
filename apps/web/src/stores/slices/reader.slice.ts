@@ -19,6 +19,7 @@ export interface ReaderSlice {
         language: 'tr' | 'en';
         paddingTop: number;
         paddingBottom: number;
+        weeklyGoal: number; // Defaults to 5
     };
     setSettings: (settings: Partial<ReaderSlice['settings']>) => void;
     secondaryBookId: string | null;
@@ -70,6 +71,7 @@ export const createReaderSlice: StateCreator<ReaderSlice> = (set, get) => ({
         language: 'tr',
         paddingTop: 20,
         paddingBottom: 20,
+        weeklyGoal: 5,
     },
     setSettings: (newSettings) => {
         set(state => {

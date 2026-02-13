@@ -90,16 +90,47 @@ const ProfilePage = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Badge / Achievement Sample */}
-                    <Card className="rounded-[2.5rem] border-border/50 bg-primary/5 shadow-none p-6 text-center space-y-4">
-                        <div className="mx-auto h-20 w-20 rounded-full bg-background flex items-center justify-center shadow-xl ring-4 ring-primary/20">
-                            <Award className="h-10 w-10 text-primary" />
+                    {/* Badges / Achievements */}
+                    <div className="space-y-4">
+                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground px-2">{t('achievements')}</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            {(() => {
+                                const BADGES: any = {
+                                    'kitap-kurdu': { icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-500/10', titleKey: 'achievementKitapKurduTitle', descKey: 'achievementKitapKurduDesc' },
+                                    'usta-okur': { icon: Award, color: 'text-purple-500', bg: 'bg-purple-500/10', titleKey: 'achievementUstaOkurTitle', descKey: 'achievementUstaOkurDesc' },
+                                    'gece-kusu': { icon: Heart, color: 'text-indigo-500', bg: 'bg-indigo-500/10', titleKey: 'achievementGeceKusuTitle', descKey: 'achievementGeceKusuDesc' },
+                                    'seri-okuyucu': { icon: Award, color: 'text-orange-500', bg: 'bg-orange-500/10', titleKey: 'achievementSeriOkuyucuTitle', descKey: 'achievementSeriOkuyucuDesc' },
+                                };
+
+                                const userBadges = stats.achievements || [];
+
+                                if (userBadges.length === 0) {
+                                    return (
+                                        <Card className="col-span-2 rounded-[2rem] border-dashed border-border/50 bg-secondary/20 p-6 text-center">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('locked')}</p>
+                                            <p className="text-[9px] text-muted-foreground/50 mt-1">{t('achievementsDesc')}</p>
+                                        </Card>
+                                    );
+                                }
+
+                                return userBadges.map((badge) => {
+                                    const meta = BADGES[badge.id] || { icon: Award, color: 'text-primary', bg: 'bg-primary/10', titleKey: 'unknown', descKey: 'unknown' };
+                                    const Icon = meta.icon;
+                                    return (
+                                        <Card key={badge.id} className={`rounded-[2rem] border-border/50 ${meta.bg} shadow-none p-4 flex flex-col items-center text-center gap-3`}>
+                                            <div className={`h-10 w-10 rounded-full bg-background flex items-center justify-center shadow-sm ${meta.color}`}>
+                                                <Icon className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-[10px] uppercase tracking-widest text-foreground/80">{t(meta.titleKey)}</p>
+                                                <p className="text-[9px] text-muted-foreground/70 font-medium leading-tight mt-1">{t(meta.descKey)}</p>
+                                            </div>
+                                        </Card>
+                                    );
+                                });
+                            })()}
                         </div>
-                        <div className="space-y-1">
-                            <p className="font-black text-xs uppercase tracking-widest">{t('profileBadgeTitle')}</p>
-                            <p className="text-[10px] text-muted-foreground font-medium">{t('profileBadgeDesc')}</p>
-                        </div>
-                    </Card>
+                    </div>
                 </div>
 
                 {/* Heatmap and Favorites Column */}

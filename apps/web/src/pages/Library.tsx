@@ -36,7 +36,7 @@ transparentPixel.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAA
 import { useTranslation } from '@/lib/translations';
 
 export default function LibraryPage() {
-    const { books, settings, collections, fetchBooks, uploadBook, deleteBook, toggleFavorite, addCollection, removeCollection, assignToCollection, loading } = useBookStore();
+    const { books, settings, collections, fetchBooks, uploadBook, deleteBook, toggleFavorite, addCollection, removeCollection, assignToCollection, setSettings, loading } = useBookStore();
     const t = useTranslation(settings.language);
     const { user } = useAuthStore();
     const navigate = useNavigate();
@@ -170,14 +170,11 @@ export default function LibraryPage() {
     ];
 
     useEffect(() => {
-        // Pick individual random quote on mount
-        setCurrentQuoteIndex(Math.floor(Math.random() * QUOTES.length));
-
-        // Change periodically
-        const interval = setInterval(() => {
-            setCurrentQuoteIndex(prev => (prev + 1) % QUOTES.length);
-        }, 20000);
-        return () => clearInterval(interval);
+        // Deterministic Quote of the Day based on date
+        const today = new Date();
+        const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+        const quoteIndex = seed % QUOTES.length;
+        setCurrentQuoteIndex(quoteIndex);
     }, []);
 
     const draggedBookMeta = draggedBookId ? books.find(b => b.id === draggedBookId) : null;
@@ -612,18 +609,32 @@ export default function LibraryPage() {
                 </div >
 
                 {/* Reading Stats Mini */}
-                < div className="bg-primary/5 rounded-[2.5rem] p-6 border border-primary/10 relative overflow-hidden" >
+                <div
+                    className="bg-primary/5 rounded-[2.5rem] p-6 border border-primary/10 relative overflow-hidden group cursor-pointer hover:bg-primary/10 transition-colors"
+                    onClick={() => {
+                        const newGoal = prompt(t('enterWeeklyGoal'), settings.weeklyGoal?.toString() || '5');
+                        if (newGoal && !isNaN(parseInt(newGoal))) {
+                            setSettings({ weeklyGoal: parseInt(newGoal) });
+                            toast.success(t('goalUpdated'));
+                        }
+                    }}
+                >
                     <div className="absolute top-0 right-0 p-8 opacity-5">
                         <Star className="w-32 h-32" />
+                    </div>
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="bg-primary/20 p-1.5 rounded-full">
+                            <Plus className="w-3 h-3 text-primary" />
+                        </div>
                     </div>
                     <h3 className="text-lg font-serif font-bold text-primary mb-1">{t('weeklyGoal')}</h3>
                     <p className="text-xs text-muted-foreground mb-4">{t('maintainingStreak')}</p>
                     <div className="flex items-end gap-2 mb-2">
                         <span className="text-4xl font-bold tabular-nums text-foreground/90">{books.length}</span>
-                        <span className="text-sm font-medium text-muted-foreground mb-1.5">{t('booksGoal')}</span>
+                        <span className="text-sm font-medium text-muted-foreground mb-1.5">/ {settings.weeklyGoal || 5} {t('booksGoal')}</span>
                     </div>
-                    <Progress value={(books.length / 5) * 100} className="h-2 bg-primary/10" />
-                </div >
+                    <Progress value={(books.length / (settings.weeklyGoal || 5)) * 100} className="h-2 bg-primary/10" />
+                </div>
             </div >
         </div >
     );
