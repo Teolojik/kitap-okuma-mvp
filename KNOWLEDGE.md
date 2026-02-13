@@ -121,3 +121,17 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - `indexedDB.open(DB_NAME, version)` çağrısındaki `version` numarası her şema değişiminde artırılmalıdır (örn: v2 → v3).
 - Bu artış, tarayıcıyı `onupgradeneeded` bloğunu çalıştırmaya zorlar ve eksik store'lar güvenle oluşturulur.
 - **Kural:** Şemaya yeni bir store veya index eklendiğinde DB versiyonu mutlaka bir üst tam sayıya yükseltilmelidir.
+### 17. Metin Seçimi Stabilizasyonu — Web "Refresh" Bug Çözümü
+**Sorun:** Masaüstünde (web) metin seçmek için fareyi sürüklemek, `useSwipeable`'ın `trackMouse: true` ayarı nedeniyle "sayfa çevirme" olarak algılanıyor, bu da sayfanın aniden değişmesine (yenilenme hissi) neden oluyordu.
+**Çözüm:**
+- `useSwipeable` ayarlarında `trackMouse` masaüstü için kapatıldı.
+- Navigasyon alanlarına (`DoubleStatic`, `DoubleAnimated`, `SplitScreenReader`) `window.getSelection().toString()` kontrolü eklendi. Metin seçiliyken navigasyon tetiklenmesi engellendi.
+- **Kural:** Okuyucu üzerindeki şeffaf navigasyon katmanları her zaman metin seçim durumundan haberdar olmalı ve seçimi bozmamalıdır.
+
+### 18. Callback Referential Loops — useCallback & useRef Kararlılığı
+**Sorun:** `onTextSelected` gibi parent'tan gelen callback'lerin her render'da değişmesi, alt bileşenlerde (örn: `PdfReader`) `useEffect` ve event listener'ların sürekli silinip yeniden kurulmasına, dolayısıyla performans kaybına ve state kilitlenmelerine neden oluyordu.
+**Çözüm:** 
+- Parent (`ReaderPage`) seviyesindeki callback'ler `useCallback` ile sarmalandı.
+- Alt bileşenlerde (`PdfReader`, `EpubReader`) bu callback'ler bir **Ref** (`useRef`) içinde tutularak event listener'lar içinde kullanıldı.
+- Bu sayede listener asla silinmeden her zaman callback'in en güncel haline erişebilir hale geldi.
+- **Kural:** Sık tetiklenen window/document event listener'ları içinde dışarıdan gelen callback'ler her zaman `useRef` üzerinden tüketilmelidir.
