@@ -9,13 +9,14 @@ import {
     Copy,
     X,
     MessageSquare,
-    StickyNote
+    StickyNote,
+    Share2
 } from 'lucide-react';
 
 interface SelectionToolbarProps {
     selection: { text: string; cfi: string } | null;
     onClose: () => void;
-    onAction: (action: 'ai' | 'highlight' | 'note', color?: string) => void;
+    onAction: (action: 'ai' | 'highlight' | 'note' | 'share', color?: string) => void;
 }
 
 const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ selection, onClose, onAction }) => {
@@ -45,6 +46,16 @@ const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ selection, onClose,
                         />
                     ))}
                 </div>
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onAction('share')}
+                    className="rounded-full gap-2 hover:bg-orange-500 hover:text-white transition-all px-3 group"
+                >
+                    <Share2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Paylaş</span>
+                </Button>
 
                 <Button
                     variant="ghost"

@@ -18,6 +18,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cleanTitle, cleanAuthor } from '@/lib/metadata-utils';
 import { useSwipeable } from 'react-swipeable';
 import SelectionToolbar from '@/components/reader/SelectionToolbar';
+import QuoteModal from '@/components/reader/QuoteModal';
+
 import AIAssistant from '@/components/reader/AIAssistant';
 import NotesSidebar from '@/components/reader/NotesSidebar';
 import { useTranslation } from '@/lib/translations';
@@ -204,6 +206,7 @@ const ReaderPage: React.FC = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isBookSelectOpen, setIsBookSelectOpen] = useState(false);
     const [isAIOpen, setIsAIOpen] = useState(false);
+    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
     const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
     const [isUIVisible, setIsUIVisible] = useState(true);
@@ -1092,6 +1095,7 @@ const ReaderPage: React.FC = () => {
                     onAction={(action, color) => {
                         if (action === 'ai') setIsAIOpen(true);
                         if (action === 'note') setIsNoteDialogOpen(true);
+                        if (action === 'share') setIsQuoteModalOpen(true);
                         if (action === 'highlight' && selection) {
                             addAnnotation(book.id, {
                                 id: crypto.randomUUID(),
@@ -1106,6 +1110,13 @@ const ReaderPage: React.FC = () => {
                     }}
                 />
 
+                
+                <QuoteModal 
+                    isOpen={isQuoteModalOpen} 
+                    onClose={() => setIsQuoteModalOpen(false)} 
+                    selection={selection} 
+                    book={activePanel === 'primary' ? book : secondaryBook}
+                />
                 <AIAssistant
                     isOpen={isAIOpen}
                     onClose={() => setIsAIOpen(false)}
