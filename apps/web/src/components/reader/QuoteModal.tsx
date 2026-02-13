@@ -17,6 +17,7 @@ interface QuoteModalProps {
 
 const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, book }) => {
     const cardRef = useRef<HTMLDivElement>(null);
+    const socialRef = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<'warm' | 'dark' | 'glass' | 'nature'>('warm');
     const [isGenerating, setIsGenerating] = useState(false);
     const { user } = useAuthStore();
@@ -60,13 +61,13 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
     };
 
     const handleTwitterShare = async () => {
-        if (!cardRef.current) return;
+        if (!socialRef.current) return;
         setIsGenerating(true);
         try {
-            // 1. Generate PNG Blob
-            const dataUrl = await toPng(cardRef.current, {
-                pixelRatio: 2,
-                backgroundColor: 'transparent',
+            // 1. Generate PNG for Social (1200x630 Canvas)
+            const dataUrl = await toPng(socialRef.current, {
+                pixelRatio: 1.5, // 1800px width which is plenty
+                backgroundColor: theme === 'dark' ? '#002b36' : (theme === 'warm' ? '#fdf6e3' : (theme === 'nature' ? '#f0f4f0' : '#1e293b')),
             });
 
             // Convert dataUrl to Blob
@@ -90,15 +91,15 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
             // 4. Construct Share API URL (Points to our Vercel function)
             const shareApiUrl = `https://epigraphreader.com/api/share?img=${encodeURIComponent(publicUrl)}&title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author)}`;
 
-            // 5. Open Twitter Intent with the share link
-            const shareText = `"${selection.text.substring(0, 100)}..."\n\n${book.title} - ${book.author}`;
+            // 5. Open Twitter Intent with simplified text (Card does the talking)
+            const shareText = `"${selection.text.substring(0, 100)}..."`;
             const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareApiUrl)}`;
 
             window.open(twitterUrl, '_blank');
-            toast.success("X (Twitter) için görsel hazırlandı ve yönlendiriliyorsunuz.");
+            toast.success("Görsel X (Twitter) için optimize edildi ve paylaşılıyor!");
         } catch (err) {
             console.error('Native Share Error:', err);
-            toast.error("Paylaşım hazırlanırken bir hata oluştu. Lütfen 'shares' bucket'ının açık olduğundan emin olun.");
+            toast.error("Paylaşım hazırlanırken bir hata oluştu.");
         } finally {
             setIsGenerating(false);
         }
@@ -113,6 +114,33 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                 </DialogHeader>
 
                 <div className="px-5 py-4 space-y-4 flex flex-col items-center">
+                    {/* Hidden Capture Area for Social Media (1200x630 - 1.91:1 Ratio) */}
+                    <div className="absolute left-[-9999px] top-0 pointer-events-none overflow-hidden">
+                        <div
+                            id="social-share-capture"
+                            ref={socialRef}
+                            style={{
+                                width: '1200px',
+                                height: '630px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: theme === 'dark' ? '#002b36' : (theme === 'warm' ? '#fdf6e3' : (theme === 'nature' ? '#f0f4f0' : '#1e293b')),
+                                padding: '40px'
+                            }}
+                        >
+                            <div className="scale-[1.2] origin-center">
+                                <QuoteCard
+                                    text={selection.text}
+                                    author={book.author}
+                                    title={book.title}
+                                    coverUrl={book.cover_url}
+                                    theme={theme}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Live Preview — compact */}
                     <div className="w-full flex justify-center overflow-hidden">
                         <div className="scale-[0.45] sm:scale-[0.55] md:scale-[0.65] origin-top -mb-20 sm:-mb-16 md:-mb-10">
@@ -164,8 +192,8 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                                 onClick={handleTwitterShare}
                                 disabled={isGenerating || !isAuthenticated}
                                 className={`rounded-xl h-8 px-3 gap-1.5 border-white/10 transition-all hover:scale-105 text-xs ${isAuthenticated
-                                        ? 'hover:bg-[#1DA1F2] hover:text-white'
-                                        : 'opacity-50 cursor-not-allowed grayscale'
+                                    ? 'hover:bg-[#1DA1F2] hover:text-white'
+                                    : 'opacity-50 cursor-not-allowed grayscale'
                                     }`}
                                 title={!isAuthenticated ? "Sadece kayıtlı kullanıcılar paylaşabilir" : ""}
                             >
