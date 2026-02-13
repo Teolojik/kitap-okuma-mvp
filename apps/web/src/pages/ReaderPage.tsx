@@ -585,7 +585,7 @@ const ReaderPage: React.FC = () => {
     );
 
     return (
-        <div {...swipeHandlers} className={`flex flex-col w-full h-full font-serif selection:bg-primary/20 selection:text-primary overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-background text-foreground relative group/ui overscroll-none`}>
+        <div {...swipeHandlers} className={`flex flex-col w-full h-full font-serif  overflow-hidden transition-colors duration-700 theme-${settings.theme} bg-background text-foreground relative group/ui overscroll-none`}>
 
             {/* Premium Header - Zen Mode Controlled */}
             <div className={`absolute top-0 left-0 right-0 z-[90] flex justify-center pt-3 sm:pt-6 pointer-events-none transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
@@ -1089,6 +1089,7 @@ const ReaderPage: React.FC = () => {
                 </AnimatePresence>
 
                 {/* Selection & AI Components */}
+                {!isQuoteModalOpen && !isAIOpen && !isNoteDialogOpen && (
                 <SelectionToolbar
                     selection={selection}
                     onClose={() => setSelection(null)}
@@ -1109,6 +1110,7 @@ const ReaderPage: React.FC = () => {
                         }
                     }}
                 />
+                )}
 
                 
                 <QuoteModal 
