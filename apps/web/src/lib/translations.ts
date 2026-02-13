@@ -463,6 +463,7 @@ export const translations = {
         adminReadingHabits: "Okuma Alışkanlıkları",
         adminDeviceSystem: "Cihaz ve Sistem",
         adminActivityTimeline: "Aktivite Zaman Çizelgesi",
+        clickToExpand: "Genişletmek için tıkla",
         storageUsage: "Depolama Kullanımı",
         adminReadingGoalReach: "Okuma Hedefine Ulaşma",
         // Search Modal & Commands
@@ -965,6 +966,7 @@ export const translations = {
         adminReadingHabits: "Reading Habits",
         adminDeviceSystem: "Device & System",
         adminActivityTimeline: "Activity Timeline",
+        clickToExpand: "Click to expand",
         storageUsage: "Storage Usage",
         adminReadingGoalReach: "Goal Reach Rate",
         // Search Modal & Commands
