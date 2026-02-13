@@ -1,6 +1,6 @@
 
 import React, { useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Twitter, Palette, Loader2, Share2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -67,6 +67,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
             <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl max-h-[85vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-y-auto rounded-2xl">
                 <DialogHeader className="px-5 pt-4 pb-3 border-b border-white/5">
                     <DialogTitle className="text-lg font-serif">Alıntıyı Paylaş</DialogTitle>
+                    <DialogDescription className="sr-only">Seçili alıntıyı kart olarak paylaş</DialogDescription>
                 </DialogHeader>
 
                 <div className="px-5 py-4 space-y-4 flex flex-col items-center">

@@ -104,8 +104,12 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
     // Debug logging removed for stability
 
 
+    // Force single mode on mobile — double/split modes don't work well on small screens
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    const effectiveMode = isMobile && settings.readingMode !== 'single' ? 'single' : settings.readingMode;
+
     try {
-        switch (settings.readingMode) {
+        switch (effectiveMode) {
             case 'single':
                 return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
 

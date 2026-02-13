@@ -598,6 +598,13 @@ const ReaderPage: React.FC = () => {
                         <h1 className="font-sans font-bold text-sm truncate">{cleanTitle(book?.title || '')}</h1>
                     </div>
                     <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.1)); }} className="rounded-full h-8 w-8 text-primary">
+                            <ZoomOut className="h-3.5 w-3.5" />
+                        </Button>
+                        <span className="text-[9px] font-bold w-8 text-center tabular-nums">{Math.round(scale * 100)}%</span>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(3, s + 0.1)); }} className="rounded-full h-8 w-8 text-primary">
+                            <ZoomIn className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)} className="rounded-full h-9 w-9 text-primary">
                             <Search className="h-4 w-4" />
                         </Button>

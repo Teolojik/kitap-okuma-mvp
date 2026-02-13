@@ -114,7 +114,8 @@ const SearchModal = ({ isOpen, onClose }: SearchModalProps) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+            <DialogContent className="max-w-2xl p-0 overflow-hidden border-none bg-transparent shadow-none" aria-describedby={undefined}>
+                <span className="sr-only">Kitap ve komut arama</span>
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}

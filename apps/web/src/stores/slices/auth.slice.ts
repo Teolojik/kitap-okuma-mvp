@@ -59,7 +59,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
 
         // Clear IndexedDB
         try {
-            const dbRequest = indexedDB.open('EpigrafDB', 2);
+            const dbRequest = indexedDB.open('EpigrafDB', 3);
             dbRequest.onsuccess = () => {
                 const db = dbRequest.result;
                 if (db.objectStoreNames.contains('books_files')) {
