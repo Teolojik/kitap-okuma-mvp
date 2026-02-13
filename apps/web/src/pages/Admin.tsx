@@ -148,7 +148,46 @@ const AdminPage = () => {
                 }));
                 setUsersList(enrichedUsers);
             }
-            if (booksData) setAllBooks(booksData);
+            if (booksData) {
+                setAllBooks(booksData);
+
+                // Auto-cleanup inactive guest books (7 days limit)
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                const inactiveGuestBooks = booksData.filter(b =>
+                    !b.user_id &&
+                    (b.progress?.lastActive || b.created_at) < sevenDaysAgo
+                );
+
+                if (inactiveGuestBooks.length > 0) {
+                    console.log(`[ACL] Cleaning up ${inactiveGuestBooks.length} inactive guest books...`);
+                    let deletedCount = 0;
+
+                    for (const book of inactiveGuestBooks) {
+                        try {
+                            // Delete from storage
+                            if (book.file_url) {
+                                const urlParts = book.file_url.split('/');
+                                const fileName = urlParts.pop();
+                                const userId = urlParts.pop();
+                                const storagePath = `${userId}/${fileName}`;
+                                await supabase.storage.from('books').remove([storagePath]);
+                            }
+                            // Delete from DB
+                            await supabase.from('books').delete().eq('id', book.id);
+                            deletedCount++;
+                        } catch (err) {
+                            console.error("Cleanup error for book:", book.id, err);
+                        }
+                    }
+
+                    if (deletedCount > 0) {
+                        toast.info(t('guestCleanupDone', { count: deletedCount }));
+                        // Refetch to ensure sync if needed, or just filter local state
+                        setAllBooks(prev => prev.filter(b => !inactiveGuestBooks.some(igb => igb.id === b.id)));
+                        setStats(prev => ({ ...prev, totalBooks: prev.totalBooks - deletedCount }));
+                    }
+                }
+            }
 
         } catch (error) {
             console.error("Admin fetch error:", error);
@@ -739,37 +778,37 @@ const AdminPage = () => {
 
             {/* Tabs Content */}
             <Tabs defaultValue="dashboard" className="space-y-8">
-                <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide md:overflow-visible touch-pan-x">
-                    <TabsList className="bg-secondary/20 p-1 rounded-3xl h-16 border border-border/40 backdrop-blur-md inline-flex min-w-max md:flex">
-                        <TabsTrigger value="dashboard" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <BarChart3 className="h-4 w-4" /> {t('adminDashboardTab')}
+                <div className="pb-4">
+                    <TabsList className="bg-secondary/20 p-1 rounded-[2rem] h-auto flex flex-wrap gap-1 border border-border/40 backdrop-blur-md w-full justify-start">
+                        <TabsTrigger value="dashboard" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <BarChart3 className="h-3.5 w-3.5" /> {t('adminDashboardTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="users" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <Users className="h-4 w-4" /> {t('adminUsersTab')}
+                        <TabsTrigger value="users" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <Users className="h-3.5 w-3.5" /> {t('adminUsersTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="guests" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <Users className="h-4 w-4" /> {t('adminGuestsTab')}
+                        <TabsTrigger value="guests" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2 text-primary">
+                            <Users className="h-3.5 w-3.5" /> {t('adminGuestsTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="content" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <BookOpen className="h-4 w-4" /> {t('adminContentTab')}
+                        <TabsTrigger value="content" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <BookOpen className="h-3.5 w-3.5" /> {t('adminContentTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="activity" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <History className="h-4 w-4" /> {t('adminStreamTab')}
+                        <TabsTrigger value="activity" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <History className="h-3.5 w-3.5" /> {t('adminStreamTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="storage" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <Database className="h-4 w-4" /> {t('adminStorageTab')}
+                        <TabsTrigger value="storage" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <Database className="h-3.5 w-3.5" /> {t('adminStorageTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="announcements" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <Megaphone className="h-4 w-4" /> {t('adminAnnouncementsTab')}
+                        <TabsTrigger value="announcements" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <Megaphone className="h-3.5 w-3.5" /> {t('adminAnnouncementsTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="insights" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <TrendingUp className="h-4 w-4" /> {t('adminInsightsTab')}
+                        <TabsTrigger value="insights" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <TrendingUp className="h-3.5 w-3.5" /> {t('adminInsightsTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="support" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <LifeBuoy className="h-4 w-4" /> {t('adminSupportTab')}
+                        <TabsTrigger value="support" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                            <LifeBuoy className="h-3.5 w-3.5" /> {t('adminSupportTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="settings" className="rounded-2xl px-8 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[10px] gap-2">
-                            <SettingsIcon className="h-4 w-4" /> {t('adminSystemTab')}
+                        <TabsTrigger value="settings" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2 border border-primary/20">
+                            <SettingsIcon className="h-3.5 w-3.5" /> {t('adminSystemTab')}
                         </TabsTrigger>
                     </TabsList>
                 </div>

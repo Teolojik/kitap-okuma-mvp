@@ -518,6 +518,7 @@ export const translations = {
         adminGuestsTab: "Misafirler",
         guestBooks: "Misafir Kitapları",
         guestUploader: "Misafir Yükleyici",
+        guestCleanupDone: "{count} adet hareketsiz misafir kitabı otomatik olarak temizlendi.",
     },
     en: {
         loading: "Loading",
@@ -1036,6 +1037,7 @@ export const translations = {
         adminGuestsTab: "Guests",
         guestBooks: "Guest Books",
         guestUploader: "Guest Uploader",
+        guestCleanupDone: "Automatically cleaned up {count} inactive guest books.",
     },
 };
 
