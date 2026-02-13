@@ -780,34 +780,34 @@ const AdminPage = () => {
             <Tabs defaultValue="dashboard" className="space-y-8">
                 <div className="pb-4">
                     <TabsList className="bg-secondary/20 p-1 rounded-[2rem] h-auto flex flex-wrap gap-1 border border-border/40 backdrop-blur-md w-full justify-start">
-                        <TabsTrigger value="dashboard" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="dashboard" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <BarChart3 className="h-3.5 w-3.5" /> {t('adminDashboardTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="users" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="users" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <Users className="h-3.5 w-3.5" /> {t('adminUsersTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="guests" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2 text-primary">
+                        <TabsTrigger value="guests" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <Users className="h-3.5 w-3.5" /> {t('adminGuestsTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="content" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="content" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <BookOpen className="h-3.5 w-3.5" /> {t('adminContentTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="activity" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="activity" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <History className="h-3.5 w-3.5" /> {t('adminStreamTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="storage" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="storage" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <Database className="h-3.5 w-3.5" /> {t('adminStorageTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="announcements" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="announcements" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <Megaphone className="h-3.5 w-3.5" /> {t('adminAnnouncementsTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="insights" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="insights" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <TrendingUp className="h-3.5 w-3.5" /> {t('adminInsightsTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="support" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2">
+                        <TabsTrigger value="support" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2">
                             <LifeBuoy className="h-3.5 w-3.5" /> {t('adminSupportTab')}
                         </TabsTrigger>
-                        <TabsTrigger value="settings" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[9px] gap-2 border border-primary/20">
+                        <TabsTrigger value="settings" className="rounded-2xl px-4 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-lg font-black uppercase tracking-widest text-[11px] gap-2 border border-primary/20">
                             <SettingsIcon className="h-3.5 w-3.5" /> {t('adminSystemTab')}
                         </TabsTrigger>
                     </TabsList>

@@ -121,25 +121,31 @@ const StatsPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="h-64 flex items-end justify-between gap-4 px-4">
+                            <div className="h-64 flex items-end justify-between gap-2 px-2 bg-secondary/5 rounded-3xl p-6 border border-border/10">
                                 {weeklyData.map((data, idx) => {
-                                    const height = (data.pages / maxPages) * 100;
+                                    const height = Math.max((data.pages / maxPages) * 100, 5); // Ensure at least a sliver is visible
                                     return (
-                                        <div key={data.day} className="flex-1 flex flex-col items-center gap-4 group">
-                                            <div className="relative w-full flex justify-center items-end h-full">
-                                                <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-all -translate-y-2 group-hover:translate-y-0 bg-primary text-primary-foreground text-[10px] font-black px-3 py-1.5 rounded-full shadow-xl pointer-events-none z-20">
-                                                    {data.pages} {t('page')}
+                                        <div key={data.day} className="flex-1 flex flex-col items-center gap-4 group h-full">
+                                            <div className="relative w-full flex justify-center items-end h-[180px]">
+                                                {/* Tooltip on hover */}
+                                                <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-all -translate-y-2 group-hover:translate-y-0 bg-primary text-primary-foreground text-[10px] font-black px-3 py-1.5 rounded-full shadow-xl pointer-events-none z-20 whitespace-nowrap">
+                                                    {data.pages} {t('pagesRead')}
                                                 </div>
+
                                                 <motion.div
                                                     initial={{ height: 0 }}
                                                     animate={{ height: `${height}%` }}
-                                                    transition={{ delay: idx * 0.05 + 0.3, duration: 1.5, type: "spring" }}
-                                                    className="w-full max-w-[48px] bg-gradient-to-t from-primary/20 via-primary to-primary/80 rounded-t-2xl group-hover:brightness-110 transition-all shadow-lg shadow-primary/20 relative"
+                                                    transition={{ delay: idx * 0.05 + 0.3, duration: 1.5, type: "spring", bounce: 0.4 }}
+                                                    className={`w-full max-w-[40px] ${data.pages > 0 ? 'bg-gradient-to-t from-primary/40 via-primary to-primary/80 shadow-[0_10px_20px_-5px_hsl(var(--primary)/0.4)]' : 'bg-primary/10'} rounded-t-xl group-hover:brightness-110 transition-all relative overflow-hidden`}
                                                 >
-                                                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-white/20 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    {data.pages > 0 && (
+                                                        <div className="absolute top-0 left-0 right-0 h-full bg-gradient-to-b from-white/20 to-transparent opacity-0 group-hover:opacity-30 transition-opacity" />
+                                                    )}
                                                 </motion.div>
                                             </div>
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 group-hover:text-primary transition-colors">{data.day}</span>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${data.pages > 0 ? 'text-primary' : 'text-muted-foreground/40'} group-hover:text-primary transition-colors`}>
+                                                {data.day}
+                                            </span>
                                         </div>
                                     );
                                 })}
