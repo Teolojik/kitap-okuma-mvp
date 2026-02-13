@@ -70,7 +70,7 @@ export default function LibraryPage() {
             window.removeEventListener('dragover', handleGlobalDrag);
             window.removeEventListener('books-updated', handleBooksUpdated);
         };
-    }, [draggedBookId]);
+    }, [fetchBooks]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
