@@ -102,4 +102,22 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - Supabase'e sadece `id`, `book_id`, `user_id` ve tüm annotation objesini içeren `data` (jsonb) sütunu gönderiliyor.
 - Bu pattern, tablo şemasını değiştirmeden client-side veri yapısının serbestçe genişletilmesine olanak tanır.
 - **Kural:** Karmaşık/iç içe veri yapıları Supabase'e `jsonb` sütun olarak yazılmalı, her alan için ayrı sütun açılmamalı.
+### 14. Mobil PDF Okuyucu — Zorunlu Tek Sayfa (Strict Single Mode)
+**Sorun:** `ReaderContainer` seviyesinde `readingMode` override edilmesine rağmen, `PdfReader` gibi çocuk bileşenler doğrudan `settings`'ten okuma yaparak mobilde çift sayfa render etmeye devam edebiliyor.
+**Çözüm:**
+- `PdfReader.tsx` içinde yerel bir `isMobile` check (`window.innerWidth < 1024`) her zaman yapılmalıdır.
+- `isDoubleMode` değişkeni `!isMobile && settings.readingMode.includes('double')` şeklinde tanımlanarak donanım seviyesinde kısıtlanmalıdır.
+- **Kural:** Mobil kısıtlamaları sadece parent'ta değil, render kararı veren uç bileşenlerde de (leaf components) kontrol edilmelidir.
 
+### 15. PDF Viewport Optimizasyonu — Mobil Padding Dengesi
+**Sorun:** PDF sayfaları mobilde çok küçük görünüyor ve altında/yanında büyük boşluklar kalıyordu. Sebebi: Desktop için tasarlanmış high-padding (120px v-padding, 80px h-padding) değerlerinin mobilde de kullanılması.
+**Çözüm:**
+- `getPageWidthConstraint` fonksiyonunda mobil (`isMobile`) için padding değerleri minimize edildi: `vPadding: 20px`, `hPadding: 16px`.
+- Bu sayede PDF sayfası mobil ekranı %100'e yakın kaplar ve dikey boşluk sorunu çözülür.
+
+### 16. Veritabanı Migrasyonu — IndexedDB Version Pattern
+**Sorun:** Yeni bir `objectStore` (örn: `drawings`) eklendiğinde, tarayıcısında veritabanı hali hazırda mevcut olan kullanıcılarda `onupgradeneeded` tetiklenmiyor ve uygulama "Object store not found" hatasıyla çöküyor.
+**Çözüm:**
+- `indexedDB.open(DB_NAME, version)` çağrısındaki `version` numarası her şema değişiminde artırılmalıdır (örn: v2 → v3).
+- Bu artış, tarayıcıyı `onupgradeneeded` bloğunu çalıştırmaya zorlar ve eksik store'lar güvenle oluşturulur.
+- **Kural:** Şemaya yeni bir store veya index eklendiğinde DB versiyonu mutlaka bir üst tam sayıya yükseltilmelidir.
