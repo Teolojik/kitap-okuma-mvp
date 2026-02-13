@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Twitter, Palette, Loader2, Share2, Lock } from 'lucide-react';
+import { Download, Palette, Loader2, Share2, Lock, Copy } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import QuoteCard from './QuoteCard';
@@ -98,11 +98,11 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                 await navigator.clipboard.write([item]);
 
                 // Open X intent
-                const shareText = `"${selection.text.substring(0, 100)}..."`;
-                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-                window.open(twitterUrl, '_blank');
+                // const shareText = `"${selection.text.substring(0, 100)}..."`;
+                // const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+                // window.open(twitterUrl, '_blank');
 
-                toast.success("Görsel panoya kopyalandı! X penceresinde Ctrl+V ile yapıştırabilirsiniz.");
+                toast.success("Görsel panoya kopyalandı! Dilediğiniz yere yapıştırabilirsiniz.");
             } catch (clipboardError) {
                 console.error('Clipboard Error:', clipboardError);
                 // Last resort: Just download
@@ -122,7 +122,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl max-h-[85vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-y-auto rounded-2xl">
+            <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl max-h-[90vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-hidden rounded-2xl">
                 <DialogHeader className="px-5 pt-4 pb-3 border-b border-white/5">
                     <DialogTitle className="text-lg font-serif">Alıntıyı Paylaş</DialogTitle>
                     <DialogDescription className="sr-only">Seçili alıntıyı kart olarak paylaş</DialogDescription>
@@ -131,8 +131,8 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                 <div className="px-5 py-4 space-y-4 flex flex-col items-center">
                     {/* Live Preview — with capture wrapper */}
                     <div className="w-full flex justify-center overflow-hidden">
-                        <div ref={cardRef} className="p-6 bg-transparent">
-                            <div className="scale-[0.4] sm:scale-[0.5] md:scale-[0.6] origin-top -mb-24 sm:-mb-20 md:-mb-14 lg:-mb-10">
+                        <div ref={cardRef} className="p-4 bg-transparent">
+                            <div className="scale-[0.35] sm:scale-[0.45] md:scale-[0.55] origin-top -mb-28 sm:-mb-24 md:-mb-18 lg:-mb-14">
                                 <QuoteCard
                                     text={selection.text}
                                     author={book.author}
@@ -187,8 +187,8 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                                 }`}
                             title={!isAuthenticated ? "Sadece kayıtlı kullanıcılar paylaşabilir" : ""}
                         >
-                            {isAuthenticated ? <Share2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                            <span className="font-bold">Görseli Kopyala & Paylaş</span>
+                            {isAuthenticated ? <Copy className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                            <span className="font-bold">Görseli Kopyala</span>
                         </Button>
                     </div>
                 </div>
