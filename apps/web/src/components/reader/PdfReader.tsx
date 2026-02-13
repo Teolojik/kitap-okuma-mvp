@@ -53,7 +53,9 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     const page = propPageNumber || 1;
     // Default scale to 1.0 (Fit Width) instead of 1.2 to prevent overflow
     const currentScale = propScale || 1.0;
-    const isDoubleMode = settings.readingMode.includes('double');
+    // Force single page on mobile — double modes don't fit on small screens
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    const isDoubleMode = !isMobile && settings.readingMode.includes('double');
 
     // Callback on load
     const onDocumentLoadSuccess = (pdf: any) => {
@@ -218,13 +220,17 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
 
 
-    // Enhanced Fit-to-Page logic
+    // Enhanced Fit-to-Page logic — mobile-optimized
     const getPageWidthConstraint = () => {
         if (!wrapperWidth || !wrapperHeight) return undefined;
 
-        // Margins to account for UI elements + User margins
-        const hPadding = (isDoubleMode ? 80 : 40) + (settings.margin * 2);
-        const vPadding = (simpleMode ? 40 : 120) + settings.paddingTop + settings.paddingBottom;
+        // Margins: reduce heavily on mobile
+        const hPadding = isMobile
+            ? 16 + (settings.margin * 2)
+            : (isDoubleMode ? 80 : 40) + (settings.margin * 2);
+        const vPadding = isMobile
+            ? 20 + settings.paddingTop + settings.paddingBottom
+            : (simpleMode ? 40 : 80) + settings.paddingTop + settings.paddingBottom;
 
         const availableW = Math.max(0, (wrapperWidth - hPadding) / (isDoubleMode ? 2 : 1));
         const availableH = Math.max(0, wrapperHeight - vPadding);

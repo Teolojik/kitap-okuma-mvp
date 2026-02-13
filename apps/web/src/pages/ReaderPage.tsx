@@ -1044,7 +1044,7 @@ const ReaderPage: React.FC = () => {
                 />
             </div>
 
-            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full min-h-0 bg-background pt-16">
+            <main className="flex-1 relative overflow-hidden flex items-center justify-center w-full min-h-0 bg-background pt-14 sm:pt-16 pb-16 sm:pb-20">
                 <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                         key={`${book.id}-${secondaryBook?.id || 'none'}`}
