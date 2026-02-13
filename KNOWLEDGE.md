@@ -195,3 +195,17 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 2. **Clipboard API (Masaüstü Fallback):** Masaüstü tarayıcılarda güvenlik nedeniyle X'e otomatik görsel "enjekte" edilemez. Çözüm olarak görsel `ClipboardItem` ile panoya kopyalanır ve kullanıcı X penceresine yönlendirilir. Kullanıcı sadece `Ctrl + V` yaparak görseli ekler.
 3. **Download (Son Çare):** Clipboard desteklenmiyorsa görsel otomatik indirilir ve kullanıcıya X'e yüklemesi bildirilir.
 - **Ders:** Sosyal medya platformlarının URL kısıtlamalarını aşmak için Web Share API ve Clipboard eş zamanlı kullanılmalıdır.
+### 30. Düzenlenebilir Metadata (Editable Share Metadata)
+**Sorun:** Kitapların meta verileri (yazar/başlık) bazen eksik veya hatalı olabiliyor (örn: "Unknown Author"), bu da paylaşılan alıntı kartlarının kalitesini düşürüyordu.
+**Çözüm:** `QuoteModal` içine anlık düzenlenebilir `Title` ve `Author` giriş alanları eklendi.
+- `useState` ile yönetilen `displayTitle` ve `displayAuthor` değerleri, `QuoteCard` bileşenine prop olarak geçilir.
+- Kullanıcı giriş yaptıkça kart üzerindeki metin anlık (real-time) güncellenir.
+- Bu sayede veritabanını değiştirmeden sadece paylaşılacak görsel için özel düzeltme yapılabilir.
+
+### 31. Share Modal Viewport & "Premium" Ölçeklendirme
+**Sorun:** Alıntı kartının modal içindeki ölçeği (scale) çok küçüktü ve etrafında büyük "gri alanlar" kalıyordu. Bu durum premium hissini bozuyordu.
+**Çözüm:**
+- Modal genişliği kart genişliğiyle sabitlendi (`max-w-[680px]`).
+- Preview ölçeği `scale-[0.85]` seviyesine çıkarılarak kartın modalı neredeyse tamamen doldurması sağlandı.
+- Gereksiz dış boşluklar (margins) temizlendi ve başlık alanı minimalize edildi.
+- **Kural:** Paylaşım modalları her zaman görselin kendisini "başrol" yapmalı ve ekranın %90'ını dolduracak şekilde dinamik olarak ölçeklenmelidir.
