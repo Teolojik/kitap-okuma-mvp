@@ -87,8 +87,16 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
                 />
             </Suspense>
             {/* Simple Navigation Overlay */}
-            <div className="absolute inset-y-0 left-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => innerReaderRef.current?.prev()} title="Önceki" />
-            <div className="absolute inset-y-0 right-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors" onClick={() => innerReaderRef.current?.next()} title="Sonraki" />
+            <div className="absolute inset-y-0 left-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors"
+                onClick={(e) => {
+                    if (window.getSelection()?.toString()) return;
+                    innerReaderRef.current?.prev();
+                }} title="Önceki" />
+            <div className="absolute inset-y-0 right-0 w-16 z-20 cursor-pointer hover:bg-black/5 transition-colors"
+                onClick={(e) => {
+                    if (window.getSelection()?.toString()) return;
+                    innerReaderRef.current?.next();
+                }} title="Sonraki" />
         </div>
     );
 });

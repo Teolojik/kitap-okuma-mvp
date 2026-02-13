@@ -139,9 +139,15 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
 
             {/* Navigation Areas */}
             <div className="absolute inset-y-0 left-0 w-16 sm:w-24 z-20 cursor-pointer hover:bg-gradient-to-r from-black/5 to-transparent transition-all active:bg-black/5"
-                onClick={handlePrev} title="Önceki Sayfa" />
+                onClick={(e) => {
+                    if (window.getSelection()?.toString()) return;
+                    handlePrev();
+                }} title="Önceki Sayfa" />
             <div className="absolute inset-y-0 right-0 w-16 sm:w-24 z-20 cursor-pointer hover:bg-gradient-to-l from-black/5 to-transparent transition-all active:bg-black/5"
-                onClick={handleNext} title="Sonraki Sayfa" />
+                onClick={(e) => {
+                    if (window.getSelection()?.toString()) return;
+                    handleNext();
+                }} title="Sonraki Sayfa" />
         </div>
     );
 });

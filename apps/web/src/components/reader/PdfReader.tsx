@@ -247,17 +247,21 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         const availableW = Math.max(0, (wrapperWidth - hPadding) / (isDoubleMode ? 2 : 1));
         const availableH = Math.max(0, wrapperHeight - vPadding);
 
+        // Guard against NaN or Infinity pageRatio
+        const ratio = (typeof pageRatio === 'number' && !isNaN(pageRatio) && isFinite(pageRatio)) ? pageRatio : 0.707;
+
         // Calculate width that fits in height
-        const widthToFitHeight = availableH * pageRatio;
+        const widthToFitHeight = availableH * ratio;
 
         // The effective "Fit" width is the smaller of the two
         const fitWidth = Math.min(availableW, widthToFitHeight);
 
         // Apply scale on top of the fit width
-        return Math.floor(fitWidth * currentScale);
+        const finalWidth = Math.floor(fitWidth * currentScale);
+        return (isNaN(finalWidth) || !isFinite(finalWidth)) ? 800 : finalWidth;
     };
 
-    const calculatedWidth = getPageWidthConstraint();
+    const calculatedWidth = getPageWidthConstraint() || 800;
 
     if (!safeUrl) return <div className="flex items-center justify-center p-10 font-bold opacity-30 text-xs uppercase tracking-[0.2em]">Dosya Hazırlanıyor...</div>;
 

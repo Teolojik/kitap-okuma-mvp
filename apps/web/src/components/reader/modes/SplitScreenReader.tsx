@@ -108,7 +108,10 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                         id="nav-btn-1"
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); primaryRef.current?.prev(); onPanelActivate?.('primary'); }}
+                        onClick={(e) => {
+                            if (window.getSelection()?.toString()) return;
+                            e.stopPropagation(); e.preventDefault(); primaryRef.current?.prev(); onPanelActivate?.('primary');
+                        }}
                         className="h-20 w-10 rounded-r-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-primary/20 hover:text-primary transition-all shadow-xl"
                     >
                         <ChevronLeft className="h-6 w-6" />
@@ -119,7 +122,10 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                         id="nav-btn-2"
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); primaryRef.current?.next(); onPanelActivate?.('primary'); }}
+                        onClick={(e) => {
+                            if (window.getSelection()?.toString()) return;
+                            e.stopPropagation(); e.preventDefault(); primaryRef.current?.next(); onPanelActivate?.('primary');
+                        }}
                         className="h-20 w-10 rounded-l-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-primary/20 hover:text-primary transition-all shadow-xl"
                     >
                         <ChevronRight className="h-6 w-6" />
@@ -190,7 +196,10 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                                 id="nav-btn-3"
                                 variant="ghost"
                                 size="icon"
-                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); secondaryRef.current?.prev(); onPanelActivate?.('secondary'); }}
+                                onClick={(e) => {
+                                    if (window.getSelection()?.toString()) return;
+                                    e.stopPropagation(); e.preventDefault(); secondaryRef.current?.prev(); onPanelActivate?.('secondary');
+                                }}
                                 className="h-20 w-10 rounded-r-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-orange-500/20 hover:text-orange-500 transition-all shadow-xl"
                             >
                                 <ChevronLeft className="h-6 w-6" />
@@ -201,7 +210,10 @@ const SplitScreenReader = React.forwardRef<any, SplitScreenProps>(({
                                 id="nav-btn-4"
                                 variant="ghost"
                                 size="icon"
-                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); secondaryRef.current?.next(); onPanelActivate?.('secondary'); }}
+                                onClick={(e) => {
+                                    if (window.getSelection()?.toString()) return;
+                                    e.stopPropagation(); e.preventDefault(); secondaryRef.current?.next(); onPanelActivate?.('secondary');
+                                }}
                                 className="h-20 w-10 rounded-l-3xl bg-background/40 backdrop-blur-md border border-border/10 hover:bg-orange-500/20 hover:text-orange-500 transition-all shadow-xl"
                             >
                                 <ChevronRight className="h-6 w-6" />
