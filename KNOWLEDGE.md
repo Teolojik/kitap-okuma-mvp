@@ -187,3 +187,11 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - Barlar için `Math.max(percentage, 5)` kullanılarak minimum %5 yükseklik garantisi verildi.
 - `bg-primary/10` ile boş günler için soluk bir zemin oluşturuldu.
 - `Recharts` yerine kullanılan `motion.div` bazlı özel bar yapısı, hover durumunda detaylı `tooltip` ve gradyan efektleriyle modernize edildi.
+
+### 29. X (Twitter) Otomatik Görsel Paylaşımı (Native Social Cards)
+**Sorun:** X Web Intent (`intent/tweet`) sadece metin ve link kabul eder, doğrudan görsel upload'a izin vermez. SPA (Client-side) uygulamalarda meta tagler crawler tarafından okunamaz.
+**Çözüm (Hybrid OG Approach):**
+1. **Frontend:** Alıntı kartı `html-to-image` ile üretilir ve Supabase Storage'daki `shares` bucket'ına (Public) yüklenir.
+2. **Serverless Function:** Vercel üzerinde `api/share.js` script'i oluşturuldu. Bu script, resim URL'sini parametre olarak alır ve sadece HTML Meta Tagleri (`og:image`, `twitter:card`) içeren hafif bir sayfa döndürür.
+3. **X Intent:** Kullanıcı X'e bu API linkiyle (`epigraphreader.com/api/share?img=...`) yönlendirilir. X crawler'ı API'ye gider, meta tagleri okur ve görseli "Large Image Card" olarak otomatik oluşturur.
+- **Kural:** Sosyal medya paylaşımlarında dinamik içerik sunmak için mutlaka bir serverless middleware veya API katmanı kullanılmalıdır.

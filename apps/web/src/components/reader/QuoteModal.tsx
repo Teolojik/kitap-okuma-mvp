@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Download, Twitter, Palette, Loader2, Share2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import QuoteCard from './QuoteCard';
+import { supabase } from '@/lib/supabase';
 
 interface QuoteModalProps {
     isOpen: boolean;
@@ -56,10 +56,49 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
         }
     };
 
-    const handleTwitterShare = () => {
-        const shareText = `"${selection.text.substring(0, 100)}${selection.text.length > 100 ? '...' : ''}"\n\n${book.title} - ${book.author}\n\nOkumak için: https://epigraphreader.com`;
-        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-        window.open(url, '_blank');
+    const handleTwitterShare = async () => {
+        if (!cardRef.current) return;
+        setIsGenerating(true);
+        try {
+            // 1. Generate PNG Blob
+            const dataUrl = await toPng(cardRef.current, {
+                pixelRatio: 2,
+                backgroundColor: 'transparent',
+            });
+
+            // Convert dataUrl to Blob
+            const blob = await (await fetch(dataUrl)).blob();
+            const fileName = `quote-${new Date().getTime()}.png`;
+            const filePath = `shares/${fileName}`;
+
+            // 2. Upload to Supabase 'shares' bucket
+            const { data, error } = await supabase.storage
+                .from('shares')
+                .upload(filePath, blob, {
+                    contentType: 'image/png',
+                    upsert: true
+                });
+
+            if (error) throw error;
+
+            // 3. Get Public URL
+            const { data: { publicUrl } } = supabase.storage.from('shares').getPublicUrl(filePath);
+
+            // 4. Construct Share API URL (Points to our Vercel function)
+            const shareApiUrl = `https://epigraphreader.com/api/share?img=${encodeURIComponent(publicUrl)}&title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author)}`;
+
+            // 5. Open Twitter Intent with the share link
+            const shareText = `"${selection.text.substring(0, 100)}..."\n\n${book.title} - ${book.author}`;
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareApiUrl)}`;
+
+            window.open(twitterUrl, '_blank');
+            toast.success("X (Twitter) için görsel hazırlandı ve yönlendiriliyorsunuz.");
+        } catch (err) {
+            console.error('Native Share Error:', err);
+            toast.error("Paylaşım hazırlanırken bir hata oluştu. Lütfen 'shares' bucket'ının açık olduğundan emin olun.");
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
