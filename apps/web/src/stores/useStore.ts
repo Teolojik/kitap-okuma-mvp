@@ -98,7 +98,14 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                     // Sync settings & stats from profile
                     const { data: profile } = await supabase.from('profiles').select('settings, stats').eq('id', user.id).single();
                     if (profile) {
-                        if (profile.settings) set(state => ({ settings: { ...state.settings, ...profile.settings } }));
+                        if (profile.settings) {
+                            const syncedSettings = { ...profile.settings };
+                            // GUARD: Never restore 'split' as persistent mode — it's a temporary session state
+                            if (syncedSettings.readingMode === 'split') {
+                                syncedSettings.readingMode = 'double-static';
+                            }
+                            set(state => ({ settings: { ...state.settings, ...syncedSettings } }));
+                        }
                         if (profile.stats) set(state => ({ stats: { ...state.stats, ...profile.stats } }));
                     }
                 }
@@ -271,12 +278,18 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
             const user = useAuthStore.getState().user;
             set(state => {
                 const settings = { ...state.settings, ...newSettings };
-                localStorage.setItem('reader_settings', JSON.stringify(settings));
+
+                // GUARD: Never persist 'split' as default mode — it's a temporary session state
+                const settingsToSave = { ...settings };
+                if (settingsToSave.readingMode === 'split') {
+                    settingsToSave.readingMode = 'double-static';
+                }
+                localStorage.setItem('reader_settings', JSON.stringify(settingsToSave));
 
                 if (user) {
-                    supabase.from('profiles').update({ settings }).eq('id', user.id).then();
+                    supabase.from('profiles').update({ settings: settingsToSave }).eq('id', user.id).then();
                 }
-                return { settings };
+                return { settings }; // In-memory state keeps 'split' for current session
             });
         },
 
