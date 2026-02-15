@@ -7,6 +7,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#f97316" />
 
+  <!-- Speed: Font Preload -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" as="style" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" />
+
   <title>epigraphreader.com | Aesthetic PDF & EPUB Reader & Personal Library</title>
   <meta name="description"
     content="The most elegant way to read and organize your digital library. Supports PDF & EPUB with split-screen, smart highlighting, and beautiful social sharing on epigraphreader.com." />
@@ -15,47 +19,68 @@
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://epigraphreader.com/" />
+  <meta property="og:url" content="https://www.epigraphreader.com/" />
   <meta property="og:title" content="epigraphreader.com | Your Digital Library, Reimagined" />
   <meta property="og:description"
     content="Experience reading like never before. A premium, aesthetic reader for your PDF and EPUB collection on epigraphreader.com." />
-  <meta property="og:image" content="https://epigraphreader.com/og-card.png" />
+  <meta property="og:image" content="https://www.epigraphreader.com/og-card.png" />
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://epigraphreader.com/" />
+  <meta property="twitter:url" content="https://www.epigraphreader.com/" />
   <meta property="twitter:title" content="epigraphreader.com | Beautiful Digital Reading" />
   <meta property="twitter:description"
     content="Read, highlight, and share your favorite book quotes with stunning visuals via epigraphreader.com." />
-  <meta property="twitter:image" content="https://epigraphreader.com/og-card.png" />
+  <meta property="twitter:image" content="https://www.epigraphreader.com/og-card.png" />
 
   <!-- Structured Data (SEO) -->
   <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "epigraphreader.com",
-      "url": "https://epigraphreader.com",
-      "operatingSystem": "Web, Android, iOS, Windows, MacOS",
-      "applicationCategory": "ReadingApplication",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "epigraphreader.com",
+        "url": "https://www.epigraphreader.com",
+        "operatingSystem": "Web, Android, iOS, Windows, MacOS",
+        "applicationCategory": "ReadingApplication",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "description": "Premium aesthetic digital reader for PDF and EPUB files with smart highlighting and social sharing features at epigraphreader.com.",
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "ratingCount": "120"
+        }
       },
-      "description": "Premium aesthetic digital reader for PDF and EPUB files with smart highlighting and social sharing features at epigraphreader.com.",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "ratingCount": "120"
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [{
+          "@type": "Question",
+          "name": "epigraphreader.com nedir?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "epigraphreader.com, PDF ve EPUB dosyalarınızı en estetik şekilde okumanızı, notlar almanızı ve akıllı alıntılar paylaşmanızı sağlayan dijital kütüphane platformudur."
+          }
+        }, {
+          "@type": "Question",
+          "name": "Kitap paylaşımı nasıl yapılır?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Okuduğunuz kitaptan bir bölüm seçerek 'Alıntı Yap' butonuna basabilir ve şık kart tasarımlarıyla sosyal medyada paylaşabilirsiniz."
+          }
+        }]
       }
-    }
+    ]
   </script>
 
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Epigraph" />
+  <meta name="apple-mobile-web-app-title" content="epigraphreader.com" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </head>
 
