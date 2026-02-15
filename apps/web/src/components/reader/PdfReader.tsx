@@ -13,6 +13,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useBookStore } from '@/stores/useStore';
 import { Separator } from '@/components/ui/separator';
+import { normalizeText } from '@/lib/utils';
 
 interface PdfReaderProps {
     url: string | ArrayBuffer;
@@ -93,7 +94,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                 if (isDoubleMode && page + 1 <= numPages) {
                     text += ' ' + await extractPageText(page + 1);
                 }
-                return text.replace(/\s+/g, ' ').trim();
+                return normalizeText(text);
             } catch (e) {
                 console.error("PDF Text extraction failed", e);
                 return '';
@@ -219,7 +220,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
             const selection = window.getSelection();
             if (selection && selection.toString().trim().length > 0) {
-                const text = selection.toString();
+                const text = normalizeText(selection.toString());
                 // Ensure selection is within this reader's context
                 if (wrapperRef.current?.contains(selection.anchorNode)) {
                     if (onTextSelectedRef.current) onTextSelectedRef.current(page, text);

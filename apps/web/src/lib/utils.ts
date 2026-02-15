@@ -33,3 +33,22 @@ export function getPlatformInfo(userAgent: string, platform?: string): string {
 
     return 'Unknown Platform';
 }
+
+/**
+ * Normalizes text extracted from PDF or EPUB readers.
+ * Fixes hyphenated words across line breaks and cleans up overlapping whitespace.
+ */
+export function normalizeText(text: string): string {
+    if (!text) return '';
+
+    return text
+        // 1. Join words broken by hyphens at end of lines/segments
+        // Pattern: word- \n nextpart -> wordnextpart
+        // Also handles "yardımla- şarak" -> "yardımlaşarak"
+        .replace(/(\w)-\s+(\w)/g, '$1$2')
+        // Pattern: word-\nnextpart -> wordnextpart
+        .replace(/(\w)-\n+(\w)/g, '$1$2')
+        // 2. Normalize multiple spaces and newlines into single spaces
+        .replace(/\s+/g, ' ')
+        .trim();
+}

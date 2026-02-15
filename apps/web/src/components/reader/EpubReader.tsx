@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import ePub, { Book, Rendition } from 'epubjs';
 import { useBookStore } from '@/stores/useStore';
+import { normalizeText } from '@/lib/utils';
 
 export interface EpubReaderRef {
     prev: () => void;
@@ -130,8 +131,8 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
                 if (contents.length === 0) return '';
                 const doc = contents[0].document;
                 const text = doc.body.innerText || doc.body.textContent || '';
-                // Clean up extra whitespaces
-                return text.replace(/\s+/g, ' ').trim();
+                // Clean up extra whitespaces and hyphenation
+                return normalizeText(text);
             } catch (e) {
                 console.error("Error getting epub text", e);
                 return '';
@@ -303,7 +304,7 @@ const EpubReader = forwardRef<EpubReaderRef, EpubReaderProps>(({ url, initialLoc
             rendition.on('selected', (cfiRange: string, contents: any) => {
                 book.getRange(cfiRange).then((range) => {
                     if (range) {
-                        const text = range.toString();
+                        const text = normalizeText(range.toString());
                         if (onTextSelectedRef.current) {
                             onTextSelectedRef.current(cfiRange, text, contents);
                         }
