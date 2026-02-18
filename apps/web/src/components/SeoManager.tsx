@@ -117,18 +117,29 @@ export default function SeoManager() {
     } else if (path.startsWith('/book/')) {
       const id = path.split('/')[2];
       const book = books.find((b) => b.id === id);
-      const title = cleanTitle(book?.title || 'Book Details');
-      const author = cleanAuthor(book?.author || '');
-      config = {
-        title: author ? `${title} - ${author} | epigraphreader.com` : `${title} | epigraphreader.com`,
-        description: author
-          ? trimText(`Read ${title} by ${author} on epigraphreader.com.`)
-          : trimText(`Read ${title} on epigraphreader.com.`),
-        robots: 'index, follow',
-        canonicalPath: path,
-        image: book?.cover_url || DEFAULT_IMAGE,
-        type: 'book',
-      };
+      if (!book) {
+        config = {
+          title: 'Book Not Found | epigraphreader.com',
+          description: 'This book detail page is not publicly indexable.',
+          robots: 'noindex, nofollow',
+          canonicalPath: '/discover',
+          image: DEFAULT_IMAGE,
+          type: 'website',
+        };
+      } else {
+        const title = cleanTitle(book.title || 'Book Details');
+        const author = cleanAuthor(book.author || '');
+        config = {
+          title: author ? `${title} - ${author} | epigraphreader.com` : `${title} | epigraphreader.com`,
+          description: author
+            ? trimText(`Read ${title} by ${author} on epigraphreader.com.`)
+            : trimText(`Read ${title} on epigraphreader.com.`),
+          robots: 'index, follow',
+          canonicalPath: path,
+          image: book.cover_url || DEFAULT_IMAGE,
+          type: 'book',
+        };
+      }
     } else if (path !== '/') {
       config = {
         title: 'Page Not Found | epigraphreader.com',

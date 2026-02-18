@@ -18,13 +18,35 @@ const baseHtml = fs.readFileSync(baseFile, 'utf8');
 
 const staticRoutes = [
   {
+    route: '/',
+    title: 'epigraphreader.com | Aesthetic PDF & EPUB Reader & Personal Library',
+    description:
+      'Read and organize your digital library with a premium PDF & EPUB experience, split-screen reading, and smart highlights.',
+    canonical: `${BASE_URL}/`,
+    ogUrl: `${BASE_URL}/`,
+    robots: 'index, follow',
+    noscript:
+      'Read and organize your PDF and EPUB library on epigraphreader.com. Enable JavaScript for the full reader experience.',
+  },
+  {
     route: '/discover',
     title: 'Discover Books | epigraphreader.com',
     description: 'Discover new books, explore categories, and find your next PDF or EPUB read.',
     canonical: `${BASE_URL}/discover`,
     ogUrl: `${BASE_URL}/discover`,
+    robots: 'index, follow',
     noscript:
       'Discover books and browse curated categories on epigraphreader.com. Enable JavaScript for the full interactive experience.',
+  },
+  {
+    route: '/404',
+    title: 'Page Not Found | epigraphreader.com',
+    description: 'The page you requested could not be found.',
+    canonical: `${BASE_URL}/404`,
+    ogUrl: `${BASE_URL}/404`,
+    robots: 'noindex, nofollow',
+    noscript:
+      'The page you requested could not be found. Go back to the homepage to continue.',
   },
 ];
 
@@ -34,6 +56,10 @@ function applyRouteMeta(html, routeConfig) {
   output = output.replace(
     /<meta name="description" content="[\s\S]*?"\s*\/?>/i,
     `<meta name="description" content="${routeConfig.description}" />`
+  );
+  output = output.replace(
+    /<meta name="robots" content="[\s\S]*?"\s*\/?>/i,
+    `<meta name="robots" content="${routeConfig.robots}" />`
   );
   output = output.replace(
     /<link rel="canonical" href="[\s\S]*?"\s*\/?>/i,
@@ -71,10 +97,19 @@ function applyRouteMeta(html, routeConfig) {
 }
 
 for (const routeConfig of staticRoutes) {
-  const targetPath = path.join(distDir, routeConfig.route.replace(/^\//, ''), 'index.html');
+  const targetPath =
+    routeConfig.route === '/'
+      ? path.join(distDir, 'index.html')
+      : path.join(distDir, routeConfig.route.replace(/^\//, ''), 'index.html');
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
   fs.writeFileSync(targetPath, applyRouteMeta(baseHtml, routeConfig), 'utf8');
 }
 
-console.log(`[prerender] Generated static route HTML: ${staticRoutes.map((r) => r.route).join(', ')}`);
+// Extra static hosting compatibility.
+const notFoundSource = path.join(distDir, '404', 'index.html');
+const notFoundTarget = path.join(distDir, '404.html');
+if (fs.existsSync(notFoundSource)) {
+  fs.copyFileSync(notFoundSource, notFoundTarget);
+}
 
+console.log(`[prerender] Generated static route HTML: ${staticRoutes.map((r) => r.route).join(', ')}`);
