@@ -41,6 +41,8 @@ const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa
 const PDF_WORKER_SRC = '/pdf.worker.min.mjs';
 const PDF_THUMBNAIL_WIDTH = 420;
 const PDF_THUMBNAIL_QUALITY = 0.88;
+const PDF_COVER_SCAN_PAGES = 3;
+const PDF_MIN_VISUAL_SCORE = 0.015;
 
 const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -105,6 +107,34 @@ const toUint8Array = async (source: Blob | File | ArrayBuffer | Uint8Array): Pro
     if (source instanceof Uint8Array) return source;
     if (source instanceof ArrayBuffer) return new Uint8Array(source);
     return new Uint8Array(await source.arrayBuffer());
+};
+
+const getCanvasVisualScore = (canvas: HTMLCanvasElement): number => {
+    const sample = document.createElement('canvas');
+    sample.width = 64;
+    sample.height = 96;
+    const ctx = sample.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return 0;
+
+    ctx.drawImage(canvas, 0, 0, sample.width, sample.height);
+    const data = ctx.getImageData(0, 0, sample.width, sample.height).data;
+
+    let nonWhite = 0;
+    const total = sample.width * sample.height;
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+        if (a < 16) continue;
+
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const isNearWhite = max > 245 && min > 238;
+        if (!isNearWhite) nonWhite++;
+    }
+
+    return nonWhite / total;
 };
 
 const generatePdfPlaceholderCover = (fileName: string): string | undefined => {
@@ -206,30 +236,56 @@ export const extractPdfCoverFromFirstPage = async (
         const rawData = await toUint8Array(source);
         const loadingTask = pdfjs.getDocument({
             data: rawData,
-            useSystemFonts: true
+            useSystemFonts: true,
+            cMapUrl: '/cmaps/',
+            cMapPacked: true,
+            standardFontDataUrl: '/standard_fonts/',
+            wasmUrl: '/wasm/'
         });
         const pdf = await loadingTask.promise;
 
         try {
-            const page = await pdf.getPage(1);
-            const baseViewport = page.getViewport({ scale: 1 });
-            const fitScale = PDF_THUMBNAIL_WIDTH / Math.max(1, baseViewport.width);
-            const viewport = page.getViewport({ scale: Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1 });
+            const maxPagesToScan = Math.max(1, Math.min(pdf.numPages || 1, PDF_COVER_SCAN_PAGES));
+            let bestCoverDataUrl: string | undefined;
+            let bestScore = -1;
 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, Math.floor(viewport.width));
-            canvas.height = Math.max(1, Math.floor(viewport.height));
-            const ctx = canvas.getContext('2d', { alpha: false });
-            if (!ctx) return generatePdfPlaceholderCover(fileNameHint);
+            for (let pageNumber = 1; pageNumber <= maxPagesToScan; pageNumber++) {
+                const page = await pdf.getPage(pageNumber);
+                try {
+                    const baseViewport = page.getViewport({ scale: 1 });
+                    const fitScale = PDF_THUMBNAIL_WIDTH / Math.max(1, baseViewport.width);
+                    const viewport = page.getViewport({ scale: Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1 });
 
-            await page.render({
-                canvasContext: ctx,
-                viewport,
-                canvas
-            }).promise;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.floor(viewport.width));
+                    canvas.height = Math.max(1, Math.floor(viewport.height));
+                    const ctx = canvas.getContext('2d', { alpha: false });
+                    if (!ctx) continue;
 
-            page.cleanup();
-            return canvas.toDataURL('image/jpeg', PDF_THUMBNAIL_QUALITY);
+                    await page.render({
+                        canvasContext: ctx,
+                        viewport,
+                        canvas
+                    }).promise;
+
+                    const score = getCanvasVisualScore(canvas);
+                    const dataUrl = canvas.toDataURL('image/jpeg', PDF_THUMBNAIL_QUALITY);
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestCoverDataUrl = dataUrl;
+                    }
+
+                    if (score >= PDF_MIN_VISUAL_SCORE) {
+                        break;
+                    }
+                } finally {
+                    page.cleanup();
+                }
+            }
+
+            if (bestCoverDataUrl) return bestCoverDataUrl;
+            return generatePdfPlaceholderCover(fileNameHint);
         } finally {
             await pdf.destroy();
         }

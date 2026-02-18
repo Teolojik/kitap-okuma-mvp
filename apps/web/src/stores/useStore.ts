@@ -24,7 +24,7 @@ import { createBookSlice, BookSlice } from './slices/book.slice';
 import { createReaderSlice, ReaderSlice } from './slices/reader.slice';
 
 const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-const PDF_BACKFILL_VERSION = 'v1';
+const PDF_BACKFILL_VERSION = 'v2';
 const PDF_BACKFILL_DELAY_MS = 180;
 const pdfBackfillLocks = new Set<string>();
 
@@ -37,14 +37,7 @@ const isPdfBook = (book: Book): boolean => {
 };
 
 const needsPdfCoverBackfill = (book: Book): boolean => {
-    if (!isPdfBook(book)) return false;
-    const cover = String(book.cover_url || '');
-    if (!cover) return true;
-    if (isDataUrl(cover)) return true;
-    return (
-        cover.includes('photo-1543002588-bfa74002ed7e') ||
-        cover.includes('photo-1544947950-fa07a98d4679')
-    );
+    return isPdfBook(book);
 };
 
 const fetchRemoteBlob = async (url: string): Promise<Blob | null> => {
