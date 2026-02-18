@@ -458,7 +458,7 @@ export default function LibraryPage() {
                                         )}
 
                                         <div
-                                            onClick={() => navigate(`/details/${book.id}`)}
+                                            onClick={() => navigate(`/book/${book.id}`)}
                                             className="w-full relative block group/cover cursor-pointer"
                                         >
                                             <div className="transform group-hover/cover:-translate-y-2 transition-transform duration-500">

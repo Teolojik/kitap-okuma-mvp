@@ -2,7 +2,10 @@ User-agent: *
 Allow: /
 Allow: /api/share
 Disallow: /admin
+Disallow: /login
+Disallow: /read/
 Disallow: /settings
 Disallow: /profile
+Disallow: /stats
 
 Sitemap: https://www.epigraphreader.com/sitemap.xml

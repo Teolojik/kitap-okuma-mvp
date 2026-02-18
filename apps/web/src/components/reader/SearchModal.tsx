@@ -86,7 +86,7 @@ const SearchModal = ({ isOpen, onClose }: SearchModalProps) => {
         if (item.action) {
             item.action();
         } else {
-            navigate(`/details/${item.id}`);
+            navigate(`/book/${item.id}`);
         }
         onClose();
         setQuery('');

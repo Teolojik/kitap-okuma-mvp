@@ -195,6 +195,17 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 2. **Clipboard API (Masaüstü Fallback):** Masaüstü tarayıcılarda güvenlik nedeniyle X'e otomatik görsel "enjekte" edilemez. Çözüm olarak görsel `ClipboardItem` ile panoya kopyalanır ve kullanıcı X penceresine yönlendirilir. Kullanıcı sadece `Ctrl + V` yaparak görseli ekler.
 3. **Download (Son Çare):** Clipboard desteklenmiyorsa görsel otomatik indirilir ve kullanıcıya X'e yüklemesi bildirilir.
 - **Ders:** Sosyal medya platformlarının URL kısıtlamalarını aşmak için Web Share API ve Clipboard eş zamanlı kullanılmalıdır.
+- [x] GSC: Sahiplik doğrulandı, indeksleme talebi iletildi.
+
+### 32. Extreme SEO — UGC & Rich Schema Entegrasyonu
+**Öğrenilen:** Sadece meta tag eklemek yetmez. Google'da dominasyon kurmak için:
+- **UGC Indexing:** `api/share.js` sayfasını sadece yönlendirme için değil, botlar için `Quotation` ve `CreativeWork` şemalarıyla zenginleştirilmiş bir içerik sayfası olarak tasarladık.
+- **Rich Sitemap:** `sitemap.xml` içine `google-image` namespace'i eklenerek görsel (marketing assets) indeksleme aktif edildi.
+- **FAQ Schema:** Anasayfaya teknik FAQ (SSS) şeması eklenerek Google Asistan ve "Öne Çıkarılan Snippet"lerde görünme şansı artırıldı.
+
+### 33. Metin Seçimi — Tireli Kelime Birleştirme (Normalizasyon)
+**Sorun:** PDF ve EPUB formatlarında satır sonuna gelen ve tire ile bölünen kelimeler (`yardımla- şarak`) kopyalanırken aradaki boşluk ve tire korunuyordu, bu da alıntı kartlarının kalitesini düşürüyordu.
+**Çözüm:** `lib/utils.ts` içinde `normalizeText` fonksiyonu geliştirildi. Regex ile `(\w)-\s+(\w)` paternleri yakalanarak tireli satır sonları temizlendi ve kelimeler bütünleştirildi. Bu işlem hem `PdfReader` hem `EpubReader` seçim olaylarına entegre edildi.
 ### 30. Düzenlenebilir Metadata (Editable Share Metadata)
 **Sorun:** Kitapların meta verileri (yazar/başlık) bazen eksik veya hatalı olabiliyor (örn: "Unknown Author"), bu da paylaşılan alıntı kartlarının kalitesini düşürüyordu.
 **Çözüm:** `QuoteModal` içine anlık düzenlenebilir `Title` ve `Author` giriş alanları eklendi.
@@ -209,3 +220,20 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - Preview ölçeği `scale-[0.85]` seviyesine çıkarılarak kartın modalı neredeyse tamamen doldurması sağlandı.
 - Gereksiz dış boşluklar (margins) temizlendi ve başlık alanı minimalize edildi.
 - **Kural:** Paylaşım modalları her zaman görselin kendisini "başrol" yapmalı ve ekranın %90'ını dolduracak şekilde dinamik olarak ölçeklenmelidir.
+
+### 34. PDF Kapak Üretimi - Placeholder Tuzağı ve Gerçek Sayfa Seçimi
+**Sorun:** Kapak görünmeme sanılan hata, aslında PDF branch'inde bilinçli placeholder üretilmesiydi. Bazı dosyalarda ilk sayfa da gerçek kapak olmadığı için tek sayfa render yaklaşımı yanlış sonuç veriyordu.
+**Çözüm:**
+- `extractCoverLocally` içinde PDF akışı gerçek render ile değiştirildi.
+- İlk 3 sayfa sırayla render edilip görsel skorlamayla en güçlü aday seçildi.
+- Sonuç görseli önce `covers` bucket'a kalıcı yazılıyor, başarısız olursa data URL fallback korunuyor.
+- `useStore` tarafında backfill versiyonu yükseltilerek mevcut PDF kayıtlarının da yeniden işlenmesi sağlandı.
+- **Kural:** PDF kapak tespiti "sadece page 1" varsayımıyla değil, çoklu sayfa ve kalite skoru yaklaşımıyla yapılmalıdır.
+
+### 35. Admin User Detail Drawer - Demo Algısı vs Gerçek Veri
+**Sorun:** Kullanıcı detay panelindeki bazı metrikler "0" görünürken bunun demo veri mi yoksa gerçek veri mi olduğu belirsizdi. Eski kayıtların bir kısmında `user_id` eksik olduğu için kitap sayısı da düşük görünüyordu.
+**Çözüm:**
+- Drawer artık sadece canlı veri hesapları gösteriyor; veri yoksa metrik kartlarında ve grafik alanlarında açık "veri yok" durumu gösteriliyor.
+- Kullanıcı kitapları filtrelenirken legacy storage path içinden kullanıcı kimliği çıkarımı için fallback eklendi.
+- Toplam kitap sayısı doğrudan `userBooks.length` ile hesaplanarak tutarlılık sağlandı.
+- **Kural:** Admin panelinde "0" ile "veri yok" aynı durum değildir; UI bu iki durumu ayrı göstermelidir.

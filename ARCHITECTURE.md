@@ -24,10 +24,13 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
 20. **Admin Panel Architecture:** Yönetim paneli artık modüler ve analiz tabanlı bir yapıya sahiptir:
     - **ActivityStream:** Tüm sistem loglarını kronolojik bir zaman çizelgesinde sunar.
     - **UserDetailDrawer:** Kullanıcı listesinden erişilen, derinlemesine okuma alışkanlığı ve cihaz analizi sunan yan panel.
+    - **UserDetailDrawer Data Integrity:** Detay paneli demo veri göstermez; `books`, `book_progress` ve kullanıcı aktivite verilerinden canlı hesap üretir, veri yoksa "no data" durumuna düşer.
     - **StorageChart:** Platformun depolama kaynaklarını Recharts (Pie & Bar) ile görselleştiren analiz modülü.
     - **Storage Cleanup Modülü:** Veritabanı ve fiziksel storage arasındaki senkronizasyonu tarayan temizlik motoru.
     - **Guest Life Cycle Motoru:** Kayıtlı olmayan kullanıcıların 7 günden eski pasif içeriklerini otomatik temizleyen otonom yapı.
     - **Social Share API (Vercel):** Dinamik Open Graph meta taglerini sunan, X/Twitter crawler dostu serverless katmanı.
+    - **SEO & Search Dominasyon**: JSON-LD (SoftwareApp, FAQ, Quotation) markup'ları ve zenginleştirilmiş `sitemap.xml` (Image indexing).
+    - **Content Normalization Engine**: `lib/utils` altında tireli satır sonlarını ve whitespace bozukluklarını ayıklayan merkezi metin işleme katmanı.
 
 ## 🧠 State Yönetimi (Zustand)
 `apps/web/src/stores/useStore.ts` altında merkezi state yönetilir:
@@ -39,7 +42,9 @@ Okuyucu sayfası (`ReaderPage.tsx`) şu hiyerarşiyle yönetilir:
 ## ☁️ Veri Katmanı
 - **Supabase:** Authentication, PostgreSQL veritabanı (books, profiles, bookmarks, annotations, collections tabloları).
 - **Storage:** Kitap dosyaları (.pdf, .epub), kapak görselleri (covers bucket) ve paylaşılan alıntı kartları (shares bucket - authenticated upload only).
+- **Cover Pipeline:** PDF yüklemelerinde kapak görseli için placeholder yerine gerçek sayfa render akışı kullanılır. İlk 3 sayfa taranır, en görsel olarak güçlü aday seçilir, `covers` bucket'a yazılır; upload hatasında data URL fallback devreye girer.
 - **MockAPI:** Anonim (misafir) kullanıcılar için localStorage tabanlı fallback.
+- **Background Backfill:** `fetchBooks` sonrasında arka planda PDF kapak backfill çalışır; eski placeholder/data URL kayıtları gerçek kapağa çevrilerek kalıcılaştırılır.
 - **Hata Yönetimi:** Tüm Supabase mutasyonlarında optimistic rollback pattern — hata durumunda yerel state geri alınır, kullanıcıya Türkçe toast gösterilir.
 
 ## 🔒 Güvenlik

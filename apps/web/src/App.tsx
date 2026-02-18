@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '@/stores/useStore';
 import { supabase } from '@/lib/supabase';
 import { translations } from '@/lib/translations';
@@ -15,6 +15,8 @@ import StatsPage from '@/pages/Stats';
 import AdminPage from '@/pages/Admin';
 import AdminGuard from '@/components/AdminGuard';
 import ReloadPrompt from '@/components/ReloadPrompt';
+import SeoManager from '@/components/SeoManager';
+import NotFoundPage from '@/pages/NotFound';
 import { Toaster } from 'sonner';
 import { Analytics } from "@vercel/analytics/react";
 
@@ -107,6 +109,7 @@ function App() {
     <>
       <Analytics />
       <BrowserRouter>
+        <SeoManager />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<Layout />}>
@@ -119,7 +122,7 @@ function App() {
             <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />
             <Route path="/read/:id" element={<ReaderPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <Toaster position="top-right" />
         <ReloadPrompt />

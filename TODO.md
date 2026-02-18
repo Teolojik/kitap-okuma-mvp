@@ -3,6 +3,12 @@
 Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her başarılı özellik eklemesinden veya hata düzeltmesinden sonra güncellenmelidir.
 
 ## ✅ Tamamlananlar
+- [2026-02-18] **SEO Hardening v2 (Route Meta + Crawl Control + Automation)**: Route bazli dinamik SEO yonetimi (`SeoManager`) eklendi (title, description, canonical, robots, OG/Twitter), soft-404 yonlendirmesi kaldirildi ve gercek `NotFound` sayfasi eklendi, `Vercel` seviyesinde `X-Robots-Tag` noindex kurallari tanimlandi, `sitemap.xml` ve `robots.txt` build oncesi otomatik uretilir hale getirildi (`prebuild` script), `/details/:id` linkleri `/book/:id` ile duzeltildi.
+- [2026-02-18] **PDF/EPUB Kapak Pipeline Stabilizasyonu**: PDF kapak üretimi placeholder akışından çıkarılıp gerçek sayfa render akışına alındı. İlk 3 sayfa tarama + görsel skor yaklaşımı eklendi, `covers` bucket kalıcılığı standartlaştırıldı, upload hatasında data URL fallback korundu, `BookCover` URL değişim reseti ile görsel takılmaları giderildi.
+- [2026-02-18] **PDF Kapak Backfill v2**: Mevcut PDF kayıtları için arka plan migration yeniden çalıştırıldı; eski placeholder/data URL kapaklar gerçek kapakla güncellenecek şekilde `fetchBooks` sonrası backfill akışı genişletildi.
+- [2026-02-18] **Admin Kullanıcı Detay Paneli Doğrulama**: User drawer'da demo algısı kaldırıldı, toplam kitap sayısı canlı veriden hesaplandı (`userBooks.length`), veri olmayan metriklerde açık empty-state gösterimi eklendi ve legacy `user_id` eksik kitaplar için path fallback ile eşleştirme güçlendirildi.
+- [2026-02-15] **Extreme SEO & Schema Dominasyonu**: `sitemap.xml` görsel indeksleme, `index.html` FAQ şeması ve `api/share.js` zengin içerik markup'ları (Quotation, CreativeWork) tamamlandı.
+- [2026-02-15] **Alıntı Metni Fix**: PDF ve EPUB seçimlerinde satır sonu tirelerinin (`yardımla- şarak`) otomatik birleştirilmesi sağlandı (`normalizeText`).
 - [2026-02-13] **X (Twitter) Görsel Kart Desteği & Güvenlik**: Alıntıların X'te görsel kart olarak paylaşılması için `api/share.js` serverless altyapısı kuruldu. Özellik sadece kayıtlı kullanıcılara kısıtlandı (RLS + UI Lock).
 - [2026-02-13] **Admin Panel Modernizasyonu & Misafir Life Cycle**: Admin panelindeki sekmeler optimize edildi (`flex-wrap`, `text-[11px]`), "Anlık Okuyanlar" (Live Readers) sayacı aktifleştirildi (15 dk kısıtıyla), 7 günden eski pasif misafir kitapları için otonom temizlik motoru eklendi.
 - [2026-02-13] **İstatistik Görselleştirme Fix**: `Stats.tsx` sayfasındaki haftalık aktivite grafiği, düşük veri durumlarında dahi görünürlük sağlayan minimum yükseklik mantığı ve gelişmiş bar tasarımı (hover tooltip, gradyan) ile güncellendi.
@@ -21,6 +27,10 @@ Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her ba
 
 ## 🚀 Planlananlar
 - [x] **SEO & Görünürlük Hamlesi:** OG etiketleri, `sitemap.xml`, `robots.txt`.
+- [ ] **SEO SSR/Prerender Katmani:** Public route'lar (`/`, `/discover`, `book detail`) icin sunucu tarafli render veya prerender entegrasyonu.
+- [ ] **Dinamik Book Sitemap:** Indexlenebilir kitap detay URL'leri icin otomatik ve periyodik sitemap uretimi (`/book/:id`).
+- [ ] **Canonical Host Yonlendirme:** `www` / non-`www` tek host canonical zorlamasi ve 301 redirect kuralinin netlestirilmesi.
+- [ ] **Search Console Operasyonlari:** GSC coverage/sitemap hatalari icin haftalik kontrol checklist ve issue template akisi.
 - [x] **Sosyal & Paylaşılabilir Özellikler:** Alıntı Kartları tamamlandı.
     - [ ] **Paylaşılabilir Listeler:** Kullanıcıların kitap koleksiyonlarını link ile paylaşabilmesi.
 - [ ] **Offline Destek (PWA):** Kitapların internetsiz okunabilmesi.
