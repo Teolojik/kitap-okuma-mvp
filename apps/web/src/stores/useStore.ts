@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { Book, Collection, MockAPI, smartClean, parseFileName, extractCoverLocally, extractMetadataLocally } from '@/lib/mock-api';
+import {
+    Book,
+    Collection,
+    MockAPI,
+    smartClean,
+    parseFileName,
+    extractCoverLocally,
+    extractMetadataLocally,
+    extractPdfCoverFromFirstPage,
+    persistCoverToStorage,
+    isDataUrl,
+    getStoredBookFile
+} from '@/lib/mock-api';
 import { findCoverImage } from '@/lib/discovery-service';
 import { toast } from 'sonner';
 import { translations } from '@/lib/translations';
@@ -10,6 +22,41 @@ import { getBrowserInfo, getPlatformInfo } from '@/lib/utils';
 import { createAuthSlice, AuthSlice } from './slices/auth.slice';
 import { createBookSlice, BookSlice } from './slices/book.slice';
 import { createReaderSlice, ReaderSlice } from './slices/reader.slice';
+
+const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+const PDF_BACKFILL_VERSION = 'v1';
+const PDF_BACKFILL_DELAY_MS = 180;
+const pdfBackfillLocks = new Set<string>();
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isPdfBook = (book: Book): boolean => {
+    const fileType = String((book as any).file_type || book.format || '').toLowerCase();
+    if (fileType === 'pdf') return true;
+    return String(book.file_url || '').toLowerCase().includes('.pdf');
+};
+
+const needsPdfCoverBackfill = (book: Book): boolean => {
+    if (!isPdfBook(book)) return false;
+    const cover = String(book.cover_url || '');
+    if (!cover) return true;
+    if (isDataUrl(cover)) return true;
+    return (
+        cover.includes('photo-1543002588-bfa74002ed7e') ||
+        cover.includes('photo-1544947950-fa07a98d4679')
+    );
+};
+
+const fetchRemoteBlob = async (url: string): Promise<Blob | null> => {
+    try {
+        if (!url) return null;
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        return await response.blob();
+    } catch {
+        return null;
+    }
+};
 
 export const useAuthStore = create<AuthSlice>()((...a) => ({
     ...createAuthSlice(...a),
@@ -35,6 +82,7 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
             set({ loading: true });
             try {
                 const user = useAuthStore.getState().user;
+                let loadedBooks: Book[] = [];
                 if (user) {
                     const { data, error } = await supabase
                         .from('books')
@@ -43,10 +91,12 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                         .order('created_at', { ascending: false });
 
                     if (!error && data) {
-                        set({ books: data as Book[] });
+                        loadedBooks = data as Book[];
+                        set({ books: loadedBooks });
                     }
                 } else {
                     const books = await MockAPI.books.list();
+                    loadedBooks = books;
                     set({ books });
                 }
 
@@ -148,6 +198,66 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                             });
                     }
                 }
+
+                const identity = user?.id || 'guest';
+                const backfillKey = `pdf_cover_backfill_${PDF_BACKFILL_VERSION}_${identity}`;
+                const candidates = loadedBooks.filter(needsPdfCoverBackfill);
+
+                if (!localStorage.getItem(backfillKey) && candidates.length > 0 && !pdfBackfillLocks.has(identity)) {
+                    pdfBackfillLocks.add(identity);
+
+                    void (async () => {
+                        try {
+                            for (const book of candidates) {
+                                try {
+                                    const sourceBlob = user
+                                        ? await fetchRemoteBlob(book.file_url)
+                                        : await getStoredBookFile(book.id);
+                                    if (!sourceBlob) continue;
+
+                                    const extractedCover = await extractPdfCoverFromFirstPage(sourceBlob, `${book.title || 'document'}.pdf`);
+                                    if (!extractedCover) continue;
+
+                                    let finalCover = extractedCover;
+                                    if (isDataUrl(finalCover)) {
+                                        const persisted = await persistCoverToStorage(`${identity}/${book.id}.jpg`, finalCover);
+                                        if (persisted) finalCover = persisted;
+                                    }
+
+                                    if (!finalCover || finalCover === book.cover_url) continue;
+
+                                    if (user) {
+                                        const { error: updateError } = await supabase
+                                            .from('books')
+                                            .update({ cover_url: finalCover })
+                                            .eq('id', book.id)
+                                            .eq('user_id', user.id);
+                                        if (updateError) {
+                                            console.error('[Backfill] Failed to update cover in Supabase:', updateError);
+                                            continue;
+                                        }
+                                    } else {
+                                        await MockAPI.books.updateCover(book.id, finalCover);
+                                    }
+
+                                    set(state => ({
+                                        books: state.books.map(b => b.id === book.id ? { ...b, cover_url: finalCover } : b)
+                                    }));
+
+                                    await sleep(PDF_BACKFILL_DELAY_MS);
+                                } catch (error) {
+                                    console.error('[Backfill] PDF cover migration failed for book:', book.id, error);
+                                }
+                            }
+
+                            localStorage.setItem(backfillKey, 'done');
+                        } finally {
+                            pdfBackfillLocks.delete(identity);
+                        }
+                    })();
+                } else if (!localStorage.getItem(backfillKey) && candidates.length === 0) {
+                    localStorage.setItem(backfillKey, 'done');
+                }
             } finally {
                 set({ loading: false });
             }
@@ -206,7 +316,11 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                     }
                 }
 
-                if (!finalCover) finalCover = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+                if (!finalCover) finalCover = DEFAULT_COVER_FALLBACK;
+                if (isDataUrl(finalCover)) {
+                    const persisted = await persistCoverToStorage(`${user ? user.id : 'guest'}/${crypto.randomUUID()}.jpg`, finalCover);
+                    if (persisted) finalCover = persisted;
+                }
 
                 // Supabase Upload
                 const { error: uploadError } = await supabase.storage.from('books').upload(filePath, file);
@@ -214,7 +328,7 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
 
                 const { data: { publicUrl } } = supabase.storage.from('books').getPublicUrl(filePath);
 
-                await supabase.from('books').insert({
+                const { error: insertError } = await supabase.from('books').insert({
                     user_id: user ? user.id : null,
                     title: displayTitle,
                     author: smartClean(finalAuthor),
@@ -223,6 +337,10 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                     file_type: fileExt === 'pdf' ? 'pdf' : 'epub',
                     file_size: file.size,
                 });
+                if (insertError) {
+                    console.error('[Upload] Book insert failed:', insertError);
+                    if (user) throw insertError;
+                }
 
                 if (!user) {
                     await MockAPI.books.upload(file, { ...meta, title: displayTitle, author: finalAuthor, cover_url: finalCover });

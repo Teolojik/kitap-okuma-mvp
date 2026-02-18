@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen } from 'lucide-react';
 import { getCleanCoverUrl } from '@/lib/discovery-service';
@@ -21,7 +21,10 @@ export const BookCover: React.FC<BookCoverProps> = ({
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(false);
 
-    const fallback = "https://images.unsplash.com/photo-1544947950-fa07a98d4679?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+    useEffect(() => {
+        setIsLoaded(false);
+        setError(false);
+    }, [url]);
 
     return (
         <div className={`relative w-full ${aspectRatio} rounded-xl overflow-hidden bg-secondary shadow-md ${className}`}>
@@ -42,6 +45,7 @@ export const BookCover: React.FC<BookCoverProps> = ({
                     src={getCleanCoverUrl(url)}
                     alt={title}
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     initial={{ opacity: 0, scale: 1.05 }}
                     animate={{
                         opacity: isLoaded ? 1 : 0,

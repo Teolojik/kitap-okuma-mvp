@@ -37,6 +37,10 @@ export interface Collection {
 const DB_NAME = 'EpigrafDB';
 const STORE_NAME = 'books_files';
 const DRAWINGS_STORE = 'drawings';
+const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+const PDF_WORKER_SRC = '/pdf.worker.min.mjs';
+const PDF_THUMBNAIL_WIDTH = 420;
+const PDF_THUMBNAIL_QUALITY = 0.88;
 
 const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -77,6 +81,10 @@ const getFile = async (id: string): Promise<Blob | null> => {
     });
 };
 
+export const getStoredBookFile = async (id: string): Promise<Blob | null> => {
+    return getFile(id);
+};
+
 const deleteFile = async (id: string): Promise<void> => {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -89,17 +97,83 @@ const deleteFile = async (id: string): Promise<void> => {
 };
 
 // --- SUPABASE STORAGE FUNCTIONS ---
-const uploadCoverToSupabase = async (bookId: string, coverDataUrl: string): Promise<string | null> => {
-    try {
-        // Convert data URL to blob
-        const response = await fetch(coverDataUrl);
-        const blob = await response.blob();
+export const isDataUrl = (value?: string | null): boolean => {
+    return typeof value === 'string' && value.startsWith('data:');
+};
 
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
+const toUint8Array = async (source: Blob | File | ArrayBuffer | Uint8Array): Promise<Uint8Array> => {
+    if (source instanceof Uint8Array) return source;
+    if (source instanceof ArrayBuffer) return new Uint8Array(source);
+    return new Uint8Array(await source.arrayBuffer());
+};
+
+const generatePdfPlaceholderCover = (fileName: string): string | undefined => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+
+    const gradient = ctx.createLinearGradient(0, 0, 400, 600);
+    gradient.addColorStop(0, '#667eea');
+    gradient.addColorStop(0.5, '#764ba2');
+    gradient.addColorStop(1, '#f093fb');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 400, 600);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    for (let i = 0; i < 20; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random() * 400, Math.random() * 600, Math.random() * 50 + 20, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(20, 20, 360, 560);
+
+    const title = fileName.replace(/\.pdf$/i, '');
+    const words = title.split(/[\s_-]+/);
+    ctx.font = 'bold 26px Georgia';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+
+    let y = 280;
+    let line = '';
+    for (const word of words) {
+        const testLine = line + word + ' ';
+        if (ctx.measureText(testLine).width > 340) {
+            ctx.fillText(line.trim(), 200, y);
+            line = word + ' ';
+            y += 34;
+            if (y > 450) break;
+        } else {
+            line = testLine;
+        }
+    }
+    if (line && y <= 450) {
+        ctx.fillText(line.trim(), 200, y);
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(140, 520, 120, 42);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('PDF', 200, 548);
+
+    return canvas.toDataURL('image/jpeg', 0.92);
+};
+
+export const persistCoverToStorage = async (objectPath: string, coverDataUrl: string): Promise<string | null> => {
+    try {
+        if (!isDataUrl(coverDataUrl)) return null;
+
+        const blob = await (await fetch(coverDataUrl)).blob();
+        const uploadPath = objectPath.replace(/^\/+/, '');
+        const { error } = await supabase.storage
             .from('covers')
-            .upload(`${bookId}.jpg`, blob, {
-                contentType: 'image/jpeg',
+            .upload(uploadPath, blob, {
+                contentType: blob.type || 'image/jpeg',
                 upsert: true
             });
 
@@ -108,17 +182,67 @@ const uploadCoverToSupabase = async (bookId: string, coverDataUrl: string): Prom
             return null;
         }
 
-        // Get public URL
         const { data: urlData } = supabase.storage
             .from('covers')
-            .getPublicUrl(`${bookId}.jpg`);
+            .getPublicUrl(uploadPath);
 
-        console.log("Cover uploaded to Supabase:", urlData.publicUrl);
-        return urlData.publicUrl;
+        return urlData.publicUrl || null;
     } catch (err) {
         console.error("Cover upload failed:", err);
         return null;
     }
+};
+
+export const extractPdfCoverFromFirstPage = async (
+    source: Blob | File | ArrayBuffer | Uint8Array,
+    fileNameHint = 'document.pdf'
+): Promise<string | undefined> => {
+    try {
+        const { pdfjs } = await import('react-pdf');
+        if (pdfjs?.GlobalWorkerOptions && pdfjs.GlobalWorkerOptions.workerSrc !== PDF_WORKER_SRC) {
+            pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+        }
+
+        const rawData = await toUint8Array(source);
+        const loadingTask = pdfjs.getDocument({
+            data: rawData,
+            useSystemFonts: true
+        });
+        const pdf = await loadingTask.promise;
+
+        try {
+            const page = await pdf.getPage(1);
+            const baseViewport = page.getViewport({ scale: 1 });
+            const fitScale = PDF_THUMBNAIL_WIDTH / Math.max(1, baseViewport.width);
+            const viewport = page.getViewport({ scale: Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1 });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.floor(viewport.width));
+            canvas.height = Math.max(1, Math.floor(viewport.height));
+            const ctx = canvas.getContext('2d', { alpha: false });
+            if (!ctx) return generatePdfPlaceholderCover(fileNameHint);
+
+            await page.render({
+                canvasContext: ctx,
+                viewport,
+                canvas
+            }).promise;
+
+            page.cleanup();
+            return canvas.toDataURL('image/jpeg', PDF_THUMBNAIL_QUALITY);
+        } finally {
+            await pdf.destroy();
+        }
+    } catch (err) {
+        console.error("PDF cover extraction failed:", err);
+        return generatePdfPlaceholderCover(fileNameHint);
+    }
+};
+
+const uploadCoverToSupabase = async (bookId: string, coverDataUrl: string): Promise<string | null> => {
+    const publicUrl = await persistCoverToStorage(`${bookId}.jpg`, coverDataUrl);
+    if (publicUrl) console.log("Cover uploaded to Supabase:", publicUrl);
+    return publicUrl;
 };
 
 export const smartClean = (text: string) => {
@@ -175,7 +299,6 @@ export const extractMetadataLocally = async (file: File): Promise<{ title?: stri
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
             // PDF metadata extraction disabled - using filename parsing instead
-            // pdfjs worker causes errors in Vercel production environment
             console.log("PDF: Using filename for metadata");
             return undefined;
         }
@@ -193,15 +316,11 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
             const book = ePub(await file.arrayBuffer());
 
             try {
-                // Wait for book to be ready
                 await book.ready;
-
-                // Strategy 1: Use epubjs built-in coverUrl (most reliable)
                 const coverUrl = await book.coverUrl();
 
                 if (coverUrl) {
                     console.log("EPUB Cover: Found via coverUrl()");
-                    // Fetch and convert to base64 to avoid CORS issues
                     try {
                         const response = await fetch(coverUrl);
                         const blob = await response.blob();
@@ -221,19 +340,18 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
                     }
                 }
 
-                // Strategy 2: Direct archive extraction (bypasses CORS)
                 const archive = (book as any).archive;
                 if (archive) {
-                    // Try to find cover in manifest
                     const manifest = (book as any).packaging?.manifest;
                     if (manifest) {
-                        // Look for cover-image property
-                        let coverHref = null;
+                        let coverHref: string | null = null;
                         for (const [id, item] of Object.entries(manifest)) {
                             const manifestItem = item as any;
-                            if (manifestItem.properties?.includes('cover-image') ||
+                            if (
+                                manifestItem.properties?.includes('cover-image') ||
                                 id.toLowerCase().includes('cover') ||
-                                manifestItem.href?.toLowerCase().includes('cover')) {
+                                manifestItem.href?.toLowerCase().includes('cover')
+                            ) {
                                 coverHref = manifestItem.href;
                                 break;
                             }
@@ -242,7 +360,6 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
                         if (coverHref) {
                             console.log("EPUB Cover: Found in manifest:", coverHref);
                             const imageData = await archive.request(coverHref, 'blob');
-
                             return new Promise<string>((resolve, reject) => {
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
@@ -262,84 +379,16 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
             }
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-            // Generate a beautiful placeholder cover for PDFs
-            // Client-side pdfjs extraction has worker issues in production
-            console.log("PDF: Generating styled placeholder cover");
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 400;
-            canvas.height = 600;
-            const ctx = canvas.getContext('2d');
-
-            if (ctx) {
-                // Beautiful gradient background
-                const gradient = ctx.createLinearGradient(0, 0, 400, 600);
-                gradient.addColorStop(0, '#667eea');
-                gradient.addColorStop(0.5, '#764ba2');
-                gradient.addColorStop(1, '#f093fb');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 400, 600);
-
-                // Add subtle pattern overlay
-                ctx.fillStyle = 'rgba(255,255,255,0.03)';
-                for (let i = 0; i < 20; i++) {
-                    ctx.beginPath();
-                    ctx.arc(Math.random() * 400, Math.random() * 600, Math.random() * 50 + 20, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                // White border frame
-                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(20, 20, 360, 560);
-
-                // Book icon
-                ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                ctx.font = 'bold 60px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('📖', 200, 200);
-
-                // Title
-                const fileName = file.name.replace(/\.pdf$/i, '');
-                const words = fileName.split(/[\s_-]+/);
-                ctx.font = 'bold 28px Georgia';
-                ctx.fillStyle = '#ffffff';
-
-                let y = 300;
-                let line = '';
-                for (const word of words) {
-                    const testLine = line + word + ' ';
-                    if (ctx.measureText(testLine).width > 340) {
-                        ctx.fillText(line.trim(), 200, y);
-                        line = word + ' ';
-                        y += 36;
-                        if (y > 450) break;
-                    } else {
-                        line = testLine;
-                    }
-                }
-                if (line && y <= 450) {
-                    ctx.fillText(line.trim(), 200, y);
-                }
-
-                // "PDF" badge
-                ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                ctx.fillRect(150, 520, 100, 40);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 20px Arial';
-                ctx.fillText('PDF', 200, 548);
-
-                return canvas.toDataURL('image/jpeg', 0.92);
-            }
-
-            return undefined;
+            console.log("PDF Cover Extraction: Rendering first page...");
+            const extracted = await extractPdfCoverFromFirstPage(file, file.name);
+            if (extracted) return extracted;
+            return generatePdfPlaceholderCover(file.name);
         }
     } catch (e) {
         console.error("Local extraction failed", e);
     }
     return undefined;
 };
-
 
 export const MockAPI = {
     auth: {
@@ -450,7 +499,7 @@ export const MockAPI = {
                 (async () => {
                     if (finalCover) return { cover: finalCover };
 
-                    // Extract cover locally - works for EPUB and generates placeholder for PDF
+                    // Extract cover locally - works for EPUB and PDF first page rendering
                     const localCover = await extractCoverLocally(file).catch(() => null);
                     if (localCover && localCover.startsWith('data:')) {
                         console.log("Cover extracted/generated, uploading to Supabase...");
@@ -471,7 +520,7 @@ export const MockAPI = {
 
             // FALLBACK DEFAULT IMAGE
             if (!finalCover) {
-                finalCover = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
+                finalCover = DEFAULT_COVER_FALLBACK;
             }
 
             const newBook: Book = {
@@ -502,6 +551,16 @@ export const MockAPI = {
             const idx = books.findIndex(b => b.id === bookId);
             if (idx !== -1) {
                 books[idx].progress = progress;
+                localStorage.setItem('mock_books', JSON.stringify(books));
+            }
+        },
+
+        updateCover: async (bookId: string, coverUrl: string) => {
+            const stored = localStorage.getItem('mock_books');
+            const books: Book[] = stored ? JSON.parse(stored) : [];
+            const idx = books.findIndex(b => b.id === bookId);
+            if (idx !== -1) {
+                books[idx].cover_url = coverUrl;
                 localStorage.setItem('mock_books', JSON.stringify(books));
             }
         }
