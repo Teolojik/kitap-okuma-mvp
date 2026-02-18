@@ -21,6 +21,17 @@ Bu dosya Search Console ve teknik SEO operasyonlarini haftalik olarak takip etme
 5. `Indexed` URL listesinde `login/admin/read/book-private` benzeri route var mi kontrol et.
 6. Sorun varsa issue template ile gorev ac.
 
+## Public Book Sitemap Feed
+
+- Build script `apps/web/scripts/generate-seo-files.mjs` kitap URL'lerini iki kaynaktan okuyabilir:
+  - `apps/web/public/public-books.json` (lokal feed)
+  - Supabase `public_books` tablosu (opsiyonel, env ile)
+- Kitap URL eklemeyi acmak icin deploy ortaminda:
+  - `ENABLE_PUBLIC_BOOK_SITEMAP=true`
+  - `SEO_SUPABASE_URL=<project-url>` (opsiyonel)
+  - `SEO_SUPABASE_SERVICE_ROLE_KEY=<service-role-key>` (opsiyonel)
+- Env tanimli degilse script guvenli fallback ile sadece temel sayfalari sitemap'e yazar.
+
 ## Issue Template
 
 Kopyala ve yeni task ac:
@@ -57,4 +68,3 @@ Due Date:
 
 - `/book/:id` route'lari su an public veri modeli olmadigi icin `noindex` korunur.
 - Bu koruma kaldirilmadan once `Public Book Detail Modeli` tamamlanmis olmali.
-
