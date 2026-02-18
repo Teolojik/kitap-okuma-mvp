@@ -42,7 +42,19 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
     const totalPages = userStats.totalPagesRead || 0;
     const totalTime = Math.floor((userStats.totalReadingTime || 0) / 60); // minutes
     const streak = userStats.currentStreak || userStats.streak || 0;
-    const booksCount = Object.keys(userStats.bookTime || {}).length;
+    const booksCount = Array.isArray(userBooks) ? userBooks.length : 0;
+    const hasStatsData =
+        totalPages > 0 ||
+        totalTime > 0 ||
+        streak > 0 ||
+        Object.keys(userStats.bookTime || {}).length > 0 ||
+        Object.values(userStats.dailyPages || {}).some((value: any) => Number(value) > 0);
+
+    const noDataText = t('noDataAvailable');
+    const totalPagesValue = hasStatsData ? totalPages : noDataText;
+    const readingTimeValue = hasStatsData ? `${totalTime} ${t('minutes')}` : noDataText;
+    const streakValue = hasStatsData ? `${streak} ${t('days')}` : noDataText;
+    const booksValue = booksCount;
 
     // Filter logs for this specific user
     const userLogs = logs.filter(log => log.target_id === user.id || log.details?.userId === user.id);
@@ -96,15 +108,15 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                         {/* Highlights Grid */}
                         <div className="grid grid-cols-2 gap-4">
                             {[
-                                { label: t('totalPages'), value: totalPages, icon: BookOpen, color: 'text-blue-500' },
-                                { label: t('readingTime'), value: `${totalTime} ${t('minutes')}`, icon: Clock, color: 'text-orange-500' },
-                                { label: t('streak'), value: `${streak} ${t('days')}`, icon: Zap, color: 'text-yellow-500' },
-                                { label: t('totalBooks'), value: booksCount, icon: PieChart, color: 'text-purple-500' },
+                                { label: t('totalPages'), value: totalPagesValue, icon: BookOpen, color: 'text-blue-500' },
+                                { label: t('readingTime'), value: readingTimeValue, icon: Clock, color: 'text-orange-500' },
+                                { label: t('streak'), value: streakValue, icon: Zap, color: 'text-yellow-500' },
+                                { label: t('totalBooks'), value: booksValue, icon: PieChart, color: 'text-purple-500' },
                             ].map((stat) => (
                                 <div key={stat.label} className="p-4 rounded-3xl bg-secondary/10 border border-border/5 group hover:bg-secondary/20 transition-all text-left">
                                     <stat.icon className={`h-4 w-4 ${stat.color} mb-3`} />
                                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">{stat.label}</p>
-                                    <p className="text-xl font-black tracking-tighter">{stat.value}</p>
+                                    <p className={`font-black tracking-tighter ${stat.value === noDataText ? 'text-xs text-muted-foreground/70 uppercase tracking-wider' : 'text-xl'}`}>{stat.value}</p>
                                 </div>
                             ))}
                         </div>
@@ -185,7 +197,15 @@ const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({ user, isOpen, onClo
                                             });
                                         }
 
-                                        const max = Math.max(...days.map(d => d.count), 10); // Minimum scale of 10 to avoid full bars for 1 page
+                                        const maxCount = Math.max(...days.map(d => d.count), 0);
+                                        if (maxCount === 0) {
+                                            return (
+                                                <div className="h-full w-full flex items-center justify-center">
+                                                    <p className="text-xs text-muted-foreground font-medium">{noDataText}</p>
+                                                </div>
+                                            );
+                                        }
+                                        const max = Math.max(maxCount, 10); // Minimum scale of 10 to avoid full bars for 1 page
 
                                         return days.map((day, i) => (
                                             <div key={i} className="flex flex-col items-center gap-2 w-full group relative">

@@ -1568,7 +1568,19 @@ const AdminPage = () => {
                 isOpen={isUserDrawerOpen}
                 onClose={() => setIsUserDrawerOpen(false)}
                 logs={adminLogs}
-                userBooks={allBooks.filter(b => b.user_id === selectedUser?.id)}
+                userBooks={allBooks.filter(b => {
+                    if (b.user_id === selectedUser?.id) return true;
+
+                    // Legacy fallback: if user_id is missing, infer owner from storage path.
+                    if (!b.user_id && typeof b.file_url === 'string') {
+                        const marker = '/storage/v1/object/public/books/';
+                        const pathAfterMarker = b.file_url.includes(marker) ? b.file_url.split(marker)[1] : '';
+                        const ownerFolder = pathAfterMarker ? pathAfterMarker.split('/')[0] : '';
+                        return ownerFolder === selectedUser?.id;
+                    }
+
+                    return false;
+                })}
                 t={t}
             />
         </div>
