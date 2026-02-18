@@ -7,6 +7,8 @@
     "dev": "vite",
     "prebuild": "node scripts/generate-seo-files.mjs",
     "prebuild:books": "node -e \"process.env.ENABLE_PUBLIC_BOOK_SITEMAP='true'; import('./scripts/generate-seo-files.mjs')\"",
+    "seo:sync-public-books": "node scripts/sync-public-books-catalog.mjs",
+    "seo:sync-public-books:prune": "node scripts/sync-public-books-catalog.mjs --prune",
     "build": "tsc -b && vite build",
     "postbuild": "node scripts/prerender-static-routes.mjs",
     "lint": "eslint .",

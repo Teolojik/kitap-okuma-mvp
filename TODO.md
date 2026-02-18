@@ -3,6 +3,7 @@
 Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her başarılı özellik eklemesinden veya hata düzeltmesinden sonra güncellenmelidir.
 
 ## ✅ Tamamlananlar
+- [2026-02-18] **Public Book Catalog Sync Tooling**: `public-books.json` listesini Supabase `public_books` tablosuna upsert eden script eklendi (`seo:sync-public-books`). Opsiyonel prune modu ile listede olmayan yayinlar `unpublish` edilebiliyor (`seo:sync-public-books:prune`).
 - [2026-02-18] **Dinamik Book Sitemap Altyapisi (Feed-Ready)**: `generate-seo-files` scripti local feed (`public-books.json`) ve opsiyonel Supabase `public_books` kaynagini okuyacak sekilde genisletildi. `ENABLE_PUBLIC_BOOK_SITEMAP` bayragi ile ac/kapat modeli eklendi. Public katalog icin SQL setup dosyasi (`supabase/create-public-books-catalog.sql`) eklendi.
 - [2026-02-18] **SEO Safety Guard for Book Routes**: `/book/:id` sayfalari public veriyle hydrate olmadigi durumlarda `noindex` korumasina alindi (`SeoManager`). Ek olarak `Vercel` seviyesinde `/book/*` icin `X-Robots-Tag: noindex` eklendi.
 - [2026-02-18] **Prerender Coverage Expansion**: Build sonrasi prerender kapsami `/`, `/discover` ve `/404` route'larini kapsayacak sekilde genisletildi; statik host uyumlulugu icin `404.html` ciktisi uretiliyor.

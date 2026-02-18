@@ -31,6 +31,9 @@ Bu dosya Search Console ve teknik SEO operasyonlarini haftalik olarak takip etme
   - `SEO_SUPABASE_URL=<project-url>` (opsiyonel)
   - `SEO_SUPABASE_SERVICE_ROLE_KEY=<service-role-key>` (opsiyonel)
 - Env tanimli degilse script guvenli fallback ile sadece temel sayfalari sitemap'e yazar.
+- `public-books.json` ile Supabase katalogunu esitlemek icin:
+  - `npm run seo:sync-public-books`
+  - Liste disindaki yayinlari da pasiflestirmek icin: `npm run seo:sync-public-books:prune`
 
 ## Issue Template
 
