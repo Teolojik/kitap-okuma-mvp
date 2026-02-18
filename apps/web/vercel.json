@@ -1,4 +1,17 @@
 {
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "epigraphreader.com"
+        }
+      ],
+      "destination": "https://www.epigraphreader.com/$1",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/login",
@@ -56,4 +69,3 @@
     }
   ]
 }
-

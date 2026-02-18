@@ -1,0 +1,80 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..');
+const distDir = path.join(projectRoot, 'dist');
+const baseFile = path.join(distDir, 'index.html');
+
+const BASE_URL = 'https://www.epigraphreader.com';
+
+if (!fs.existsSync(baseFile)) {
+  throw new Error('[prerender] dist/index.html not found. Run build first.');
+}
+
+const baseHtml = fs.readFileSync(baseFile, 'utf8');
+
+const staticRoutes = [
+  {
+    route: '/discover',
+    title: 'Discover Books | epigraphreader.com',
+    description: 'Discover new books, explore categories, and find your next PDF or EPUB read.',
+    canonical: `${BASE_URL}/discover`,
+    ogUrl: `${BASE_URL}/discover`,
+    noscript:
+      'Discover books and browse curated categories on epigraphreader.com. Enable JavaScript for the full interactive experience.',
+  },
+];
+
+function applyRouteMeta(html, routeConfig) {
+  let output = html;
+  output = output.replace(/<title>[\s\S]*?<\/title>/i, `<title>${routeConfig.title}</title>`);
+  output = output.replace(
+    /<meta name="description" content="[\s\S]*?"\s*\/?>/i,
+    `<meta name="description" content="${routeConfig.description}" />`
+  );
+  output = output.replace(
+    /<link rel="canonical" href="[\s\S]*?"\s*\/?>/i,
+    `<link rel="canonical" href="${routeConfig.canonical}" />`
+  );
+  output = output.replace(
+    /<meta property="og:url" content="[\s\S]*?"\s*\/?>/i,
+    `<meta property="og:url" content="${routeConfig.ogUrl}" />`
+  );
+  output = output.replace(
+    /<meta property="og:title" content="[\s\S]*?"\s*\/?>/i,
+    `<meta property="og:title" content="${routeConfig.title}" />`
+  );
+  output = output.replace(
+    /<meta property="og:description" content="[\s\S]*?"\s*\/?>/i,
+    `<meta property="og:description" content="${routeConfig.description}" />`
+  );
+  output = output.replace(
+    /<meta property="twitter:url" content="[\s\S]*?"\s*\/?>/i,
+    `<meta property="twitter:url" content="${routeConfig.ogUrl}" />`
+  );
+  output = output.replace(
+    /<meta property="twitter:title" content="[\s\S]*?"\s*\/?>/i,
+    `<meta property="twitter:title" content="${routeConfig.title}" />`
+  );
+  output = output.replace(
+    /<meta property="twitter:description" content="[\s\S]*?"\s*\/?>/i,
+    `<meta property="twitter:description" content="${routeConfig.description}" />`
+  );
+
+  const noscriptBlock = `<noscript><main style="max-width:720px;margin:40px auto;padding:0 16px;font-family:Inter,Arial,sans-serif;line-height:1.5;"><h1>${routeConfig.title}</h1><p>${routeConfig.noscript}</p></main></noscript>`;
+  output = output.replace('<div id="root"></div>', `${noscriptBlock}\n  <div id="root"></div>`);
+
+  return output;
+}
+
+for (const routeConfig of staticRoutes) {
+  const targetPath = path.join(distDir, routeConfig.route.replace(/^\//, ''), 'index.html');
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  fs.writeFileSync(targetPath, applyRouteMeta(baseHtml, routeConfig), 'utf8');
+}
+
+console.log(`[prerender] Generated static route HTML: ${staticRoutes.map((r) => r.route).join(', ')}`);
+

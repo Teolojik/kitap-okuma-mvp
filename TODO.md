@@ -3,6 +3,7 @@
 Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her başarılı özellik eklemesinden veya hata düzeltmesinden sonra güncellenmelidir.
 
 ## ✅ Tamamlananlar
+- [2026-02-18] **SEO Canonical Host + Static Prerender Shell**: `vercel.json` ile non-`www` hosttan `www` hosta 301 yonlendirme eklendi. Build sonrasinda `/discover` icin route-ozel statik HTML shell uretilmeye baslandi (`postbuild` prerender script).
 - [2026-02-18] **SEO Hardening v2 (Route Meta + Crawl Control + Automation)**: Route bazli dinamik SEO yonetimi (`SeoManager`) eklendi (title, description, canonical, robots, OG/Twitter), soft-404 yonlendirmesi kaldirildi ve gercek `NotFound` sayfasi eklendi, `Vercel` seviyesinde `X-Robots-Tag` noindex kurallari tanimlandi, `sitemap.xml` ve `robots.txt` build oncesi otomatik uretilir hale getirildi (`prebuild` script), `/details/:id` linkleri `/book/:id` ile duzeltildi.
 - [2026-02-18] **PDF/EPUB Kapak Pipeline Stabilizasyonu**: PDF kapak üretimi placeholder akışından çıkarılıp gerçek sayfa render akışına alındı. İlk 3 sayfa tarama + görsel skor yaklaşımı eklendi, `covers` bucket kalıcılığı standartlaştırıldı, upload hatasında data URL fallback korundu, `BookCover` URL değişim reseti ile görsel takılmaları giderildi.
 - [2026-02-18] **PDF Kapak Backfill v2**: Mevcut PDF kayıtları için arka plan migration yeniden çalıştırıldı; eski placeholder/data URL kapaklar gerçek kapakla güncellenecek şekilde `fetchBooks` sonrası backfill akışı genişletildi.
@@ -27,9 +28,8 @@ Bu dosya projenin geçmişini ve gelecekte yapılacak işleri takip eder. Her ba
 
 ## 🚀 Planlananlar
 - [x] **SEO & Görünürlük Hamlesi:** OG etiketleri, `sitemap.xml`, `robots.txt`.
-- [ ] **SEO SSR/Prerender Katmani:** Public route'lar (`/`, `/discover`, `book detail`) icin sunucu tarafli render veya prerender entegrasyonu.
+- [ ] **SEO SSR/Prerender Katmani (Full):** Public route'larin tam icerik prerender/SSR ciktilari (`/`, `/discover`, `/book/:id`) ve hydration uyumlulugu.
 - [ ] **Dinamik Book Sitemap:** Indexlenebilir kitap detay URL'leri icin otomatik ve periyodik sitemap uretimi (`/book/:id`).
-- [ ] **Canonical Host Yonlendirme:** `www` / non-`www` tek host canonical zorlamasi ve 301 redirect kuralinin netlestirilmesi.
 - [ ] **Search Console Operasyonlari:** GSC coverage/sitemap hatalari icin haftalik kontrol checklist ve issue template akisi.
 - [x] **Sosyal & Paylaşılabilir Özellikler:** Alıntı Kartları tamamlandı.
     - [ ] **Paylaşılabilir Listeler:** Kullanıcıların kitap koleksiyonlarını link ile paylaşabilmesi.
