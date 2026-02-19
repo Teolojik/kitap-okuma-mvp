@@ -474,7 +474,7 @@ export default function LibraryPage() {
                                                 </div>
                                             )}
 
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px] z-10">
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity z-10">
                                                 <Button
                                                     size="sm"
                                                     className="rounded-full shadow-2xl scale-90 group-hover/cover:scale-100 transition-transform font-black text-[10px] uppercase tracking-[0.2em] gap-2 bg-primary hover:bg-primary/90"
