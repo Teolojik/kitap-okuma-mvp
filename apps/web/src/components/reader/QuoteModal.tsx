@@ -31,10 +31,10 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
     if (!selection || !book) return null;
 
     const themes: Array<{ name: string; value: typeof theme }> = [
-        { name: 'Sýcak', value: 'warm' },
+        { name: 'SÄ±cak', value: 'warm' },
         { name: 'Koyu', value: 'dark' },
         { name: 'Cam', value: 'glass' },
-        { name: 'Doða', value: 'nature' },
+        { name: 'DoÄŸa', value: 'nature' },
     ];
 
     const waitForCaptureReady = async () => {
@@ -62,7 +62,6 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
 
         const blob = await toBlob(node, {
             pixelRatio: EXPORT_PIXEL_RATIO,
-            backgroundColor: 'transparent',
             cacheBust: true,
             preferredFontFormat: 'woff2',
             fontEmbedCSS: fontEmbedCssRef.current,
@@ -87,10 +86,10 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
             link.href = objectUrl;
             link.click();
             URL.revokeObjectURL(objectUrl);
-            toast.success('Alýntý kartý baþarýyla indirildi!');
+            toast.success('AlÄ±ntÄ± kartÄ± baÅŸarÄ±yla indirildi!');
         } catch (err) {
             console.error('Quote Generation Error:', err);
-            toast.error('Görsel oluþturulurken bir hata oluþtu.');
+            toast.error('GÃ¶rsel oluÅŸturulurken bir hata oluÅŸtu.');
         } finally {
             setIsGenerating(false);
         }
@@ -108,17 +107,17 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
             if (isMobile && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
-                    title: 'epigraphreader.com Alýntýsý',
+                    title: 'epigraphreader.com AlÄ±ntÄ±sÄ±',
                     text: `"${selection.text.substring(0, 100)}..."`,
                 });
-                toast.success('Paylaþým menüsü açýldý!');
+                toast.success('PaylaÅŸÄ±m menÃ¼sÃ¼ aÃ§Ä±ldÄ±!');
                 return;
             }
 
             try {
                 const item = new ClipboardItem({ 'image/png': blob });
                 await navigator.clipboard.write([item]);
-                toast.success('Görsel panoya kopyalandý! Dilediðiniz yere yapýþtýrabilirsiniz.');
+                toast.success('GÃ¶rsel panoya kopyalandÄ±! DilediÄŸiniz yere yapÄ±ÅŸtÄ±rabilirsiniz.');
             } catch (clipboardError) {
                 console.error('Clipboard Error:', clipboardError);
                 const objectUrl = URL.createObjectURL(blob);
@@ -127,11 +126,11 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                 link.href = objectUrl;
                 link.click();
                 URL.revokeObjectURL(objectUrl);
-                toast.info('Görsel indirildi, istediðiniz yere yükleyebilirsiniz.');
+                toast.info('GÃ¶rsel indirildi, istediÄŸiniz yere yÃ¼kleyebilirsiniz.');
             }
         } catch (err) {
             console.error('Direct Share Error:', err);
-            toast.error('Paylaþým hazýrlanýrken bir hata oluþtu.');
+            toast.error('PaylaÅŸÄ±m hazÄ±rlanÄ±rken bir hata oluÅŸtu.');
         } finally {
             setIsGenerating(false);
         }
@@ -142,8 +141,8 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
             <DialogContent className="w-full max-w-[95vw] sm:max-w-[680px] max-h-[95vh] bg-background/90 backdrop-blur-3xl border-white/10 p-0 overflow-hidden rounded-3xl shadow-2xl">
                 <DialogHeader className="px-6 py-3 border-b border-white/5 flex flex-row items-center justify-between">
                     <div>
-                        <DialogTitle className="text-base font-serif opacity-70">Alýntýyý Paylaþ</DialogTitle>
-                        <DialogDescription className="sr-only">Seçili alýntýyý kart olarak paylaþ</DialogDescription>
+                        <DialogTitle className="text-base font-serif opacity-70">AlÄ±ntÄ±yÄ± PaylaÅŸ</DialogTitle>
+                        <DialogDescription className="sr-only">SeÃ§ili alÄ±ntÄ±yÄ± kart olarak paylaÅŸ</DialogDescription>
                     </div>
                 </DialogHeader>
 
@@ -154,7 +153,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                             <Input
                                 value={displayTitle}
                                 onChange={(e) => setDisplayTitle(e.target.value)}
-                                placeholder="Kitap Baþlýðý"
+                                placeholder="Kitap BaÅŸlÄ±ÄŸÄ±"
                                 className="h-9 pl-9 bg-background/50 border-white/5 text-[11px] font-bold rounded-xl focus-visible:ring-1 focus-visible:ring-primary/40"
                             />
                         </div>
@@ -163,7 +162,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                             <Input
                                 value={displayAuthor}
                                 onChange={(e) => setDisplayAuthor(e.target.value)}
-                                placeholder="Yazar Adý"
+                                placeholder="Yazar AdÄ±"
                                 className="h-9 pl-9 bg-background/50 border-white/5 text-[11px] font-bold rounded-xl focus-visible:ring-1 focus-visible:ring-primary/40"
                             />
                         </div>
@@ -196,7 +195,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                                 className="rounded-xl h-8 px-3 gap-1.5 bg-primary hover:scale-105 transition-transform text-xs"
                             >
                                 {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                                <span className="font-bold">Ýndir</span>
+                                <span className="font-bold">Ä°ndir</span>
                             </Button>
                             <Button
                                 variant="outline"
@@ -206,10 +205,10 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                                     ? 'hover:bg-orange-500 hover:text-white'
                                     : 'opacity-50 cursor-not-allowed grayscale'
                                     }`}
-                                title={!isAuthenticated ? 'Sadece kayýtlý kullanýcýlar paylaþabilir' : ''}
+                                title={!isAuthenticated ? 'Sadece kayÄ±tlÄ± kullanÄ±cÄ±lar paylaÅŸabilir' : ''}
                             >
                                 {isAuthenticated ? <Copy className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                                <span className="font-bold">Görseli Kopyala</span>
+                                <span className="font-bold">GÃ¶rseli Kopyala</span>
                             </Button>
                         </div>
                     </div>
