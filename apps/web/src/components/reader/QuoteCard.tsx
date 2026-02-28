@@ -9,6 +9,7 @@ interface QuoteCardProps {
     title: string;
     coverUrl?: string;
     theme?: 'warm' | 'dark' | 'glass' | 'nature';
+    exportMode?: boolean;
 }
 
 const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
@@ -16,7 +17,8 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
     author,
     title,
     coverUrl,
-    theme = 'warm'
+    theme = 'warm',
+    exportMode = false
 }, ref) => {
     // Dynamic styles based on text length to prevent overflow and excessive height
     const textLength = text.length;
@@ -49,7 +51,7 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
     return (
         <div
             ref={ref}
-            className={`w-[600px] min-h-[300px] p-8 relative flex flex-col justify-between overflow-hidden border-8 shadow-2xl transition-all duration-500 ${themes[theme]}`}
+            className={`w-[600px] min-h-[300px] p-8 relative flex flex-col justify-between overflow-hidden border-8 ${exportMode ? '' : 'shadow-2xl transition-all duration-500'} ${themes[theme]}`}
             style={{ borderRadius: '2rem' }}
         >
             {/* Background Ornaments */}
