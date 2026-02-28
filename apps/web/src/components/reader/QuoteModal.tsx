@@ -213,15 +213,17 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                         </div>
                     </div>
 
-                    <div className="w-full flex justify-center items-center">
-                        <QuoteCard
-                            ref={cardRef}
-                            text={selection.text}
-                            author={displayAuthor}
-                            title={displayTitle}
-                            coverUrl={book.cover_url}
-                            theme={theme}
-                        />
+                    <div className="w-full flex justify-center items-start overflow-hidden px-2 pt-3 sm:px-4 sm:pt-4">
+                        <div className="origin-top scale-[0.8] sm:scale-[0.86] lg:scale-[0.92]">
+                            <QuoteCard
+                                ref={cardRef}
+                                text={selection.text}
+                                author={displayAuthor}
+                                title={displayTitle}
+                                coverUrl={book.cover_url}
+                                theme={theme}
+                            />
+                        </div>
                     </div>
                 </div>
             </DialogContent>
