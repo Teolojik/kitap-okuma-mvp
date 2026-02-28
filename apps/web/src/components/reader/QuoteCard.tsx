@@ -31,45 +31,52 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
         if (textLength > 200) return "gap-4";
         return "gap-8";
     };
+    const getExportFontSize = () => {
+        if (textLength > 320) return "text-[1.9rem]";
+        if (textLength > 220) return "text-[2.15rem]";
+        if (textLength > 140) return "text-[2.45rem]";
+        return "text-[2.7rem]";
+    };
 
     const themes = {
         warm: {
             card: exportMode
-                ? "bg-[#f7efdc] text-[#5a6b70] border-[#d8ccb1]"
+                ? "bg-[#f7efdc] text-[#5b6970] border-[#d6c7a7]"
                 : "bg-[#fdf6e3] text-[#586e75] border-[#eee8d5]",
-            accent: exportMode ? "bg-[#d9a15b]" : "bg-orange-500",
+            accent: exportMode ? "bg-[#cf9350]" : "bg-orange-500",
         },
         dark: {
             card: exportMode
-                ? "bg-[#102f3a] text-[#c1d0cf] border-[#1c4d5c]"
+                ? "bg-[#101923] text-[#d5dee5] border-[#243444]"
                 : "bg-[#073642] text-[#93a1a1] border-[#002b36]",
-            accent: "bg-cyan-500",
+            accent: exportMode ? "bg-[#f2b15e]" : "bg-cyan-500",
         },
         glass: {
             card: exportMode
-                ? "bg-[#eef4f6] text-[#62757b] border-[#c9dde3]"
+                ? "bg-[#f3f6f4] text-[#5e7077] border-[#d6e0dc]"
                 : "bg-white/10 backdrop-blur-xl text-white border-white/20",
-            accent: exportMode ? "bg-[#84d7ea]" : "bg-white",
+            accent: exportMode ? "bg-[#86b9c5]" : "bg-white",
         },
         nature: {
             card: exportMode
-                ? "bg-[#eef3ea] text-[#344235] border-[#ccd8c7]"
+                ? "bg-[#eef2ea] text-[#394539] border-[#c8d4c1]"
                 : "bg-[#f0f4f0] text-[#2d3a2d] border-[#dce4dc]",
             accent: exportMode ? "bg-[#6d9f68]" : "bg-green-600",
         },
     };
     const activeTheme = themes[theme];
     const containerClass = exportMode
-        ? "w-[720px] p-10 border-[5px] min-h-0 justify-start"
+        ? "w-[720px] px-12 py-12 border-[3px] min-h-0 justify-start"
         : "w-[600px] min-h-[300px] p-8 border-8 justify-between shadow-2xl transition-all duration-500";
-    const contentClass = exportMode ? "gap-6" : getGapSize();
-    const quoteMarkClass = exportMode ? "opacity-[0.15]" : "opacity-20";
-    const titleClass = exportMode ? "opacity-70" : "opacity-50";
+    const contentClass = exportMode ? "gap-8" : getGapSize();
+    const quoteMarkClass = exportMode ? "opacity-[0.18]" : "opacity-20";
+    const titleClass = exportMode ? "opacity-75" : "opacity-50";
     const footerClass = exportMode
-        ? "mt-10 border-t border-current/[0.12] pt-4 opacity-[0.55]"
+        ? "mt-12 border-t border-current/[0.12] pt-5 opacity-[0.7]"
         : "mt-6 border-t border-current/10 pt-4 opacity-40";
-    const accentLineClass = exportMode ? "opacity-80" : "opacity-60";
+    const accentLineClass = exportMode ? "opacity-90" : "opacity-60";
     const accentDotClass = exportMode ? "opacity-90" : "";
+    const quoteTextClass = exportMode ? getExportFontSize() : getFontSize();
 
     return (
         <div
@@ -77,18 +84,31 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
             className={`relative flex flex-col overflow-hidden ${containerClass} ${activeTheme.card}`}
             style={{ borderRadius: '2rem' }}
         >
-            {/* Background Ornaments */}
-            <div className={`absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl rounded-full -mr-16 -mt-16 ${activeTheme.accent}`} />
-            <div className={`absolute bottom-0 left-0 w-48 h-48 opacity-10 blur-3xl rounded-full -ml-24 -mb-24 ${activeTheme.accent}`} />
+            {exportMode ? (
+                <>
+                    <div
+                        className="absolute inset-0 opacity-100"
+                        style={{
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.04) 100%)'
+                        }}
+                    />
+                    <div className={`absolute top-0 left-1/2 h-1.5 w-24 -translate-x-1/2 rounded-b-full ${activeTheme.accent} opacity-85`} />
+                </>
+            ) : (
+                <>
+                    <div className={`absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl rounded-full -mr-16 -mt-16 ${activeTheme.accent}`} />
+                    <div className={`absolute bottom-0 left-0 w-48 h-48 opacity-10 blur-3xl rounded-full -ml-24 -mb-24 ${activeTheme.accent}`} />
+                </>
+            )}
 
             {/* Content Container */}
             <div className={`relative z-10 flex flex-col ${contentClass} items-center text-center px-4`}>
                 {/* Large Quote Symbol */}
                 <div className={`w-12 h-0.5 rounded-full ${activeTheme.accent} opacity-30`} />
 
-                <div className="space-y-4 w-full">
+                <div className={`space-y-4 w-full ${exportMode ? 'max-w-[92%] mx-auto' : ''}`}>
                     <div className={`${quoteMarkClass} italic font-serif text-6xl leading-none h-6 select-none`}>"</div>
-                    <p className={`${getFontSize()} font-serif font-medium leading-relaxed italic tracking-tight px-4 ${exportMode ? 'text-[2.15rem] leading-[1.5]' : ''}`}>
+                    <p className={`${quoteTextClass} font-serif font-medium italic tracking-tight px-4 ${exportMode ? 'leading-[1.45]' : 'leading-relaxed'}`}>
                         {text}
                     </p>
                     <div className={`${quoteMarkClass} italic font-serif text-6xl leading-none h-6 rotate-180 transform select-none`}>"</div>
