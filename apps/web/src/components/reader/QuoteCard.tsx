@@ -75,13 +75,13 @@ const QuoteCard = React.forwardRef<HTMLDivElement, QuoteCardProps>(({
                     </p>
                     <div className={`${quoteMarkClass} italic font-serif text-5xl sm:text-6xl leading-none h-6 rotate-180 transform select-none`}>"</div>
 
-                    <div className="flex flex-col items-center gap-4 sm:gap-5 mt-5 sm:mt-6">
+                    <div className="flex flex-col items-center gap-4 sm:gap-5 mt-5 sm:mt-6 w-full">
                         <div className={`h-px w-16 ${activeTheme.accent} ${accentLineClass}`} />
-                        <div className="max-w-[92%] space-y-2 sm:space-y-2.5">
-                            <p className="text-sm sm:text-base font-bold uppercase tracking-[0.18em] sm:tracking-[0.24em] leading-tight opacity-95">
+                        <div className="w-full max-w-[420px] space-y-2.5 sm:space-y-3 text-center">
+                            <p className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm sm:text-base font-bold uppercase tracking-[0.14em] sm:tracking-[0.18em] leading-none opacity-95">
                                 {author || 'Bilinmeyen Yazar'}
                             </p>
-                            <p className={`text-[10px] sm:text-xs uppercase tracking-[0.14em] sm:tracking-[0.18em] leading-tight font-semibold ${titleClass}`}>
+                            <p className={`w-full overflow-hidden text-ellipsis whitespace-nowrap text-[10px] sm:text-xs uppercase tracking-[0.1em] sm:tracking-[0.14em] leading-none font-semibold ${titleClass}`}>
                                 {title}
                             </p>
                         </div>
