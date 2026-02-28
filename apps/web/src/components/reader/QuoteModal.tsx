@@ -17,7 +17,7 @@ interface QuoteModalProps {
 }
 
 const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, book }) => {
-    const exportCardRef = useRef<HTMLDivElement>(null);
+    const cardRef = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<'warm' | 'dark' | 'glass' | 'nature'>('warm');
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -37,15 +37,15 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
     ];
 
     const handleDownload = async () => {
-        if (!exportCardRef.current) return;
+        if (!cardRef.current) return;
         setIsGenerating(true);
         try {
             // Give a small delay for any animations to settle
             await new Promise(r => setTimeout(r, 100));
 
-            const dataUrl = await toPng(exportCardRef.current, {
+            const dataUrl = await toPng(cardRef.current, {
                 pixelRatio: 2, // Higher quality
-                backgroundColor: 'transparent'
+            backgroundColor: 'transparent'
             });
 
             const link = document.createElement('a');
@@ -62,12 +62,12 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
     };
 
     const handleTwitterShare = async () => {
-        if (!exportCardRef.current) return;
+        if (!cardRef.current) return;
         setIsGenerating(true);
         try {
             // 1. Generate PNG directly from the card wrapper
             // High pixelRatio and no background ensures shadows are captured beautifully
-            const dataUrl = await toPng(exportCardRef.current, {
+            const dataUrl = await toPng(cardRef.current, {
                 pixelRatio: 3, // Ultra crisp
                 backgroundColor: 'transparent',
                 style: {
@@ -208,6 +208,7 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                         <div className="p-4 bg-transparent">
                             <div className="scale-[0.45] sm:scale-[0.7] md:scale-[0.85] lg:scale-100 origin-center">
                                 <QuoteCard
+                                    ref={cardRef}
                                     text={selection.text}
                                     author={displayAuthor}
                                     title={displayTitle}
@@ -216,18 +217,6 @@ const QuoteModal: React.FC<QuoteModalProps> = ({ isOpen, onClose, selection, boo
                                 />
                             </div>
                         </div>
-                    </div>
-
-                    <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0" aria-hidden="true">
-                        <QuoteCard
-                            ref={exportCardRef}
-                            text={selection.text}
-                            author={displayAuthor}
-                            title={displayTitle}
-                            coverUrl={book.cover_url}
-                            theme={theme}
-                            exportMode
-                        />
                     </div>
                 </div>
             </DialogContent>
