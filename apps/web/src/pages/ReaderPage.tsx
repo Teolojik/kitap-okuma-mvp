@@ -44,22 +44,14 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
             if (!canvas) return;
             const parent = canvas.parentElement;
             if (parent) {
-                const snapshot = document.createElement('canvas');
-                snapshot.width = canvas.width;
-                snapshot.height = canvas.height;
-                const snapshotCtx = snapshot.getContext('2d');
-                if (snapshotCtx) {
-                    snapshotCtx.drawImage(canvas, 0, 0);
-                }
-
+                const oldData = canvas.toDataURL();
                 canvas.width = parent.offsetWidth;
                 canvas.height = parent.offsetHeight;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    if (snapshot.width > 0 && snapshot.height > 0) {
-                        ctx.drawImage(snapshot, 0, 0, canvas.width, canvas.height);
-                    }
+                    const img = new Image();
+                    img.onload = () => ctx.drawImage(img, 0, 0);
+                    img.src = oldData;
                 }
             }
         };
@@ -114,10 +106,6 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
         if (!active) return;
-        if ('touches' in e) {
-            if (e.touches.length !== 1) return;
-            e.preventDefault();
-        }
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -131,10 +119,6 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
 
     const draw = (e: React.MouseEvent | React.TouchEvent) => {
         if (!isDrawing || !active || !lastPosRef.current) return;
-        if ('touches' in e) {
-            if (e.touches.length !== 1) return;
-            e.preventDefault();
-        }
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
         if (!canvas || !ctx) return;
@@ -178,7 +162,6 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
-            onTouchCancel={stopDrawing}
         />
     );
 };

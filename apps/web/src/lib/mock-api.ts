@@ -561,11 +561,9 @@ export const extractCoverLocally = async (file: File): Promise<string | undefine
         }
         else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
             console.log("PDF Cover Extraction: Rendering first page...");
-            const extracted = await extractPdfCoverFromFirstPage(file, file.name, {
-                allowPlaceholderFallback: false
-            });
+            const extracted = await extractPdfCoverFromFirstPage(file, file.name);
             if (extracted) return extracted;
-            return undefined;
+            return generatePdfPlaceholderCover(file.name);
         }
     } catch (e) {
         console.error("Local extraction failed", e);
