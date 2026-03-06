@@ -25,9 +25,10 @@ import { createBookSlice, BookSlice } from './slices/book.slice';
 import { createReaderSlice, ReaderSlice } from './slices/reader.slice';
 
 const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-const PDF_BACKFILL_VERSION = 'v5';
+const PDF_BACKFILL_VERSION = 'v6';
 const PDF_BACKFILL_DELAY_MS = 180;
 const pdfBackfillLocks = new Set<string>();
+let drawingSyncUnavailable = false;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -47,16 +48,122 @@ const isManagedPdfBackfillCover = (book: Book, identity: string): boolean => {
 
     const normalizedIdentity = identity.replace(/^\/+|\/+$/g, '');
     const coverUrl = String(book.cover_url);
+    const managedPathSuffix = `/${normalizedIdentity}/${book.id}.jpg`;
 
     return (
         coverUrl.includes('/storage/v1/object/public/covers/') ||
         coverUrl.includes('/storage/v1/object/authenticated/covers/') ||
         coverUrl.includes('/storage/v1/object/sign/covers/')
-    ) && coverUrl.includes(`/${normalizedIdentity}/`);
+    ) && coverUrl.includes(managedPathSuffix);
 };
 
 const needsPdfCoverBackfill = (book: Book, identity: string): boolean => {
     return isPdfBook(book) && (isFallbackCover(book.cover_url) || isManagedPdfBackfillCover(book, identity));
+};
+
+const decodeDrawingRow = (row: any): { key?: string; value?: string } => {
+    let key: string | undefined;
+    let value: string | undefined;
+
+    if (typeof row?.page_key === 'string') {
+        key = row.page_key;
+    } else if (typeof row?.pageKey === 'string') {
+        key = row.pageKey;
+    } else if (typeof row?.book_id === 'string' && Number.isFinite(Number(row?.page_number))) {
+        key = `${row.book_id}-${Number(row.page_number)}`;
+    } else if (typeof row?.book_id === 'string' && Number.isFinite(Number(row?.page))) {
+        key = `${row.book_id}-${Number(row.page)}`;
+    }
+
+    if (typeof row?.data === 'string') {
+        value = row.data;
+    } else if (typeof row?.data_url === 'string') {
+        value = row.data_url;
+    } else if (typeof row?.value === 'string') {
+        value = row.value;
+    } else if (typeof row?.payload === 'string') {
+        value = row.payload;
+    } else if (row?.data && typeof row.data === 'object') {
+        if (typeof row.data.data === 'string') value = row.data.data;
+        else if (typeof row.data.data_url === 'string') value = row.data.data_url;
+        else if (typeof row.data.value === 'string') value = row.data.value;
+        else if (typeof row.data.payload === 'string') value = row.data.payload;
+        if (!key && typeof row.data.pageKey === 'string') key = row.data.pageKey;
+    }
+
+    return { key, value };
+};
+
+const syncDrawingToSupabase = async (userId: string, pageKey: string, value: string): Promise<boolean> => {
+    if (drawingSyncUnavailable) return false;
+
+    const upsertCandidates = [
+        { user_id: userId, page_key: pageKey, data: value },
+        { user_id: userId, page_key: pageKey, data_url: value },
+        { user_id: userId, page_key: pageKey, value },
+    ];
+
+    const errors: string[] = [];
+
+    for (const payload of upsertCandidates) {
+        const upsertResult = await supabase
+            .from('drawings')
+            .upsert(payload as any, { onConflict: 'user_id,page_key' });
+        if (!upsertResult.error) return true;
+        errors.push(upsertResult.error.message || '');
+
+        const updateResult = await supabase
+            .from('drawings')
+            .update(payload as any)
+            .eq('user_id', userId)
+            .eq('page_key', pageKey);
+        if (!updateResult.error) return true;
+        errors.push(updateResult.error.message || '');
+
+        const insertResult = await supabase
+            .from('drawings')
+            .insert(payload as any);
+        if (!insertResult.error) return true;
+        errors.push(insertResult.error.message || '');
+    }
+
+    if (errors.some(msg => msg.includes('relation') && msg.includes('drawings'))) {
+        drawingSyncUnavailable = true;
+    }
+
+    return false;
+};
+
+const fetchRemoteDrawings = async (userId: string, bookId: string): Promise<Record<string, string>> => {
+    if (drawingSyncUnavailable) return {};
+
+    const queryVariants = [
+        () => supabase.from('drawings').select('*').eq('user_id', userId).like('page_key', `${bookId}-%`),
+        () => supabase.from('drawings').select('*').eq('user_id', userId).eq('book_id', bookId),
+    ];
+
+    for (const runQuery of queryVariants) {
+        const { data, error } = await runQuery();
+        if (error || !Array.isArray(data) || data.length === 0) {
+            if (error?.message?.includes('relation') && error.message.includes('drawings')) {
+                drawingSyncUnavailable = true;
+                return {};
+            }
+            continue;
+        }
+
+        const decoded: Record<string, string> = {};
+        data.forEach((row: any) => {
+            const { key, value } = decodeDrawingRow(row);
+            if (key && value) decoded[key] = value;
+        });
+
+        if (Object.keys(decoded).length > 0) {
+            return decoded;
+        }
+    }
+
+    return {};
 };
 
 export const useAuthStore = create<AuthSlice>()((...a) => ({
@@ -660,6 +767,69 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                     }));
                 }
                 toast.error('Not silinemedi.');
+            }
+        },
+
+        saveDrawing: async (pageKey, data) => {
+            set(state => ({
+                drawings: { ...state.drawings, [pageKey]: data }
+            }));
+
+            try {
+                await MockAPI.drawings.save(pageKey, data);
+            } catch (dbErr) {
+                localStorage.setItem(`drawing_${pageKey}`, data);
+            }
+
+            const user = useAuthStore.getState().user;
+            if (!user?.id) return;
+
+            try {
+                const synced = await syncDrawingToSupabase(user.id, pageKey, data);
+                if (!synced) {
+                    console.warn('[Sync] drawing save fallback: Supabase schema did not match expected format.');
+                }
+            } catch (error) {
+                console.error('[Sync] saveDrawing failed:', error);
+            }
+        },
+
+        fetchDrawingsForBook: async (bookId) => {
+            const user = useAuthStore.getState().user;
+            let remoteData: Record<string, string> = {};
+            let localData: Record<string, string> = {};
+
+            if (user?.id) {
+                try {
+                    remoteData = await fetchRemoteDrawings(user.id, bookId);
+                } catch (error) {
+                    console.error('[Sync] fetchDrawingsForBook remote fetch failed:', error);
+                }
+            }
+
+            try {
+                localData = await MockAPI.drawings.listForBook(bookId);
+            } catch (error) {
+                console.error('Local drawing fetch failed:', error);
+            }
+
+            if (user?.id && Object.keys(localData).length > 0) {
+                const missingKeys = Object.keys(localData).filter(key => !remoteData[key]);
+                for (const key of missingKeys) {
+                    const value = localData[key];
+                    try {
+                        await syncDrawingToSupabase(user.id, key, value);
+                    } catch (error) {
+                        console.error('[Sync] drawing migration failed for key:', key, error);
+                    }
+                }
+            }
+
+            const merged = { ...localData, ...remoteData };
+            if (Object.keys(merged).length > 0) {
+                set(state => ({
+                    drawings: { ...state.drawings, ...merged }
+                }));
             }
         },
 
