@@ -24,7 +24,7 @@ import { createBookSlice, BookSlice } from './slices/book.slice';
 import { createReaderSlice, ReaderSlice } from './slices/reader.slice';
 
 const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-const PDF_BACKFILL_VERSION = 'v3';
+const PDF_BACKFILL_VERSION = 'v4';
 const PDF_BACKFILL_DELAY_MS = 180;
 const pdfBackfillLocks = new Set<string>();
 
@@ -36,38 +36,66 @@ const isPdfBook = (book: Book): boolean => {
     return String(book.file_url || '').toLowerCase().includes('.pdf');
 };
 
-const isFallbackCover = (coverUrl?: string | null): boolean => {
-    if (!coverUrl) return true;
-    return coverUrl.includes('images.unsplash.com/photo-1543002588-bfa74002ed7e');
-};
+const needsPdfCoverBackfill = (book: Book): boolean => isPdfBook(book);
 
-const isManagedPdfBackfillCover = (book: Book, identity: string): boolean => {
-    if (!book.cover_url) return false;
+const extractStoragePath = (fileUrl: string, bucket: string): string | null => {
+    if (!fileUrl) return null;
 
-    const normalizedIdentity = identity.replace(/^\/+|\/+$/g, '');
-    const coverUrl = String(book.cover_url);
-    const managedPathSuffix = `/${normalizedIdentity}/${book.id}.jpg`;
+    try {
+        const url = new URL(fileUrl);
+        const prefixes = [
+            `/storage/v1/object/public/${bucket}/`,
+            `/storage/v1/object/authenticated/${bucket}/`,
+            `/storage/v1/object/sign/${bucket}/`,
+            `/storage/v1/object/${bucket}/`,
+        ];
 
-    return (
-        coverUrl.includes('/storage/v1/object/public/covers/') ||
-        coverUrl.includes('/storage/v1/object/authenticated/covers/') ||
-        coverUrl.includes('/storage/v1/object/sign/covers/')
-    ) && coverUrl.includes(managedPathSuffix);
-};
+        const prefix = prefixes.find(candidate => url.pathname.includes(candidate));
+        if (!prefix) return null;
 
-const needsPdfCoverBackfill = (book: Book, identity: string): boolean => {
-    return isPdfBook(book) && (isFallbackCover(book.cover_url) || isManagedPdfBackfillCover(book, identity));
+        const [, rawPath = ''] = url.pathname.split(prefix);
+        return decodeURIComponent(rawPath);
+    } catch {
+        return null;
+    }
 };
 
 const fetchRemoteBlob = async (url: string): Promise<Blob | null> => {
     try {
         if (!url) return null;
-        const response = await fetch(url);
-        if (!response.ok) return null;
-        return await response.blob();
+        const response = await fetch(url, { cache: 'no-store' });
+        if (response.ok) {
+            const directBlob = await response.blob();
+            if (directBlob && directBlob.size > 0) return directBlob;
+        }
     } catch {
-        return null;
+        // Continue with storage fallbacks
     }
+
+    const storagePath = extractStoragePath(url, 'books');
+    if (!storagePath) return null;
+
+    try {
+        const { data, error } = await supabase.storage.from('books').download(storagePath);
+        if (!error && data && data.size > 0) return data;
+    } catch {
+        // Continue with signed URL fallback
+    }
+
+    try {
+        const { data, error } = await supabase.storage.from('books').createSignedUrl(storagePath, 120);
+        if (!error && data?.signedUrl) {
+            const signedResponse = await fetch(data.signedUrl, { cache: 'no-store' });
+            if (signedResponse.ok) {
+                const signedBlob = await signedResponse.blob();
+                if (signedBlob && signedBlob.size > 0) return signedBlob;
+            }
+        }
+    } catch {
+        // No-op
+    }
+
+    return null;
 };
 
 export const useAuthStore = create<AuthSlice>()((...a) => ({
@@ -213,7 +241,7 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
 
                 const identity = user?.id || 'guest';
                 const backfillKey = `pdf_cover_backfill_${PDF_BACKFILL_VERSION}_${identity}`;
-                const candidates = loadedBooks.filter(book => needsPdfCoverBackfill(book, identity));
+                const candidates = loadedBooks.filter(needsPdfCoverBackfill);
 
                 if (!localStorage.getItem(backfillKey) && candidates.length > 0 && !pdfBackfillLocks.has(identity)) {
                     pdfBackfillLocks.add(identity);
