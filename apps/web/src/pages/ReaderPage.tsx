@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBookStore } from '@/stores/useStore';
-import { Book, getBook, getBookFileBlob, getBooks } from '@/lib/mock-api';
+import { Book, getBook, getBooks } from '@/lib/mock-api';
 import ReaderContainer from '@/components/reader/ReaderContainer';
 import TTSController from '@/components/reader/TTSController';
 import { Button } from '@/components/ui/button';
@@ -369,7 +369,6 @@ const ReaderPage: React.FC = () => {
     // Initial Load
     useEffect(() => {
         if (!id) return;
-        let cancelled = false;
         const loadContent = async () => {
             try {
                 setLoading(true);
@@ -382,16 +381,13 @@ const ReaderPage: React.FC = () => {
                 // Update last read timestamp immediately without risking progress overwrite
                 touchLastRead(bookInfo.id);
 
-                const blob = await getBookFileBlob(bookInfo);
-                if (!blob) {
-                    throw new Error('Kitap dosyasi indirilemedi.');
-                }
-
-                const fileBuffer = await blob.arrayBuffer();
-                if (!cancelled) {
-                    setBookData(fileBuffer);
-                    setLoading(false);
-                }
+                if (bookInfo.format === 'epub') {
+                    const fileRes = await fetch(bookInfo.file_url);
+                    const blob = await fileRes.blob();
+                    const reader = new FileReader();
+                    reader.onload = (e) => { setBookData(e.target?.result as ArrayBuffer); setLoading(false); };
+                    reader.readAsArrayBuffer(blob);
+                } else { setBookData(bookInfo.file_url); setLoading(false); }
 
                 // Fetch books to store if empty
                 if (books.length === 0) {
@@ -400,23 +396,14 @@ const ReaderPage: React.FC = () => {
 
                 // PERFORMANCE: Fetch drawings only for the active book
                 fetchDrawingsForBook(bookInfo.id);
-            } catch (err: any) {
-                if (!cancelled) {
-                    setError(err.message);
-                    setLoading(false);
-                }
-            }
+            } catch (err: any) { setError(err.message); setLoading(false); }
         };
         loadContent();
-        return () => {
-            cancelled = true;
-        };
     }, [id]);
 
     // Secondary Book Load
     useEffect(() => {
         if (settings.readingMode === 'split' && secondaryBookId) {
-            let cancelled = false;
             const loadSecondary = async () => {
                 setIsSecondaryLoading(true);
                 try {
@@ -425,19 +412,17 @@ const ReaderPage: React.FC = () => {
                         setSecondaryBook(b);
                         if (!b.progress) b.progress = { percentage: 0, page: 1, location: '0' };
 
-                        const blob = await getBookFileBlob(b);
-                        if (!blob) throw new Error('Secondary book download failed');
-                        const fileBuffer = await blob.arrayBuffer();
-                        if (!cancelled) {
-                            setSecondaryBookData(fileBuffer);
-                        }
+                        const res = await fetch(b.file_url);
+                        const blob = await res.blob();
+                        if (b.file_url.endsWith('.epub')) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => setSecondaryBookData(e.target?.result as ArrayBuffer);
+                            reader.readAsArrayBuffer(blob);
+                        } else { setSecondaryBookData(b.file_url); }
                     }
                 } catch (e) { console.error("Secondary book load failed", e); } finally { setIsSecondaryLoading(false); }
             };
             loadSecondary();
-            return () => {
-                cancelled = true;
-            };
         } else { setSecondaryBook(null); setSecondaryBookData(null); }
     }, [settings.readingMode, secondaryBookId]);
 

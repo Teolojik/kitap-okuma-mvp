@@ -87,54 +87,6 @@ export const getStoredBookFile = async (id: string): Promise<Blob | null> => {
     return getFile(id);
 };
 
-const extractStoragePath = (fileUrl: string, bucket: string): string | null => {
-    if (!fileUrl) return null;
-
-    try {
-        const url = new URL(fileUrl);
-        const prefixes = [
-            `/storage/v1/object/public/${bucket}/`,
-            `/storage/v1/object/authenticated/${bucket}/`,
-            `/storage/v1/object/sign/${bucket}/`,
-            `/storage/v1/object/${bucket}/`,
-        ];
-
-        const prefix = prefixes.find(candidate => url.pathname.includes(candidate));
-        if (!prefix) return null;
-
-        const [, rawPath = ''] = url.pathname.split(prefix);
-        return decodeURIComponent(rawPath);
-    } catch {
-        return null;
-    }
-};
-
-export const getBookFileBlob = async (book: Pick<Book, 'id' | 'file_url'>): Promise<Blob | null> => {
-    if (!book?.file_url) return null;
-
-    if (book.file_url.startsWith('local://')) {
-        return await getFile(book.id);
-    }
-
-    const storagePath = extractStoragePath(book.file_url, 'books');
-    if (storagePath) {
-        try {
-            const { data, error } = await supabase.storage.from('books').download(storagePath);
-            if (!error && data) return data;
-        } catch (error) {
-            console.warn('Storage download failed, falling back to fetch:', error);
-        }
-    }
-
-    try {
-        const response = await fetch(book.file_url);
-        if (!response.ok) return null;
-        return await response.blob();
-    } catch {
-        return null;
-    }
-};
-
 const deleteFile = async (id: string): Promise<void> => {
     const db = await openDB();
     return new Promise((resolve, reject) => {
