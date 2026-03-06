@@ -25,7 +25,7 @@ import { createBookSlice, BookSlice } from './slices/book.slice';
 import { createReaderSlice, ReaderSlice } from './slices/reader.slice';
 
 const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-const PDF_BACKFILL_VERSION = 'v5';
+const PDF_BACKFILL_VERSION = 'v4';
 const PDF_BACKFILL_DELAY_MS = 180;
 const pdfBackfillLocks = new Set<string>();
 
@@ -46,13 +46,10 @@ const isManagedPdfBackfillCover = (book: Book, identity: string): boolean => {
     if (!book.cover_url) return false;
 
     const normalizedIdentity = identity.replace(/^\/+|\/+$/g, '');
-    const coverUrl = String(book.cover_url);
+    const expectedSuffix = `/${normalizedIdentity}/${book.id}.jpg`;
 
-    return (
-        coverUrl.includes('/storage/v1/object/public/covers/') ||
-        coverUrl.includes('/storage/v1/object/authenticated/covers/') ||
-        coverUrl.includes('/storage/v1/object/sign/covers/')
-    ) && coverUrl.includes(`/${normalizedIdentity}/`);
+    return book.cover_url.includes('/storage/v1/object/public/covers/')
+        && book.cover_url.endsWith(expectedSuffix);
 };
 
 const needsPdfCoverBackfill = (book: Book, identity: string): boolean => {
