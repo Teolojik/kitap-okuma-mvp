@@ -25,62 +25,144 @@ import NotesSidebar from '@/components/reader/NotesSidebar';
 import { useTranslation } from '@/lib/translations';
 
 // Gelişmiş Çizim Canvas Bileşeni (Sayfa Bazlı Kayıtlı)
-const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
+type SavedDrawingPayload = {
+    version: 2;
+    type: 'raster';
+    zoom: number;
+    dataUrl: string;
+};
+
+const isSavedDrawingPayload = (value: unknown): value is SavedDrawingPayload => {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Record<string, unknown>;
+    return (
+        candidate.version === 2 &&
+        candidate.type === 'raster' &&
+        typeof candidate.zoom === 'number' &&
+        Number.isFinite(candidate.zoom) &&
+        typeof candidate.dataUrl === 'string'
+    );
+};
+
+const parseSavedDrawing = (
+    savedData: string | undefined,
+    fallbackZoom: number
+): { dataUrl: string; zoom: number } | null => {
+    if (!savedData) return null;
+
+    const trimmed = savedData.trim();
+    if (trimmed.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (isSavedDrawingPayload(parsed)) {
+                return {
+                    dataUrl: parsed.dataUrl,
+                    zoom: parsed.zoom > 0 ? parsed.zoom : 1
+                };
+            }
+        } catch {
+            // Fall back to legacy data URL parsing below.
+        }
+    }
+
+    return {
+        dataUrl: savedData,
+        zoom: fallbackZoom > 0 ? fallbackZoom : 1
+    };
+};
+
+// Drawing canvas with zoom-aware replay
+const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings, zoom }: {
     active: boolean,
     tool: 'pen' | 'marker' | 'eraser',
     pageKey: string,
     savedData?: string,
     onSave: (data: string) => void,
-    settings: { color: string, width: number, opacity: number }
+    settings: { color: string, width: number, opacity: number },
+    zoom: number
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const lastPosRef = useRef<{ x: number, y: number } | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const loadedPageKeyRef = useRef<string | null>(null);
+    const loadedSavedDataRef = useRef<string | undefined>(undefined);
+    const sourceDrawingRef = useRef<{ dataUrl: string; zoom: number } | null>(null);
+    const renderTokenRef = useRef(0);
 
-    // Canvas resize logic
-    useEffect(() => {
-        const handleResize = () => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-            const parent = canvas.parentElement;
-            if (parent) {
-                const oldData = canvas.toDataURL();
-                canvas.width = parent.offsetWidth;
-                canvas.height = parent.offsetHeight;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    const img = new Image();
-                    img.onload = () => ctx.drawImage(img, 0, 0);
-                    img.src = oldData;
-                }
-            }
+    const renderFromSource = React.useCallback(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (!canvas || !ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const source = sourceDrawingRef.current;
+        if (!source?.dataUrl) return;
+
+        const ratio = source.zoom > 0 ? zoom / source.zoom : 1;
+        const renderToken = ++renderTokenRef.current;
+        const img = new Image();
+
+        img.onload = () => {
+            if (renderToken !== renderTokenRef.current) return;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(ratio, ratio);
+            ctx.translate(-centerX, -centerY);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
         };
 
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    // Load saved data for specific page
-    const loadedPageKeyRef = useRef<string | null>(null);
+        img.src = source.dataUrl;
+    }, [zoom]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        if (!ctx || !canvas) return;
+        const parent = canvas?.parentElement;
+        if (!canvas || !parent) return;
 
-        // Only clear and reload if the page has changed
-        if (loadedPageKeyRef.current !== pageKey) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            loadedPageKeyRef.current = pageKey;
+        const resizeCanvas = () => {
+            const nextWidth = Math.max(1, Math.floor(parent.clientWidth));
+            const nextHeight = Math.max(1, Math.floor(parent.clientHeight));
 
-            if (savedData) {
-                const img = new Image();
-                img.onload = () => ctx.drawImage(img, 0, 0);
-                img.src = savedData;
-            }
+            if (canvas.width === nextWidth && canvas.height === nextHeight) return;
+            canvas.width = nextWidth;
+            canvas.height = nextHeight;
+            renderFromSource();
+        };
+
+        resizeCanvas();
+
+        let resizeObserver: ResizeObserver | null = null;
+        if (typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(() => resizeCanvas());
+            resizeObserver.observe(parent);
         }
-    }, [pageKey, savedData]);
+
+        window.addEventListener('resize', resizeCanvas);
+        return () => {
+            resizeObserver?.disconnect();
+            window.removeEventListener('resize', resizeCanvas);
+        };
+    }, [renderFromSource]);
+
+    useEffect(() => {
+        const pageChanged = loadedPageKeyRef.current !== pageKey;
+        const dataChanged = loadedSavedDataRef.current !== savedData;
+        if (!pageChanged && !dataChanged) return;
+
+        loadedPageKeyRef.current = pageKey;
+        loadedSavedDataRef.current = savedData;
+        sourceDrawingRef.current = parseSavedDrawing(savedData, zoom);
+        renderFromSource();
+    }, [pageKey, savedData, zoom, renderFromSource]);
+
+    useEffect(() => {
+        renderFromSource();
+    }, [renderFromSource]);
 
     // Apply tools settings
     const setupContext = (ctx: CanvasRenderingContext2D) => {
@@ -94,14 +176,33 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
         } else if (tool === 'marker') {
             ctx.strokeStyle = settings.color;
             ctx.lineWidth = settings.width * 6;
-            ctx.globalAlpha = 0.4; // Very light alpha for marker
-            ctx.globalCompositeOperation = 'source-over'; // Let CSS blend mode handle the mixing
+            ctx.globalAlpha = 0.4;
+            ctx.globalCompositeOperation = 'source-over';
         } else if (tool === 'eraser') {
             ctx.strokeStyle = '#000000';
             ctx.globalCompositeOperation = 'destination-out';
             ctx.lineWidth = settings.width * 8;
             ctx.globalAlpha = 1;
         }
+    };
+
+    const persistCanvas = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const currentZoom = zoom > 0 ? zoom : 1;
+        const dataUrl = canvas.toDataURL();
+        const payload: SavedDrawingPayload = {
+            version: 2,
+            type: 'raster',
+            zoom: currentZoom,
+            dataUrl
+        };
+
+        const serialized = JSON.stringify(payload);
+        sourceDrawingRef.current = { dataUrl, zoom: currentZoom };
+        loadedSavedDataRef.current = serialized;
+        onSave(serialized);
     };
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
@@ -141,8 +242,7 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
     const stopDrawing = () => {
         if (isDrawing) {
             setIsDrawing(false);
-            const canvas = canvasRef.current;
-            if (canvas) onSave(canvas.toDataURL());
+            persistCanvas();
             lastPosRef.current = null;
         }
     };
@@ -165,7 +265,6 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings }: {
         />
     );
 };
-
 const ReaderPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -1105,6 +1204,7 @@ const ReaderPage: React.FC = () => {
                                 savedData={drawings[`${book.id}-${book.progress?.page || 1}`]}
                                 onSave={(data) => saveDrawing(`${book.id}-${book.progress?.page || 1}`, data)}
                                 settings={toolSettings}
+                                zoom={scale}
                             />
                         )}
                     </motion.div>
