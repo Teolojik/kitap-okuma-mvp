@@ -109,7 +109,65 @@ const extractStoragePath = (fileUrl: string, bucket: string): string | null => {
     }
 };
 
-export const getBookFileBlob = async (book: Pick<Book, 'id' | 'file_url'>): Promise<Blob | null> => {
+const readBlobHeader = async (blob: Blob, length = 1024): Promise<Uint8Array> => {
+    const slice = blob.slice(0, length);
+    return new Uint8Array(await slice.arrayBuffer());
+};
+
+const blobLooksLikePdf = async (blob: Blob): Promise<boolean> => {
+    if (!blob || blob.size === 0) return false;
+    if ((blob.type || '').toLowerCase().includes('pdf')) return true;
+
+    const header = await readBlobHeader(blob);
+    const text = new TextDecoder('ascii', { fatal: false }).decode(header);
+    return text.includes('%PDF-');
+};
+
+const blobLooksLikeEpub = async (blob: Blob): Promise<boolean> => {
+    if (!blob || blob.size === 0) return false;
+    const type = (blob.type || '').toLowerCase();
+    if (type.includes('epub') || type.includes('zip')) return true;
+
+    const header = await readBlobHeader(blob, 4);
+    return header[0] === 0x50 && header[1] === 0x4b;
+};
+
+const inferBookFormat = (book: Pick<Book, 'file_url'> & Partial<Pick<Book, 'format'>>): 'pdf' | 'epub' | null => {
+    const explicitFormat = String(book.format || '').toLowerCase();
+    if (explicitFormat === 'pdf' || explicitFormat === 'epub') {
+        return explicitFormat;
+    }
+
+    const normalizedUrl = String(book.file_url || '').toLowerCase();
+    if (normalizedUrl.includes('.pdf')) return 'pdf';
+    if (normalizedUrl.includes('.epub')) return 'epub';
+    return null;
+};
+
+const isExpectedBookBlob = async (
+    blob: Blob | null,
+    book: Pick<Book, 'file_url'> & Partial<Pick<Book, 'format'>>
+): Promise<boolean> => {
+    if (!blob || blob.size === 0) return false;
+
+    const format = inferBookFormat(book);
+    if (format === 'pdf') return await blobLooksLikePdf(blob);
+    if (format === 'epub') return await blobLooksLikeEpub(blob);
+
+    return true;
+};
+
+const fetchBlob = async (url: string): Promise<Blob | null> => {
+    try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) return null;
+        return await response.blob();
+    } catch {
+        return null;
+    }
+};
+
+export const getBookFileBlob = async (book: Pick<Book, 'id' | 'file_url'> & Partial<Pick<Book, 'format'>>): Promise<Blob | null> => {
     if (!book?.file_url) return null;
 
     if (book.file_url.startsWith('local://')) {
@@ -117,22 +175,36 @@ export const getBookFileBlob = async (book: Pick<Book, 'id' | 'file_url'>): Prom
     }
 
     const storagePath = extractStoragePath(book.file_url, 'books');
+
+    const directBlob = await fetchBlob(book.file_url);
+    if (await isExpectedBookBlob(directBlob, book)) {
+        return directBlob;
+    }
+
     if (storagePath) {
         try {
             const { data, error } = await supabase.storage.from('books').download(storagePath);
-            if (!error && data) return data;
+            if (!error && await isExpectedBookBlob(data, book)) {
+                return data;
+            }
         } catch (error) {
-            console.warn('Storage download failed, falling back to fetch:', error);
+            console.warn('Storage download failed, trying signed url fallback:', error);
+        }
+
+        try {
+            const { data, error } = await supabase.storage.from('books').createSignedUrl(storagePath, 60);
+            if (!error && data?.signedUrl) {
+                const signedBlob = await fetchBlob(data.signedUrl);
+                if (await isExpectedBookBlob(signedBlob, book)) {
+                    return signedBlob;
+                }
+            }
+        } catch (error) {
+            console.warn('Signed storage url failed:', error);
         }
     }
 
-    try {
-        const response = await fetch(book.file_url);
-        if (!response.ok) return null;
-        return await response.blob();
-    } catch {
-        return null;
-    }
+    return directBlob;
 };
 
 const deleteFile = async (id: string): Promise<void> => {
