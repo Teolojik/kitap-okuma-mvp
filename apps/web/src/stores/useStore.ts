@@ -11,7 +11,8 @@ import {
     extractPdfCoverFromFirstPage,
     persistCoverToStorage,
     isDataUrl,
-    getStoredBookFile
+    getStoredBookFile,
+    getBookFileBlob
 } from '@/lib/mock-api';
 import { findCoverImage } from '@/lib/discovery-service';
 import { toast } from 'sonner';
@@ -24,7 +25,7 @@ import { createBookSlice, BookSlice } from './slices/book.slice';
 import { createReaderSlice, ReaderSlice } from './slices/reader.slice';
 
 const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-const PDF_BACKFILL_VERSION = 'v3';
+const PDF_BACKFILL_VERSION = 'v4';
 const PDF_BACKFILL_DELAY_MS = 180;
 const pdfBackfillLocks = new Set<string>();
 
@@ -53,17 +54,6 @@ const isManagedPdfBackfillCover = (book: Book, identity: string): boolean => {
 
 const needsPdfCoverBackfill = (book: Book, identity: string): boolean => {
     return isPdfBook(book) && (isFallbackCover(book.cover_url) || isManagedPdfBackfillCover(book, identity));
-};
-
-const fetchRemoteBlob = async (url: string): Promise<Blob | null> => {
-    try {
-        if (!url) return null;
-        const response = await fetch(url);
-        if (!response.ok) return null;
-        return await response.blob();
-    } catch {
-        return null;
-    }
 };
 
 export const useAuthStore = create<AuthSlice>()((...a) => ({
@@ -219,7 +209,7 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                             for (const book of candidates) {
                                 try {
                                     const sourceBlob = user
-                                        ? await fetchRemoteBlob(book.file_url)
+                                        ? await getBookFileBlob(book)
                                         : await getStoredBookFile(book.id);
                                     if (!sourceBlob) continue;
 
