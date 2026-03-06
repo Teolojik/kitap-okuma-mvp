@@ -14,18 +14,6 @@ interface DoubleStaticProps {
     scale?: number;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
-    pdfDrawing?: {
-        bookId: string;
-        active: boolean;
-        tool: 'pen' | 'marker' | 'eraser';
-        settings: {
-            color: string;
-            width: number;
-            opacity: number;
-        };
-        drawings: Record<string, string>;
-        onSave: (pageKey: string, data: string) => void;
-    };
 }
 
 const EPUB_OPTIONS = {
@@ -39,7 +27,7 @@ const EPUB_OPTIONS = {
 import { getFileType } from '@/lib/file-utils';
 
 const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
-    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations, pdfDrawing
+    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
 }, ref) => {
     const innerReaderRef = React.useRef<any>(null);
     const [isMobile, setIsMobile] = React.useState(window.innerWidth < 1024);
@@ -79,7 +67,6 @@ const DoubleStatic = React.forwardRef<any, DoubleStaticProps>(({
                     scale={scale}
                     onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
                     annotations={annotations}
-                    drawing={pdfDrawing}
                 />
             </Suspense>
         );

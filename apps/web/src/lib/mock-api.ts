@@ -225,10 +225,8 @@ export const persistCoverToStorage = async (objectPath: string, coverDataUrl: st
 
 export const extractPdfCoverFromFirstPage = async (
     source: Blob | File | ArrayBuffer | Uint8Array,
-    fileNameHint = 'document.pdf',
-    options: { allowPlaceholderFallback?: boolean } = {}
+    fileNameHint = 'document.pdf'
 ): Promise<string | undefined> => {
-    const { allowPlaceholderFallback = true } = options;
     try {
         const { pdfjs } = await import('react-pdf');
         if (pdfjs?.GlobalWorkerOptions && pdfjs.GlobalWorkerOptions.workerSrc !== PDF_WORKER_SRC) {
@@ -286,17 +284,14 @@ export const extractPdfCoverFromFirstPage = async (
                 }
             }
 
-            if (bestCoverDataUrl && bestScore >= PDF_MIN_VISUAL_SCORE) {
-                return bestCoverDataUrl;
-            }
-
-            return allowPlaceholderFallback ? generatePdfPlaceholderCover(fileNameHint) : undefined;
+            if (bestCoverDataUrl) return bestCoverDataUrl;
+            return generatePdfPlaceholderCover(fileNameHint);
         } finally {
             await pdf.destroy();
         }
     } catch (err) {
         console.error("PDF cover extraction failed:", err);
-        return allowPlaceholderFallback ? generatePdfPlaceholderCover(fileNameHint) : undefined;
+        return generatePdfPlaceholderCover(fileNameHint);
     }
 };
 

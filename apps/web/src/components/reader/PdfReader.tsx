@@ -1,17 +1,14 @@
 
-import '@/lib/pdf-compat';
-
 import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import PageDrawingOverlay from './PageDrawingOverlay';
 
 // Configure worker to use the local file served via vite-plugin-static-copy
 // Using a root-relative path ensures the worker is loaded from our own server
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs?v=20260307';
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 import { ErrorBoundary } from 'react-error-boundary';
 import { useBookStore } from '@/stores/useStore';
@@ -28,18 +25,6 @@ interface PdfReaderProps {
     simpleMode?: boolean;
     onTextSelected?: (page: number, text: string) => void;
     annotations?: any[];
-    drawing?: {
-        bookId: string;
-        active: boolean;
-        tool: 'pen' | 'marker' | 'eraser';
-        settings: {
-            color: string;
-            width: number;
-            opacity: number;
-        };
-        drawings: Record<string, string>;
-        onSave: (pageKey: string, data: string) => void;
-    };
 }
 
 export interface PdfReaderRef {
@@ -58,8 +43,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     onScaleChange,
     simpleMode = false,
     onTextSelected,
-    annotations,
-    drawing
+    annotations
 }: PdfReaderProps, ref) => {
     const { settings } = useBookStore();
     const [numPages, setNumPages] = useState<number>(0);
@@ -358,17 +342,6 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                         {isDoubleMode && (
                             <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/15 via-black/5 to-transparent pointer-events-none z-[4]" />
                         )}
-
-                        {drawing && (
-                            <PageDrawingOverlay
-                                active={drawing.active}
-                                tool={drawing.tool}
-                                pageKey={`${drawing.bookId}-${page}`}
-                                savedData={drawing.drawings[`${drawing.bookId}-${page}`]}
-                                onSave={(data) => drawing.onSave(`${drawing.bookId}-${page}`, data)}
-                                settings={drawing.settings}
-                            />
-                        )}
                     </div>
 
                     {/* Secondary Page (Right in double mode) - Stacked Effect */}
@@ -391,17 +364,6 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                             />
                             {/* Paper Grain/Texture Overlay */}
                             <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-[11] bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] mix-blend-multiply" />
-
-                            {drawing && (
-                                <PageDrawingOverlay
-                                    active={drawing.active}
-                                    tool={drawing.tool}
-                                    pageKey={`${drawing.bookId}-${page + 1}`}
-                                    savedData={drawing.drawings[`${drawing.bookId}-${page + 1}`]}
-                                    onSave={(data) => drawing.onSave(`${drawing.bookId}-${page + 1}`, data)}
-                                    settings={drawing.settings}
-                                />
-                            )}
                         </div>
                     )}
                 </Document>

@@ -14,18 +14,6 @@ interface SinglePageReaderProps {
     scale?: number;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
-    pdfDrawing?: {
-        bookId: string;
-        active: boolean;
-        tool: 'pen' | 'marker' | 'eraser';
-        settings: {
-            color: string;
-            width: number;
-            opacity: number;
-        };
-        drawings: Record<string, string>;
-        onSave: (pageKey: string, data: string) => void;
-    };
 }
 
 // Static options to prevent re-init loop
@@ -34,7 +22,7 @@ const EPUB_OPTIONS = { flow: 'scrolled-doc', manager: 'continuous' };
 import { getFileType } from '@/lib/file-utils';
 
 const SinglePageReader = React.forwardRef<any, SinglePageReaderProps>(({
-    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations, pdfDrawing
+    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
 }, ref) => {
     if (book.format === 'pdf') {
         return (
@@ -48,7 +36,6 @@ const SinglePageReader = React.forwardRef<any, SinglePageReaderProps>(({
                     scale={scale}
                     onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
                     annotations={annotations}
-                    drawing={pdfDrawing}
                 />
             </Suspense>
         );
