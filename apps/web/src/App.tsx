@@ -15,7 +15,6 @@ import StatsPage from '@/pages/Stats';
 import AdminPage from '@/pages/Admin';
 import AdminGuard from '@/components/AdminGuard';
 import ReloadPrompt from '@/components/ReloadPrompt';
-import PreviewServiceWorkerReset, { shouldEnablePersistentPwa } from '@/components/PreviewServiceWorkerReset';
 import SeoManager from '@/components/SeoManager';
 import NotFoundPage from '@/pages/NotFound';
 import { Toaster } from 'sonner';
@@ -35,7 +34,6 @@ function App() {
     // @ts-ignore
     return (translations[langKey][key] || key);
   };
-  const shouldUsePwa = shouldEnablePersistentPwa();
 
   useEffect(() => {
     const initApp = async () => {
@@ -127,7 +125,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <Toaster position="top-right" />
-        {shouldUsePwa ? <ReloadPrompt /> : <PreviewServiceWorkerReset />}
+        <ReloadPrompt />
       </BrowserRouter>
     </>
   );
