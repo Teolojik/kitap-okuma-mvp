@@ -237,3 +237,11 @@ Zor yoldan öğrenilen dersler ve kritik teknik çözümler burada toplanır.
 - Kullanıcı kitapları filtrelenirken legacy storage path içinden kullanıcı kimliği çıkarımı için fallback eklendi.
 - Toplam kitap sayısı doğrudan `userBooks.length` ile hesaplanarak tutarlılık sağlandı.
 - **Kural:** Admin panelinde "0" ile "veri yok" aynı durum değildir; UI bu iki durumu ayrı göstermelidir.
+
+### 36. PDF Cover Regression (2026-03)
+**Sorun:** Main'e toplu commit tasinirken backfill tekrar agresif calisti ve extraction hatalarinda placeholder kapaklar DB'ye geri yazilabildi.
+**Cozum:**
+- Backfill extraction cagrisinda `allowPlaceholderFallback: false` kullanildi; extraction basarisizsa update skip edilir.
+- Backfill version `v4` yapilarak mevcut PDF kayitlari guvenli sekilde yeniden islendi.
+- Blob alma zinciri guclendirildi: `fetch(file_url)` -> `storage.download` -> `createSignedUrl`.
+**Kural:** Backfill asla placeholder gorseli veritabanina yazmamalidir.
