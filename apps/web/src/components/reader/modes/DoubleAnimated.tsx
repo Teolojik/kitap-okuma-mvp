@@ -15,6 +15,18 @@ interface DoubleAnimatedProps {
     scale?: number;
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
+    pdfDrawing?: {
+        bookId: string;
+        active: boolean;
+        tool: 'pen' | 'marker' | 'eraser';
+        settings: {
+            color: string;
+            width: number;
+            opacity: number;
+        };
+        drawings: Record<string, string>;
+        onSave: (pageKey: string, data: string) => void;
+    };
 }
 
 import { getFileType } from '@/lib/file-utils';
@@ -26,7 +38,7 @@ const EPUB_OPTIONS = {
 };
 
 const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
-    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations
+    book, data, pageNumber, onLocationChange, onTotalPages, scale, onTextSelected, annotations, pdfDrawing
 }, ref) => {
     const innerReaderRef = useRef<any>(null);
     const [direction, setDirection] = useState(0); // -1 prev, 1 next
@@ -84,6 +96,7 @@ const DoubleAnimated = React.forwardRef<any, DoubleAnimatedProps>(({
                     scale={scale}
                     onTextSelected={(page, text) => onTextSelected?.(String(page), text)}
                     annotations={annotations}
+                    drawing={pdfDrawing}
                 />
             </Suspense>
         );

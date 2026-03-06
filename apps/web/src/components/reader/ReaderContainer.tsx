@@ -21,6 +21,18 @@ interface ReaderContainerProps {
     onTextSelected?: (cfi: string, text: string) => void;
     annotations?: any[];
     onOpenSettings?: () => void;
+    pdfDrawing?: {
+        bookId: string;
+        active: boolean;
+        tool: 'pen' | 'marker' | 'eraser';
+        settings: {
+            color: string;
+            width: number;
+            opacity: number;
+        };
+        drawings: Record<string, string>;
+        onSave: (pageKey: string, data: string) => void;
+    };
 
     // New split screen props
     activePanel?: 'primary' | 'secondary';
@@ -111,13 +123,13 @@ const ReaderContainer = React.forwardRef<ReaderContainerRef, ReaderContainerProp
     try {
         switch (effectiveMode) {
             case 'single':
-                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <SinglePageReader ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} pdfDrawing={props.pdfDrawing} />;
 
             case 'double-static':
-                return <DoubleStatic ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <DoubleStatic ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} pdfDrawing={props.pdfDrawing} />;
 
             case 'double-animated':
-                return <DoubleAnimated ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} />;
+                return <DoubleAnimated ref={contentRef} book={book} data={data} pageNumber={pageNumber} onLocationChange={onLocationChange} onTotalPages={props.onTotalPages} scale={props.scale} onTextSelected={props.onTextSelected} annotations={props.annotations} pdfDrawing={props.pdfDrawing} />;
 
             case 'split':
                 return <SplitScreenReader

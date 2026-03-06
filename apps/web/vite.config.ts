@@ -15,24 +15,24 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: 'node_modules/react-pdf/node_modules/pdfjs-dist/cmaps',
+          src: 'node_modules/pdfjs-dist/cmaps',
           dest: 'cmaps',
         },
         {
-          src: 'node_modules/react-pdf/node_modules/pdfjs-dist/standard_fonts',
+          src: 'node_modules/pdfjs-dist/standard_fonts',
           dest: 'standard_fonts',
         },
         {
-          src: 'node_modules/react-pdf/node_modules/pdfjs-dist/wasm/*',
+          src: 'node_modules/pdfjs-dist/wasm/*',
           dest: 'wasm',
         },
         {
-          src: 'node_modules/react-pdf/node_modules/pdfjs-dist/image_decoders/*',
+          src: 'node_modules/pdfjs-dist/image_decoders/*',
           dest: 'image_decoders',
         },
         {
-          src: 'node_modules/react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
-          dest: '.',
+          src: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
+          dest: 'workers',
         },
       ],
     }),
@@ -63,7 +63,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
@@ -94,4 +94,3 @@ export default defineConfig({
     pure: process.env.NODE_ENV === 'production' ? ['console.log'] : [],
   },
 })
-

@@ -1094,10 +1094,18 @@ const ReaderPage: React.FC = () => {
                                 onTextSelected={handleTextSelected}
                                 annotations={book ? (storeAnnotations[book.id] || []) : []}
                                 onOpenSettings={() => setIsBookSelectOpen(true)}
+                                pdfDrawing={book?.format === 'pdf' ? {
+                                    bookId: book.id,
+                                    active: activeTool !== 'cursor',
+                                    tool: activeTool === 'cursor' ? 'pen' : activeTool,
+                                    settings: toolSettings,
+                                    drawings,
+                                    onSave: saveDrawing
+                                } : undefined}
                             />
                         </div>
 
-                        {book && (
+                        {book && book.format !== 'pdf' && (
                             <DrawingCanvas
                                 active={activeTool !== 'cursor'}
                                 tool={activeTool as any}

@@ -24,7 +24,7 @@ import { createBookSlice, BookSlice } from './slices/book.slice';
 import { createReaderSlice, ReaderSlice } from './slices/reader.slice';
 
 const DEFAULT_COVER_FALLBACK = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80";
-const PDF_BACKFILL_VERSION = 'v2';
+const PDF_BACKFILL_VERSION = 'v3';
 const PDF_BACKFILL_DELAY_MS = 180;
 const pdfBackfillLocks = new Set<string>();
 
@@ -36,8 +36,13 @@ const isPdfBook = (book: Book): boolean => {
     return String(book.file_url || '').toLowerCase().includes('.pdf');
 };
 
+const isFallbackCover = (coverUrl?: string | null): boolean => {
+    if (!coverUrl) return true;
+    return coverUrl.includes('images.unsplash.com/photo-1543002588-bfa74002ed7e');
+};
+
 const needsPdfCoverBackfill = (book: Book): boolean => {
-    return isPdfBook(book);
+    return isPdfBook(book) && isFallbackCover(book.cover_url);
 };
 
 const fetchRemoteBlob = async (url: string): Promise<Blob | null> => {
@@ -208,7 +213,11 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
                                         : await getStoredBookFile(book.id);
                                     if (!sourceBlob) continue;
 
-                                    const extractedCover = await extractPdfCoverFromFirstPage(sourceBlob, `${book.title || 'document'}.pdf`);
+                                    const extractedCover = await extractPdfCoverFromFirstPage(
+                                        sourceBlob,
+                                        `${book.title || 'document'}.pdf`,
+                                        { allowPlaceholderFallback: false }
+                                    );
                                     if (!extractedCover) continue;
 
                                     let finalCover = extractedCover;
