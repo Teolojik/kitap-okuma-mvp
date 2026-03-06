@@ -41,8 +41,18 @@ const isFallbackCover = (coverUrl?: string | null): boolean => {
     return coverUrl.includes('images.unsplash.com/photo-1543002588-bfa74002ed7e');
 };
 
-const needsPdfCoverBackfill = (book: Book): boolean => {
-    return isPdfBook(book) && isFallbackCover(book.cover_url);
+const isManagedPdfBackfillCover = (book: Book, identity: string): boolean => {
+    if (!book.cover_url) return false;
+
+    const normalizedIdentity = identity.replace(/^\/+|\/+$/g, '');
+    const expectedSuffix = `/${normalizedIdentity}/${book.id}.jpg`;
+
+    return book.cover_url.includes('/storage/v1/object/public/covers/')
+        && book.cover_url.endsWith(expectedSuffix);
+};
+
+const needsPdfCoverBackfill = (book: Book, identity: string): boolean => {
+    return isPdfBook(book) && (isFallbackCover(book.cover_url) || isManagedPdfBackfillCover(book, identity));
 };
 
 const fetchRemoteBlob = async (url: string): Promise<Blob | null> => {
@@ -199,7 +209,7 @@ export const useBookStore = create<BookSlice & ReaderSlice>()((set, get, api) =>
 
                 const identity = user?.id || 'guest';
                 const backfillKey = `pdf_cover_backfill_${PDF_BACKFILL_VERSION}_${identity}`;
-                const candidates = loadedBooks.filter(needsPdfCoverBackfill);
+                const candidates = loadedBooks.filter(book => needsPdfCoverBackfill(book, identity));
 
                 if (!localStorage.getItem(backfillKey) && candidates.length > 0 && !pdfBackfillLocks.has(identity)) {
                     pdfBackfillLocks.add(identity);
