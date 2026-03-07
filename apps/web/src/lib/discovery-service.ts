@@ -239,7 +239,7 @@ export const searchBooks = async (query: string): Promise<SearchResult[]> => {
                 source: 'Google Books',
                 format: 'epub',
                 size: 'Bilinmiyor',
-                downloadUrl: 'demo-download',
+                downloadUrl: info.previewLink || info.infoLink || '',
                 description: info.description,
                 publishedDate: info.publishedDate,
                 publisher: info.publisher,

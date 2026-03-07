@@ -20,6 +20,9 @@ export interface ReaderSlice {
         paddingTop: number;
         paddingBottom: number;
         weeklyGoal: number; // Defaults to 5
+        notifyReminders: boolean;
+        notifyAnnouncements: boolean;
+        notifyEmail: boolean;
     };
     setSettings: (settings: Partial<ReaderSlice['settings']>) => void;
     secondaryBookId: string | null;
@@ -72,6 +75,9 @@ export const createReaderSlice: StateCreator<ReaderSlice> = (set, get) => ({
         paddingTop: 20,
         paddingBottom: 20,
         weeklyGoal: 5,
+        notifyReminders: true,
+        notifyAnnouncements: false,
+        notifyEmail: false,
     },
     setSettings: (newSettings) => {
         set(state => {

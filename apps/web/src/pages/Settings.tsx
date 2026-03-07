@@ -28,8 +28,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { MockAPI } from '@/lib/mock-api';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/lib/translations';
 
@@ -56,6 +56,15 @@ const SettingsPage = () => {
     const [ticketMessage, setTicketMessage] = useState('');
     const [ticketCategory, setTicketCategory] = useState('general');
     const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+    const [isPrivacyDialogOpen, setIsPrivacyDialogOpen] = useState(false);
+    const [isAboutDialogOpen, setIsAboutDialogOpen] = useState(false);
+
+    type NotificationKey = 'notifyReminders' | 'notifyAnnouncements' | 'notifyEmail';
+    const notificationItems: Array<{ key: NotificationKey; title: string; desc: string }> = [
+        { key: 'notifyReminders', title: t('reminders'), desc: t('remindersDesc') },
+        { key: 'notifyAnnouncements', title: t('newBookAnnouncements'), desc: t('newBookAnnouncementsDesc') },
+        { key: 'notifyEmail', title: t('emailNotifications'), desc: t('emailNotificationsDesc') },
+    ];
 
     const handleSubmitTicket = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -392,20 +401,16 @@ const SettingsPage = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {[
-                                { title: t('reminders'), desc: t('remindersDesc') },
-                                { title: t('newBookAnnouncements'), desc: t('newBookAnnouncementsDesc') },
-                                { title: t('emailNotifications'), desc: t('emailNotificationsDesc') },
-                            ].map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl hover:bg-secondary/20 transition-colors">
+                            {notificationItems.map((item) => (
+                                <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl hover:bg-secondary/20 transition-colors">
                                     <div className="space-y-1">
                                         <Label className="text-base font-bold">{item.title}</Label>
                                         <CardDescription>{item.desc}</CardDescription>
                                     </div>
                                     <Switch
-                                        defaultChecked={idx === 0}
+                                        checked={Boolean(settings[item.key])}
                                         onCheckedChange={(checked) => {
-                                            toast.info(`${item.title}: ${checked ? 'Açıldı' : 'Kapatıldı'}`);
+                                            setSettings({ [item.key]: checked } as any);
                                         }}
                                     />
                                 </div>
@@ -416,8 +421,19 @@ const SettingsPage = () => {
             case 'support':
                 return (
                     <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <Card className="border-border/50 bg-card/50 hover:bg-secondary/30 transition-all cursor-pointer group rounded-3xl overflow-hidden border-2 border-transparent hover:border-primary/20">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Card
+                                className="border-border/50 bg-card/50 hover:bg-secondary/30 transition-all cursor-pointer group rounded-3xl overflow-hidden border-2 border-transparent hover:border-primary/20"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setIsPrivacyDialogOpen(true)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setIsPrivacyDialogOpen(true);
+                                    }
+                                }}
+                            >
                                 <CardContent className="p-8 flex flex-col items-center text-center gap-4">
                                     <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center group-hover:rotate-12 transition-all">
                                         <Shield className="h-8 w-8 text-primary" />
@@ -428,7 +444,18 @@ const SettingsPage = () => {
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="border-border/50 bg-card/50 hover:bg-secondary/30 transition-all cursor-pointer group rounded-3xl overflow-hidden border-2 border-transparent hover:border-primary/20">
+                            <Card
+                                className="border-border/50 bg-card/50 hover:bg-secondary/30 transition-all cursor-pointer group rounded-3xl overflow-hidden border-2 border-transparent hover:border-primary/20"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setIsAboutDialogOpen(true)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setIsAboutDialogOpen(true);
+                                    }
+                                }}
+                            >
                                 <CardContent className="p-8 flex flex-col items-center text-center gap-4">
                                     <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center group-hover:-rotate-12 transition-all">
                                         <Info className="h-8 w-8 text-primary" />
@@ -536,6 +563,31 @@ const SettingsPage = () => {
                     {renderContent()}
                 </div>
             </div>
+            <Dialog open={isPrivacyDialogOpen} onOpenChange={setIsPrivacyDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('privacySecurity')}</DialogTitle>
+                        <DialogDescription>{t('privacyDesc')}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>{t('supportMessageDesc')}</p>
+                        <p>{t('notifications')}</p>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('about')}</DialogTitle>
+                        <DialogDescription>{t('version')} 1.2.0 (Stable)</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>Epigraph Reader</p>
+                        <p>{t('settingsDesc')}</p>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
