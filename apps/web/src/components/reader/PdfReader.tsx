@@ -257,8 +257,13 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         // The effective "Fit" width is the smaller of the two
         const fitWidth = isMobile ? availableW : Math.min(availableW, widthToFitHeight);
 
+        // Keep mobile zoom softer so page remains mostly fit on screen while still enlarging.
+        const effectiveScale = isMobile
+            ? Math.min(1.3, 1 + Math.max(0, currentScale - 1) * 0.35)
+            : currentScale;
+
         // Apply scale on top of the fit width
-        const finalWidth = Math.floor(fitWidth * currentScale);
+        const finalWidth = Math.floor(fitWidth * effectiveScale);
         return (isNaN(finalWidth) || !isFinite(finalWidth)) ? 800 : finalWidth;
     };
 
@@ -268,7 +273,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
     return (
         <div className={`w-full h-full flex flex-col overflow-hidden relative bg-background ${isMobile ? 'items-stretch justify-start' : 'items-center justify-center'}`} ref={wrapperRef}>
-            <div className={`w-full h-full flex justify-center no-scrollbar relative ${isMobile ? 'items-start pt-2' : 'items-center'} ${simpleMode ? '' : isMobile ? 'px-1' : 'px-4'} ${currentScale > 1.0 || isMobile ? 'overflow-auto' : 'overflow-hidden'}`}>
+            <div className={`w-full h-full flex justify-center no-scrollbar relative ${isMobile ? 'items-start pt-2' : 'items-center'} ${simpleMode ? '' : isMobile ? 'px-1' : 'px-4'} ${isMobile ? 'overflow-y-auto overflow-x-hidden' : currentScale > 1.0 ? 'overflow-auto' : 'overflow-hidden'}`}>
                 {/* Book Spine Shadow (Center) */}
                 {isDoubleMode && page + 1 <= numPages && (
                     <div className="absolute left-1/2 top-0 bottom-0 w-16 -translate-x-1/2 z-20 pointer-events-none bg-gradient-to-r from-transparent via-black/15 to-transparent blur-md" />

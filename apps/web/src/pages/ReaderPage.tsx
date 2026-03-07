@@ -367,7 +367,6 @@ const ReaderPage: React.FC = () => {
     const [currentPercentage, setCurrentPercentage] = useState<number>(0);
     const [jumpPage, setJumpPage] = useState<string>('1');
     const [noteDraft, setNoteDraft] = useState('');
-    const autoFitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // --- Search States ---
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -389,41 +388,14 @@ const ReaderPage: React.FC = () => {
         width: 3,
         opacity: 1
     });
-
-    const clearAutoFitTimer = React.useCallback(() => {
-        if (autoFitTimerRef.current) {
-            clearTimeout(autoFitTimerRef.current);
-            autoFitTimerRef.current = null;
-        }
-    }, []);
-
     const setScaleWithBehavior = React.useCallback((nextScale: number) => {
         const clamped = Math.min(maxZoom, Math.max(minZoom, nextScale));
         setScale(clamped);
-
-        if (!isMobileViewport) {
-            clearAutoFitTimer();
-            return;
-        }
-
-        clearAutoFitTimer();
-        if (clamped > 1) {
-            autoFitTimerRef.current = setTimeout(() => {
-                setScale(1);
-                autoFitTimerRef.current = null;
-            }, 1200);
-        }
-    }, [clearAutoFitTimer, isMobileViewport, maxZoom, minZoom]);
+    }, [maxZoom, minZoom]);
 
     useEffect(() => {
         setScale((prev) => Math.min(maxZoom, Math.max(minZoom, prev)));
     }, [minZoom, maxZoom]);
-
-    useEffect(() => {
-        return () => {
-            clearAutoFitTimer();
-        };
-    }, [clearAutoFitTimer]);
 
     // --- Refs ---
     const readerRef = useRef<any>(null);
