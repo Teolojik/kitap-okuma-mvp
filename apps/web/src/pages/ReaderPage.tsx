@@ -889,6 +889,18 @@ const ReaderPage: React.FC = () => {
                             <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScaleWithBehavior(scale + 0.1); }} className="rounded-full h-8 w-8 hover:bg-primary hover:text-white transition-all"><ZoomIn className="h-3.5 w-3.5" /></Button>
                         </div>
 
+                        <Button
+                            variant="ghost"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setScaleWithBehavior(1.15);
+                            }}
+                            className="h-8 px-3 rounded-full text-[10px] font-bold uppercase tracking-wide text-primary hover:bg-primary/10"
+                            title="Daha Buyuk Oku"
+                        >
+                            115% Oku
+                        </Button>
+
                         <Separator orientation="vertical" className="h-6 mx-1 opacity-20 hidden lg:block" />
 
                         <Button
@@ -1354,14 +1366,14 @@ const ReaderPage: React.FC = () => {
             </main>
 
             {/* Minimalist Bottom Footer - Zen aware */}
-            <div className={`absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 h-12 sm:h-14 px-4 sm:px-8 rounded-2xl bg-background/60 backdrop-blur-2xl border border-white/20 shadow-[0_10px_40px_rgba(0,0,0,0.1)] flex items-center justify-between gap-4 sm:gap-8 z-[90] max-w-[95vw] transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+            <div className={`absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 h-10 sm:h-12 px-3 sm:px-6 rounded-xl bg-background/60 backdrop-blur-2xl border border-white/20 shadow-[0_10px_40px_rgba(0,0,0,0.1)] flex items-center justify-between gap-3 sm:gap-6 z-[90] max-w-[95vw] transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
                 {/* Internal contents go here */}
                 {settings.readingMode === 'split' && secondaryBook ? (
                     <div className="flex flex-col gap-2 py-2 border-r border-white/10 pr-8">
                         {/* Primary Book Row */}
                         <div className="flex items-center gap-4">
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-md transition-all ${activePanel === 'primary' ? 'bg-primary text-white scale-110 shadow-lg' : 'bg-white/10 text-white/40'}`}>1</span>
-                            <div className="w-48 h-1.5 bg-secondary/40 rounded-full cursor-pointer hover:h-2 transition-all group/scroll1"
+                            <div className="w-36 sm:w-44 h-1.5 bg-secondary/40 rounded-full cursor-pointer hover:h-2 transition-all group/scroll1"
                                 onClick={(e) => {
                                     const rect = e.currentTarget.getBoundingClientRect();
                                     const x = e.clientX - rect.left;
@@ -1383,7 +1395,7 @@ const ReaderPage: React.FC = () => {
                         {/* Secondary Book Row */}
                         <div className="flex items-center gap-4">
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-md transition-all ${activePanel === 'secondary' ? 'bg-orange-500 text-white scale-110 shadow-lg' : 'bg-white/10 text-white/40'}`}>2</span>
-                            <div className="w-48 h-1.5 bg-secondary/40 rounded-full cursor-pointer hover:h-2 transition-all group/scroll2"
+                            <div className="w-36 sm:w-44 h-1.5 bg-secondary/40 rounded-full cursor-pointer hover:h-2 transition-all group/scroll2"
                                 onClick={(e) => {
                                     const rect = e.currentTarget.getBoundingClientRect();
                                     const x = e.clientX - rect.left;
@@ -1404,11 +1416,11 @@ const ReaderPage: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-8 border-r border-white/10 pr-8">
+                    <div className="flex items-center gap-4 sm:gap-6 border-r border-white/10 pr-4 sm:pr-6">
                         <span className="text-[11px] font-bold text-foreground tracking-tight">
                             {t('progressLabel', { percent: Math.round(book?.progress?.percentage || 0) })}
                         </span>
-                        <div className="w-32 sm:w-64 h-3 sm:h-2 bg-secondary/40 rounded-full cursor-pointer hover:scale-y-125 transition-all group/scroll"
+                        <div className="w-28 sm:w-56 h-2.5 sm:h-2 bg-secondary/40 rounded-full cursor-pointer hover:scale-y-125 transition-all group/scroll"
                             onClick={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 const x = e.clientX - rect.left;

@@ -240,10 +240,10 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         // Margins: reduce heavily on mobile
         const hPadding = isMobile
             ? 8
-            : (isDoubleMode ? 80 : 40) + (settings.margin * 2);
+            : (isDoubleMode ? 40 : 24) + settings.margin;
         const vPadding = isMobile
             ? 20
-            : (simpleMode ? 40 : 80) + settings.paddingTop + settings.paddingBottom;
+            : (simpleMode ? 28 : 52) + settings.paddingTop + settings.paddingBottom;
 
         const availableW = Math.max(0, (wrapperWidth - hPadding) / (isDoubleMode ? 2 : 1));
         const availableH = Math.max(0, wrapperHeight - vPadding);
@@ -273,7 +273,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
     return (
         <div className={`w-full h-full flex flex-col overflow-hidden relative bg-background ${isMobile ? 'items-stretch justify-start' : 'items-center justify-center'}`} ref={wrapperRef}>
-            <div className={`w-full h-full flex justify-center no-scrollbar relative ${isMobile || currentScale > 1.0 ? 'items-start pt-2' : 'items-center'} ${simpleMode ? '' : isMobile ? 'px-1' : 'px-4'} ${isMobile ? 'overflow-y-auto overflow-x-hidden' : currentScale > 1.0 ? 'overflow-auto' : 'overflow-hidden'}`}>
+            <div className={`w-full h-full flex justify-center no-scrollbar relative ${isMobile || currentScale > 1.0 ? 'items-start pt-2' : 'items-center'} ${simpleMode ? '' : isMobile ? 'px-1' : 'px-2'} ${isMobile ? 'overflow-y-auto overflow-x-hidden' : currentScale > 1.0 ? 'overflow-auto' : 'overflow-hidden'}`}>
                 {/* Book Spine Shadow (Center) */}
                 {isDoubleMode && page + 1 <= numPages && (
                     <div className="absolute left-1/2 top-0 bottom-0 w-16 -translate-x-1/2 z-20 pointer-events-none bg-gradient-to-r from-transparent via-black/15 to-transparent blur-md" />
@@ -283,7 +283,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
                     file={safeUrl}
                     options={options}
                     onLoadSuccess={onDocumentLoadSuccess}
-                    className="flex gap-4 items-center justify-center"
+                    className="flex gap-2 sm:gap-3 items-center justify-center"
                     loading={
                         <div className="flex items-center justify-center p-10 h-96 w-full">
                             <div className="flex flex-col items-center gap-2">
