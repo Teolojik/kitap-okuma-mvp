@@ -362,7 +362,7 @@ const ReaderPage: React.FC = () => {
     const [scale, setScale] = useState(1.0);
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 1024;
     const minZoom = isMobileViewport ? 1 : 0.5;
-    const maxZoom = isMobileViewport ? 2 : 3;
+    const maxZoom = isMobileViewport ? 1.6 : 3;
     const [currentLocation, setCurrentLocation] = useState<string>('0');
     const [currentPercentage, setCurrentPercentage] = useState<number>(0);
     const [jumpPage, setJumpPage] = useState<string>('1');

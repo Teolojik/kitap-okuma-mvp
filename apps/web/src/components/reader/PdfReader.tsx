@@ -257,9 +257,9 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         // The effective "Fit" width is the smaller of the two
         const fitWidth = isMobile ? availableW : Math.min(availableW, widthToFitHeight);
 
-        // Keep mobile zoom softer so page remains mostly fit on screen while still enlarging.
+        // Mobile: soften zoom growth to preserve readable line length and fit behavior.
         const effectiveScale = isMobile
-            ? Math.min(1.3, 1 + Math.max(0, currentScale - 1) * 0.35)
+            ? Math.min(1.18, 1 + Math.max(0, currentScale - 1) * 0.3)
             : currentScale;
 
         // Apply scale on top of the fit width
