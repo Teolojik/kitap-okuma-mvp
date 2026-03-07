@@ -520,24 +520,26 @@ export default function Layout() {
             </div>
 
             {/* Mobile Bottom Nav */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background/80 backdrop-blur-xl p-3 flex justify-around items-center z-50 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                {finalNavItems.map(item => (
-                    <Link key={item.href} to={item.href} className="flex flex-col items-center p-2 rounded-2xl relative">
-                        <item.icon className={`h-6 w-6 stroke-[1.5] ${location.pathname === item.href ? 'text-primary' : 'text-muted-foreground'}`} />
+            {!isReadMode && (
+                <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background/80 backdrop-blur-xl px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex justify-around items-center z-50 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+                    {finalNavItems.map(item => (
+                        <Link key={item.href} to={item.href} className="flex flex-col items-center p-2 rounded-2xl relative">
+                            <item.icon className={`h-6 w-6 stroke-[1.5] ${location.pathname === item.href ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </Link>
+                    ))}
+                    <Link to="/settings" className="p-2">
+                        <Settings className={`h-6 w-6 stroke-[1.5] ${location.pathname === '/settings' ? 'text-primary' : 'text-muted-foreground'}`} />
                     </Link>
-                ))}
-                <Link to="/settings" className="p-2">
-                    <Settings className={`h-6 w-6 stroke-[1.5] ${location.pathname === '/settings' ? 'text-primary' : 'text-muted-foreground'}`} />
-                </Link>
-                {user && (
-                    <button
-                        onClick={() => signOut()}
-                        className="p-2"
-                    >
-                        <LogOut className="h-6 w-6 text-muted-foreground" />
-                    </button>
-                )}
-            </nav>
+                    {user && (
+                        <button
+                            onClick={() => signOut()}
+                            className="p-2"
+                        >
+                            <LogOut className="h-6 w-6 text-muted-foreground" />
+                        </button>
+                    )}
+                </nav>
+            )}
 
             {/* Global Search Modal */}
             <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />

@@ -114,6 +114,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<Layout />}>
             <Route path="/" element={<LibraryPage />} />
+            <Route path="/library" element={<LibraryPage />} />
             <Route path="/book/:id" element={<BookDetails />} />
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/profile" element={<ProfilePage />} />

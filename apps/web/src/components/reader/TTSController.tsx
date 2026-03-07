@@ -100,14 +100,14 @@ export default function TTSController({ onGetText, onNext, onPrev }: TTSControll
     };
 
     return (
-        <div className="fixed bottom-24 right-6 z-[100] flex flex-col items-end gap-3">
+        <div className="fixed bottom-24 right-3 sm:right-6 z-[100] flex flex-col items-end gap-3 max-w-[calc(100vw-1.5rem)]">
             <AnimatePresence>
                 {showControls && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="bg-card/95 backdrop-blur-2xl border border-primary/10 p-5 rounded-[2.5rem] shadow-2xl flex flex-col gap-5 min-w-[260px] border-2"
+                        className="bg-card/95 backdrop-blur-2xl border border-primary/10 p-5 rounded-[2.5rem] shadow-2xl flex flex-col gap-5 w-[calc(100vw-1.5rem)] sm:w-auto sm:min-w-[260px] border-2"
                     >
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">{t('ttsSettings')}</span>

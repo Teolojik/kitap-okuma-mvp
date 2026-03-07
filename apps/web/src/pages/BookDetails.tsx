@@ -26,12 +26,12 @@ export default function BookDetails() {
     const summary = generateDynamicSummary(book.title, book.author);
 
     return (
-        <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-700">
+        <div className="max-w-6xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
             {/* Top Section: Hero */}
             <div className="flex flex-col md:flex-row gap-16 items-start">
                 {/* Book Cover with Controls */}
                 <div className="flex gap-6 items-center">
-                    <div className="flex flex-col gap-4">
+                    <div className="hidden md:flex flex-col gap-4">
                         <Button variant="ghost" size="icon" className="rounded-full border border-border/50 h-10 w-10"><ChevronUp className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" className="rounded-full border border-border/50 h-10 w-10"><ChevronDown className="h-5 w-5" /></Button>
                     </div>
@@ -40,7 +40,7 @@ export default function BookDetails() {
                         animate={{ y: 0, opacity: 1 }}
                         className="relative group"
                     >
-                        <div className="w-[300px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] group-hover:shadow-[0_60px_120px_-20px_rgba(0,0,0,0.4)] transition-all duration-700">
+                        <div className="w-[220px] sm:w-[260px] md:w-[300px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] group-hover:shadow-[0_60px_120px_-20px_rgba(0,0,0,0.4)] transition-all duration-700">
                             <BookCover
                                 url={book.cover_url}
                                 title={book.title}

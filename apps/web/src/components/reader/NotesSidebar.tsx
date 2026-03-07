@@ -60,7 +60,7 @@ const NotesSidebar: React.FC<NotesSidebarProps> = ({
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent side="right" className="w-[400px] sm:w-[540px] p-0 border-none bg-background/80 backdrop-blur-3xl overflow-hidden flex flex-col">
+            <SheetContent side="right" className="w-[92vw] max-w-[400px] sm:max-w-[540px] p-0 border-none bg-background/80 backdrop-blur-3xl overflow-hidden flex flex-col">
                 <SheetHeader className="p-8 bg-card/40 border-b border-border/10">
                     <div className="flex justify-between items-start">
                         <div>

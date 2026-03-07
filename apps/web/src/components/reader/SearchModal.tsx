@@ -41,7 +41,7 @@ const SearchModal = ({ isOpen, onClose }: SearchModalProps) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     const commands = [
-        { id: 'cmd-library', title: t('goToLibraryCommand'), icon: Library, action: () => navigate('/library'), category: t('navigationCategory') },
+        { id: 'cmd-library', title: t('goToLibraryCommand'), icon: Library, action: () => navigate('/'), category: t('navigationCategory') },
         { id: 'cmd-discover', title: t('discoverPage'), icon: Sparkles, action: () => navigate('/discover'), category: t('navigationCategory') },
         { id: 'cmd-stats', title: t('viewStats'), icon: BarChart2, action: () => navigate('/stats'), category: t('dataCategory') },
         { id: 'cmd-profile', title: t('profile'), icon: User, action: () => navigate('/profile'), category: t('accountCategory') },

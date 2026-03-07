@@ -682,7 +682,7 @@ const ReaderPage: React.FC = () => {
         <div className="h-screen w-full flex flex-col items-center justify-center bg-background p-8 text-center gap-6">
             <div className="h-20 w-20 rounded-full bg-destructive/10 flex items-center justify-center"><AlertCircle className="h-10 w-10 text-destructive" /></div>
             <div className="space-y-2"><h2 className="text-2xl font-bold tracking-tight">{t('somethingWentWrong')}</h2><p className="text-muted-foreground max-w-md">{error || t('bookLoadError')}</p></div>
-            <Button onClick={() => navigate('/library')} variant="outline" className="rounded-full px-8">{t('backToLibrary')}</Button>
+            <Button onClick={() => navigate('/')} variant="outline" className="rounded-full px-8">{t('backToLibrary')}</Button>
         </div>
     );
 
@@ -693,7 +693,7 @@ const ReaderPage: React.FC = () => {
             <div className={`absolute top-0 left-0 right-0 z-[90] flex justify-center pt-3 sm:pt-6 pointer-events-none transition-all duration-700 ${isUIVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
                 {/* Mobile Header - Simplified */}
                 <header className="sm:hidden h-12 px-4 mx-3 rounded-full bg-background/80 backdrop-blur-2xl border border-white/20 shadow-lg flex items-center justify-between gap-2 pointer-events-auto w-full max-w-[95vw]">
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/library')} className="rounded-full h-9 w-9 text-primary">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="rounded-full h-9 w-9 text-primary">
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div className="flex-1 text-center overflow-hidden px-2">
@@ -706,6 +706,9 @@ const ReaderPage: React.FC = () => {
                         <span className="text-[9px] font-bold w-8 text-center tabular-nums">{Math.round(scale * 100)}%</span>
                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(3, s + 0.1)); }} className="rounded-full h-8 w-8 text-primary">
                             <ZoomIn className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setIsNotesOpen(true)} className="rounded-full h-9 w-9 text-primary">
+                            <StickyNote className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)} className="rounded-full h-9 w-9 text-primary">
                             <Search className="h-4 w-4" />
@@ -821,7 +824,7 @@ const ReaderPage: React.FC = () => {
                         <Button variant="ghost" size="icon" onClick={() => setIsNotesOpen(true)} className="rounded-full h-9 w-9 hover:bg-orange-500/10 transition-all text-orange-500" title={t('notesAndHighlights')}>
                             <StickyNote className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" className="flex items-center gap-2 px-3 rounded-xl hover:bg-primary/10 transition-all text-primary group" onClick={() => navigate('/library')}>
+                        <Button variant="ghost" className="flex items-center gap-2 px-3 rounded-xl hover:bg-primary/10 transition-all text-primary group" onClick={() => navigate('/')}>
                             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                             <span className="text-xs font-bold uppercase tracking-widest hidden sm:inline">{t('librarySmall')}</span>
                         </Button>
@@ -1130,7 +1133,7 @@ const ReaderPage: React.FC = () => {
                     </div>
                     {/* Mobile tap-to-navigate: invisible touch zones on left/right 15% */}
                     <div
-                        className="absolute inset-y-0 left-0 w-[10%] z-5 md:hidden cursor-pointer active:bg-black/5"
+                        className="absolute inset-y-0 left-0 w-[10%] z-[5] md:hidden cursor-pointer active:bg-black/5"
                         onClick={(e) => {
                             if (window.getSelection()?.toString()) return;
                             e.stopPropagation();
@@ -1138,7 +1141,7 @@ const ReaderPage: React.FC = () => {
                         }}
                     />
                     <div
-                        className="absolute inset-y-0 right-0 w-[10%] z-5 md:hidden cursor-pointer active:bg-black/5"
+                        className="absolute inset-y-0 right-0 w-[10%] z-[5] md:hidden cursor-pointer active:bg-black/5"
                         onClick={(e) => {
                             if (window.getSelection()?.toString()) return;
                             e.stopPropagation();
