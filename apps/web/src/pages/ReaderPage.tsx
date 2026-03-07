@@ -360,6 +360,9 @@ const ReaderPage: React.FC = () => {
     const [totalPages, setTotalPages] = useState<number>(0);
     const [secondaryTotalPages, setSecondaryTotalPages] = useState<number>(0);
     const [scale, setScale] = useState(1.0);
+    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 1024;
+    const minZoom = isMobileViewport ? 1 : 0.5;
+    const maxZoom = isMobileViewport ? 2 : 3;
     const [currentLocation, setCurrentLocation] = useState<string>('0');
     const [currentPercentage, setCurrentPercentage] = useState<number>(0);
     const [jumpPage, setJumpPage] = useState<string>('1');
@@ -385,6 +388,10 @@ const ReaderPage: React.FC = () => {
         width: 3,
         opacity: 1
     });
+
+    useEffect(() => {
+        setScale((prev) => Math.min(maxZoom, Math.max(minZoom, prev)));
+    }, [minZoom, maxZoom]);
 
     // --- Refs ---
     const readerRef = useRef<any>(null);
@@ -737,11 +744,11 @@ const ReaderPage: React.FC = () => {
                         <h1 className="font-sans font-bold text-sm truncate">{cleanTitle(book?.title || '')}</h1>
                     </div>
                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.1)); }} className="rounded-full h-8 w-8 text-primary">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(minZoom, s - 0.1)); }} className="rounded-full h-8 w-8 text-primary">
                             <ZoomOut className="h-3.5 w-3.5" />
                         </Button>
                         <span className="text-[9px] font-bold w-8 text-center tabular-nums">{Math.round(scale * 100)}%</span>
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(3, s + 0.1)); }} className="rounded-full h-8 w-8 text-primary">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(maxZoom, s + 0.1)); }} className="rounded-full h-8 w-8 text-primary">
                             <ZoomIn className="h-3.5 w-3.5" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setIsNotesOpen(true)} className="rounded-full h-9 w-9 text-primary">
@@ -807,10 +814,10 @@ const ReaderPage: React.FC = () => {
                                         </div>
                                         <Slider
                                             value={[scale]}
-                                            min={0.5}
-                                            max={2}
+                                            min={minZoom}
+                                            max={maxZoom}
                                             step={0.1}
-                                            onValueChange={([v]) => setScale(v)}
+                                            onValueChange={([v]) => setScale(Math.min(maxZoom, Math.max(minZoom, v)))}
                                         />
                                     </div>
 
@@ -873,9 +880,9 @@ const ReaderPage: React.FC = () => {
                     <div className="flex items-center gap-2 border-l border-border/10 pl-6 no-zen-toggle">
                         {/* Zoom Controls */}
                         <div className="flex items-center bg-secondary/30 rounded-full p-0.5 border border-border/10">
-                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.1)); }} className="rounded-full h-8 w-8 hover:bg-primary hover:text-white transition-all"><ZoomOut className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(minZoom, s - 0.1)); }} className="rounded-full h-8 w-8 hover:bg-primary hover:text-white transition-all"><ZoomOut className="h-3.5 w-3.5" /></Button>
                             <span className="text-[10px] font-bold w-10 text-center font-mono">{Math.round(scale * 100)}%</span>
-                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(3, s + 0.1)); }} className="rounded-full h-8 w-8 hover:bg-primary hover:text-white transition-all"><ZoomIn className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(maxZoom, s + 0.1)); }} className="rounded-full h-8 w-8 hover:bg-primary hover:text-white transition-all"><ZoomIn className="h-3.5 w-3.5" /></Button>
                         </div>
 
                         <Separator orientation="vertical" className="h-6 mx-1 opacity-20 hidden lg:block" />

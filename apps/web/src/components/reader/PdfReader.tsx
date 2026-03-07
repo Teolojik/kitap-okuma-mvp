@@ -239,7 +239,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
         // Margins: reduce heavily on mobile
         const hPadding = isMobile
-            ? 16
+            ? 8
             : (isDoubleMode ? 80 : 40) + (settings.margin * 2);
         const vPadding = isMobile
             ? 20
@@ -268,7 +268,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
     return (
         <div className={`w-full h-full flex flex-col overflow-hidden relative bg-background ${isMobile ? 'items-stretch justify-start' : 'items-center justify-center'}`} ref={wrapperRef}>
-            <div className={`w-full h-full flex justify-center no-scrollbar relative ${isMobile ? 'items-start pt-2' : 'items-center'} ${simpleMode ? '' : 'px-4'} ${currentScale > 1.0 || isMobile ? 'overflow-auto' : 'overflow-hidden'}`}>
+            <div className={`w-full h-full flex justify-center no-scrollbar relative ${isMobile ? 'items-start pt-2' : 'items-center'} ${simpleMode ? '' : isMobile ? 'px-1' : 'px-4'} ${currentScale > 1.0 || isMobile ? 'overflow-auto' : 'overflow-hidden'}`}>
                 {/* Book Spine Shadow (Center) */}
                 {isDoubleMode && page + 1 <= numPages && (
                     <div className="absolute left-1/2 top-0 bottom-0 w-16 -translate-x-1/2 z-20 pointer-events-none bg-gradient-to-r from-transparent via-black/15 to-transparent blur-md" />
