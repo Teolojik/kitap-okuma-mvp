@@ -72,14 +72,15 @@ const parseSavedDrawing = (
 };
 
 // Drawing canvas with zoom-aware replay
-const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings, zoom }: {
+const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings, zoom, anchorRef }: {
     active: boolean,
     tool: 'pen' | 'marker' | 'eraser',
     pageKey: string,
     savedData?: string,
     onSave: (data: string) => void,
     settings: { color: string, width: number, opacity: number },
-    zoom: number
+    zoom: number,
+    anchorRef: React.RefObject<HTMLElement | null>
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const lastPosRef = useRef<{ x: number, y: number } | null>(null);
@@ -88,6 +89,8 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings, zoo
     const loadedSavedDataRef = useRef<string | undefined>(undefined);
     const sourceDrawingRef = useRef<{ dataUrl: string; zoom: number } | null>(null);
     const renderTokenRef = useRef(0);
+    const [overlayRect, setOverlayRect] = useState({ left: 0, top: 0, width: 1, height: 1 });
+    const overlayRectRef = useRef(overlayRect);
 
     const renderFromSource = React.useCallback(() => {
         const canvas = canvasRef.current;
@@ -98,35 +101,76 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings, zoo
         const source = sourceDrawingRef.current;
         if (!source?.dataUrl) return;
 
-        const ratio = source.zoom > 0 ? zoom / source.zoom : 1;
         const renderToken = ++renderTokenRef.current;
         const img = new Image();
 
         img.onload = () => {
             if (renderToken !== renderTokenRef.current) return;
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.scale(ratio, ratio);
-            ctx.translate(-centerX, -centerY);
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            ctx.restore();
         };
 
         img.src = source.dataUrl;
-    }, [zoom]);
+    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        const parent = canvas?.parentElement;
-        if (!canvas || !parent) return;
+        const root = anchorRef.current;
+        const container = canvas?.parentElement;
+        if (!canvas || !root || !container) return;
+
+        let rafId = 0;
+
+        const syncOverlayRect = () => {
+            const containerRect = container.getBoundingClientRect();
+            const pageCanvas = root.querySelector('.react-pdf__Page__canvas') as HTMLCanvasElement | null;
+            const targetRect = pageCanvas?.getBoundingClientRect();
+
+            const next = targetRect
+                ? {
+                    left: Math.max(0, targetRect.left - containerRect.left),
+                    top: Math.max(0, targetRect.top - containerRect.top),
+                    width: Math.max(1, targetRect.width),
+                    height: Math.max(1, targetRect.height)
+                }
+                : {
+                    left: 0,
+                    top: 0,
+                    width: Math.max(1, container.clientWidth),
+                    height: Math.max(1, container.clientHeight)
+                };
+
+            const prev = overlayRectRef.current;
+            const hasChanged =
+                Math.abs(prev.left - next.left) > 0.5 ||
+                Math.abs(prev.top - next.top) > 0.5 ||
+                Math.abs(prev.width - next.width) > 0.5 ||
+                Math.abs(prev.height - next.height) > 0.5;
+
+            if (hasChanged) {
+                overlayRectRef.current = next;
+                setOverlayRect(next);
+            }
+        };
+
+        const tick = () => {
+            syncOverlayRect();
+            rafId = window.requestAnimationFrame(tick);
+        };
+
+        tick();
+        return () => {
+            window.cancelAnimationFrame(rafId);
+        };
+    }, [anchorRef]);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
         const resizeCanvas = () => {
-            const nextWidth = Math.max(1, Math.floor(parent.clientWidth));
-            const nextHeight = Math.max(1, Math.floor(parent.clientHeight));
+            const nextWidth = Math.max(1, Math.floor(overlayRect.width));
+            const nextHeight = Math.max(1, Math.floor(overlayRect.height));
 
             if (canvas.width === nextWidth && canvas.height === nextHeight) return;
             canvas.width = nextWidth;
@@ -135,19 +179,7 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings, zoo
         };
 
         resizeCanvas();
-
-        let resizeObserver: ResizeObserver | null = null;
-        if (typeof ResizeObserver !== 'undefined') {
-            resizeObserver = new ResizeObserver(() => resizeCanvas());
-            resizeObserver.observe(parent);
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-        return () => {
-            resizeObserver?.disconnect();
-            window.removeEventListener('resize', resizeCanvas);
-        };
-    }, [renderFromSource]);
+    }, [overlayRect, renderFromSource]);
 
     useEffect(() => {
         const pageChanged = loadedPageKeyRef.current !== pageKey;
@@ -250,8 +282,12 @@ const DrawingCanvas = ({ active, tool, pageKey, savedData, onSave, settings, zoo
     return (
         <canvas
             ref={canvasRef}
-            className={`absolute inset-0 touch-none ${active ? 'z-[110] pointer-events-auto cursor-crosshair' : 'z-40 pointer-events-none'}`}
+            className={`absolute touch-none ${active ? 'z-[110] pointer-events-auto cursor-crosshair' : 'z-40 pointer-events-none'}`}
             style={{
+                left: overlayRect.left,
+                top: overlayRect.top,
+                width: overlayRect.width,
+                height: overlayRect.height,
                 mixBlendMode: 'multiply',
                 opacity: 1
             }}
@@ -352,6 +388,7 @@ const ReaderPage: React.FC = () => {
 
     // --- Refs ---
     const readerRef = useRef<any>(null);
+    const primaryPanelRef = useRef<HTMLDivElement>(null);
     const uiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const prevPageRef = useRef<number>(1);
 
@@ -1173,6 +1210,7 @@ const ReaderPage: React.FC = () => {
                         className="w-full h-full flex items-center justify-center transform-gpu"
                     >
                         <div
+                            ref={primaryPanelRef}
                             className={`w-full h-full transition-all duration-500 rounded-3xl overflow-hidden relative ${isSettingsOpen ? 'scale-95 opacity-50' : 'scale-100 opacity-100'} ${activePanel === 'primary' ? 'ring-2 ring-primary/40 ring-offset-8 ring-offset-background shadow-[0_0_50px_rgba(249,115,22,0.1)]' : 'border border-transparent'}`}
                             onClick={() => setActivePanel('primary')}
                         >
@@ -1208,6 +1246,7 @@ const ReaderPage: React.FC = () => {
                                 onSave={(data) => saveDrawing(`${book.id}-${book.progress?.page || 1}`, data)}
                                 settings={toolSettings}
                                 zoom={scale}
+                                anchorRef={primaryPanelRef}
                             />
                         )}
                     </motion.div>
