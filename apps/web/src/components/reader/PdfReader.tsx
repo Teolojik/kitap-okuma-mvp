@@ -239,10 +239,10 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
 
         // Margins: reduce heavily on mobile
         const hPadding = isMobile
-            ? 16 + (settings.margin * 2)
+            ? 16
             : (isDoubleMode ? 80 : 40) + (settings.margin * 2);
         const vPadding = isMobile
-            ? 20 + settings.paddingTop + settings.paddingBottom
+            ? 20
             : (simpleMode ? 40 : 80) + settings.paddingTop + settings.paddingBottom;
 
         const availableW = Math.max(0, (wrapperWidth - hPadding) / (isDoubleMode ? 2 : 1));
@@ -255,7 +255,7 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
         const widthToFitHeight = availableH * ratio;
 
         // The effective "Fit" width is the smaller of the two
-        const fitWidth = Math.min(availableW, widthToFitHeight);
+        const fitWidth = isMobile ? availableW : Math.min(availableW, widthToFitHeight);
 
         // Apply scale on top of the fit width
         const finalWidth = Math.floor(fitWidth * currentScale);
@@ -267,8 +267,8 @@ const PdfReaderInner = React.forwardRef<PdfReaderRef, PdfReaderProps>(({
     if (!safeUrl) return <div className="flex items-center justify-center p-10 font-bold opacity-30 text-xs uppercase tracking-[0.2em]">Dosya Hazırlanıyor...</div>;
 
     return (
-        <div className="w-full h-full flex flex-col items-center justify-center overflow-hidden relative bg-background" ref={wrapperRef}>
-            <div className={`w-full h-full flex justify-center items-center no-scrollbar relative ${simpleMode ? '' : 'px-4'} ${currentScale > 1.0 ? 'overflow-auto' : 'overflow-hidden'}`}>
+        <div className={`w-full h-full flex flex-col overflow-hidden relative bg-background ${isMobile ? 'items-stretch justify-start' : 'items-center justify-center'}`} ref={wrapperRef}>
+            <div className={`w-full h-full flex justify-center no-scrollbar relative ${isMobile ? 'items-start pt-2' : 'items-center'} ${simpleMode ? '' : 'px-4'} ${currentScale > 1.0 || isMobile ? 'overflow-auto' : 'overflow-hidden'}`}>
                 {/* Book Spine Shadow (Center) */}
                 {isDoubleMode && page + 1 <= numPages && (
                     <div className="absolute left-1/2 top-0 bottom-0 w-16 -translate-x-1/2 z-20 pointer-events-none bg-gradient-to-r from-transparent via-black/15 to-transparent blur-md" />
